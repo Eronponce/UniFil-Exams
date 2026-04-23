@@ -13,6 +13,13 @@ export interface BatchGenerationResult {
   trace: AITrace;
 }
 
+export interface BatchGenerationProgress {
+  trace: AITrace;
+  phase: "round-start" | "round-success" | "round-failure";
+  round: number;
+  message: string;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type BatchGeneratedQuestion = {
   statement: string;
@@ -228,6 +235,7 @@ export async function generateBatchQuestions(
   provider: AIProvider,
   questionType: QuestionType = "objetiva",
   ollamaModel?: string,
+  onProgress?: (progress: BatchGenerationProgress) => void,
 ): Promise<BatchGenerationResult> {
   const model = getModel(provider, ollamaModel);
 
@@ -242,6 +250,24 @@ export async function generateBatchQuestions(
 
   for (let round = 0; round < prompts.length; round++) {
     const prompt = prompts[round]!(discipline, rawText);
+    traceRounds.push({
+      round: round + 1,
+      prompt,
+      succeeded: false,
+    });
+    onProgress?.({
+      phase: "round-start",
+      round: round + 1,
+      message: `Rodada ${round + 1} iniciada`,
+      trace: {
+        provider,
+        model: provider === "ollama" ? (ollamaModel ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest") : undefined,
+        questionType,
+        rounds: [...traceRounds],
+        succeededRound: null,
+      },
+    });
+
     let result: BatchGeneratedQuestion[] | null = null;
     let roundError: string | undefined;
 
@@ -253,12 +279,24 @@ export async function generateBatchQuestions(
         roundError = agg.errors.map((e: unknown) => e instanceof Error ? e.message : String(e)).join(" | ");
       });
 
-    traceRounds.push({
-      round: round + 1,
-      prompt,
+    traceRounds[round] = {
+      ...traceRounds[round],
       resultJson: result ? JSON.stringify(result, null, 2) : undefined,
       error: roundError,
       succeeded: result !== null,
+    };
+
+    onProgress?.({
+      phase: result ? "round-success" : "round-failure",
+      round: round + 1,
+      message: result ? `Rodada ${round + 1} concluída com sucesso` : `Rodada ${round + 1} falhou`,
+      trace: {
+        provider,
+        model: provider === "ollama" ? (ollamaModel ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest") : undefined,
+        questionType,
+        rounds: [...traceRounds],
+        succeededRound: result ? round + 1 : null,
+      },
     });
 
     if (result) {

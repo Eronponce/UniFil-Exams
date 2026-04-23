@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition, useEffect } from "react";
+import { useToast } from "@/components/toast-provider";
 
 export function GabaritoUpload({ examId, isNew }: { examId: number; isNew?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -10,6 +11,7 @@ export function GabaritoUpload({ examId, isNew }: { examId: number; isNew?: bool
     hasFile: boolean | null;
     msg: { ok: boolean; text: string } | null;
   }>({ examId, hasFile: null, msg: null });
+  const { pushToast, updateToast } = useToast();
 
   const hasFile = status.examId === examId ? status.hasFile : null;
   const msg = status.examId === examId ? status.msg : null;
@@ -32,6 +34,11 @@ export function GabaritoUpload({ examId, isNew }: { examId: number; isNew?: bool
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const toastId = pushToast({
+      type: "info",
+      title: "Enviando gabarito",
+      description: `Upload iniciado para a prova ${examId}.`,
+    });
     startTransition(async () => {
       setStatus((current) => ({ examId, hasFile: current.examId === examId ? current.hasFile : null, msg: null }));
       const form = new FormData();
@@ -39,9 +46,19 @@ export function GabaritoUpload({ examId, isNew }: { examId: number; isNew?: bool
       const res = await fetch(`/api/upload/gabarito/${examId}`, { method: "POST", body: form });
       if (res.ok) {
         setStatus({ examId, hasFile: true, msg: { ok: true, text: "Gabarito salvo! Baixe o PDF novamente." } });
+        updateToast(toastId, {
+          type: "success",
+          title: "Gabarito salvo",
+          description: "O PDF já pode ser gerado com a última página anexada.",
+        });
       } else {
         const j = await res.json().catch(() => ({})) as { error?: string };
         setStatus({ examId, hasFile: false, msg: { ok: false, text: j.error ?? "Erro ao enviar" } });
+        updateToast(toastId, {
+          type: "error",
+          title: "Falha no upload do gabarito",
+          description: j.error ?? "Erro ao enviar arquivo.",
+        });
       }
       if (inputRef.current) inputRef.current.value = "";
     });
@@ -105,10 +122,16 @@ export function LogoUpload() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const { pushToast, updateToast } = useToast();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const toastId = pushToast({
+      type: "info",
+      title: "Enviando logo",
+      description: "Atualizando imagem institucional do PDF.",
+    });
     startTransition(async () => {
       setMsg(null);
       const form = new FormData();
@@ -116,9 +139,19 @@ export function LogoUpload() {
       const res = await fetch("/api/upload/logo", { method: "POST", body: form });
       if (res.ok) {
         setMsg({ ok: true, text: "Logo salva!" });
+        updateToast(toastId, {
+          type: "success",
+          title: "Logo atualizada",
+          description: "Os próximos PDFs usarão a nova identidade visual.",
+        });
       } else {
         const j = await res.json().catch(() => ({})) as { error?: string };
         setMsg({ ok: false, text: j.error ?? "Erro ao enviar" });
+        updateToast(toastId, {
+          type: "error",
+          title: "Falha no upload da logo",
+          description: j.error ?? "Erro ao enviar arquivo.",
+        });
       }
       if (inputRef.current) inputRef.current.value = "";
     });

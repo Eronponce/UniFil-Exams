@@ -7,9 +7,12 @@ import path from "path";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
-// ── Image helpers ─────────────────────────────────────────────────────────────
-function readBuf(p: string): Buffer | null {
-  try { return fs.readFileSync(p); } catch { return null; }
+function readBuf(filePath: string): Buffer | null {
+  try {
+    return fs.readFileSync(filePath);
+  } catch {
+    return null;
+  }
 }
 
 function getLogoBuf(): Buffer | null {
@@ -29,7 +32,6 @@ function getGabaritoBuf(examId: number): Buffer | null {
   return null;
 }
 
-// ── Layout constants ──────────────────────────────────────────────────────────
 const PAGE_PADDING = 42.52;
 const PAGE_H = 841.89;
 const HEADER_H = 52;
@@ -38,27 +40,6 @@ const AVAILABLE_COL_H = PAGE_H - PAGE_PADDING * 2 - HEADER_H;
 const CHARS_PER_LINE = 40;
 const CHARS_PER_OPT_LINE = 42;
 const BLANK_LINE_H = 18;
-
-// ── Height estimators ─────────────────────────────────────────────────────────
-function estimateH(statement: string, options: string[]): number {
-  const statLines = Math.max(1, Math.ceil(statement.length / CHARS_PER_LINE));
-  const statH = (1 + statLines) * 14;
-  const optH = options.reduce((s, o) => s + Math.ceil(o.length / CHARS_PER_OPT_LINE) * 13, 0);
-  return statH + optH + 14;
-}
-
-function estimateVFH(statement: string): number {
-  const statLines = Math.max(1, Math.ceil(statement.length / CHARS_PER_LINE));
-  return (1 + statLines) * 14 + 2 * 13 + 14; // statement + 2 option rows + margin
-}
-
-function estimateDissertativaH(statement: string, answerLines: number): number {
-  const statLines = Math.max(1, Math.ceil(statement.length / (CHARS_PER_LINE * 2))); // single col = double width
-  return (1 + statLines) * 14 + (answerLines || 5) * BLANK_LINE_H + 20;
-}
-
-// ── Group into two-column pages ────────────────────────────────────────────────
-interface ColPage { col1: ProcessedQ[]; col2: ProcessedQ[] }
 
 interface ProcessedQ {
   id: number;
@@ -70,53 +51,162 @@ interface ProcessedQ {
   answerLines: number;
 }
 
-function groupIntoPages(qs: ProcessedQ[], firstPageBudget = AVAILABLE_COL_H): ColPage[] {
-  const pages: ColPage[] = [];
-  let col1: ProcessedQ[] = [], col2: ProcessedQ[] = [];
-  let h1 = 0, h2 = 0;
-  const budget = (pgIdx: number) => pgIdx === 0 ? firstPageBudget : AVAILABLE_COL_H;
-  let pgIdx = 0;
+interface NumberedQ extends ProcessedQ {
+  displayNumber: number;
+}
+
+interface SectionDefinition {
+  key: string;
+  title: string;
+  layout: "two" | "single";
+  qs: ProcessedQ[];
+}
+
+interface TwoColumnSegment {
+  kind: "two";
+  title?: string;
+  col1: NumberedQ[];
+  col2: NumberedQ[];
+}
+
+interface SingleColumnSegment {
+  kind: "single";
+  title?: string;
+  qs: NumberedQ[];
+}
+
+type PageSegment = TwoColumnSegment | SingleColumnSegment;
+
+interface BuiltPage {
+  segments: PageSegment[];
+}
+
+function estimateObjetivaH(statement: string, options: string[]): number {
+  const statLines = Math.max(1, Math.ceil(statement.length / CHARS_PER_LINE));
+  const statH = (1 + statLines) * 14;
+  const optH = options.reduce((sum, option) => sum + Math.ceil(option.length / CHARS_PER_OPT_LINE) * 13, 0);
+  return statH + optH + 14;
+}
+
+function estimateVFH(statement: string): number {
+  const statLines = Math.max(1, Math.ceil(statement.length / CHARS_PER_LINE));
+  return (1 + statLines) * 14 + 2 * 13 + 14;
+}
+
+function estimateDissertativaH(statement: string, answerLines: number): number {
+  const statLines = Math.max(1, Math.ceil(statement.length / (CHARS_PER_LINE * 2)));
+  return (1 + statLines) * 14 + (answerLines || 5) * BLANK_LINE_H + 20;
+}
+
+function estimateQuestionHeight(q: ProcessedQ): number {
+  if (q.questionType === "dissertativa") return estimateDissertativaH(q.statement, q.answerLines);
+  if (q.questionType === "verdadeiro_falso") return estimateVFH(q.statement);
+  return estimateObjetivaH(q.statement, q.options.map((option) => option.text));
+}
+
+function packTwoColumnChunk(qs: ProcessedQ[], availableHeight: number) {
+  const col1: ProcessedQ[] = [];
+  const col2: ProcessedQ[] = [];
+  let h1 = 0;
+  let h2 = 0;
 
   for (const q of qs) {
-    const h = q.questionType === "verdadeiro_falso"
-      ? estimateVFH(q.statement)
-      : estimateH(q.statement, q.options.map((o) => o.text));
-    const bud = budget(pgIdx);
-    if (h1 + h <= bud) {
-      col1.push(q); h1 += h;
-    } else if (h2 + h <= bud) {
-      col2.push(q); h2 += h;
-    } else {
-      pages.push({ col1, col2 });
-      pgIdx++;
-      col1 = [q]; col2 = []; h1 = h; h2 = 0;
+    const qh = estimateQuestionHeight(q);
+    if (h1 + qh <= availableHeight) {
+      col1.push(q);
+      h1 += qh;
+      continue;
+    }
+    if (h2 + qh <= availableHeight) {
+      col2.push(q);
+      h2 += qh;
+      continue;
+    }
+    break;
+  }
+
+  if (!col1.length && !col2.length && qs[0]) {
+    const qh = estimateQuestionHeight(qs[0]);
+    return { col1: [qs[0]], col2: [], consumedHeight: qh, usedCount: 1 };
+  }
+
+  return {
+    col1,
+    col2,
+    consumedHeight: Math.max(h1, h2),
+    usedCount: col1.length + col2.length,
+  };
+}
+
+function packSingleColumnChunk(qs: ProcessedQ[], availableHeight: number) {
+  const items: ProcessedQ[] = [];
+  let consumedHeight = 0;
+
+  for (const q of qs) {
+    const qh = estimateQuestionHeight(q);
+    if (consumedHeight + qh <= availableHeight) {
+      items.push(q);
+      consumedHeight += qh;
+      continue;
+    }
+    break;
+  }
+
+  if (!items.length && qs[0]) {
+    return { items: [qs[0]], consumedHeight: estimateQuestionHeight(qs[0]), usedCount: 1 };
+  }
+
+  return { items, consumedHeight, usedCount: items.length };
+}
+
+function buildQuestionPages(sections: SectionDefinition[]): BuiltPage[] {
+  const pages: BuiltPage[] = [];
+  let currentPage: BuiltPage = { segments: [] };
+  let remainingHeight = AVAILABLE_COL_H;
+  let globalNumber = 0;
+
+  function pushPage() {
+    if (currentPage.segments.length) pages.push(currentPage);
+    currentPage = { segments: [] };
+    remainingHeight = AVAILABLE_COL_H;
+  }
+
+  for (const section of sections) {
+    let remainingQs = [...section.qs];
+    let isFirstChunk = true;
+
+    while (remainingQs.length > 0) {
+      const titleCost = isFirstChunk ? SECTION_DIVIDER_H : 0;
+      const availableHeight = remainingHeight - titleCost;
+      if (availableHeight <= 0) {
+        pushPage();
+        continue;
+      }
+
+      if (section.layout === "two") {
+        const packed = packTwoColumnChunk(remainingQs, availableHeight);
+        const col1 = packed.col1.map((q) => ({ ...q, displayNumber: ++globalNumber }));
+        const col2 = packed.col2.map((q) => ({ ...q, displayNumber: ++globalNumber }));
+        currentPage.segments.push({ kind: "two", title: isFirstChunk ? section.title : undefined, col1, col2 });
+        remainingHeight -= titleCost + packed.consumedHeight;
+        remainingQs = remainingQs.slice(packed.usedCount);
+      } else {
+        const packed = packSingleColumnChunk(remainingQs, availableHeight);
+        const qs = packed.items.map((q) => ({ ...q, displayNumber: ++globalNumber }));
+        currentPage.segments.push({ kind: "single", title: isFirstChunk ? section.title : undefined, qs });
+        remainingHeight -= titleCost + packed.consumedHeight;
+        remainingQs = remainingQs.slice(packed.usedCount);
+      }
+
+      isFirstChunk = false;
+      if (remainingQs.length > 0 && remainingHeight <= 12) pushPage();
     }
   }
-  if (col1.length || col2.length) pages.push({ col1, col2 });
+
+  if (currentPage.segments.length) pages.push(currentPage);
   return pages;
 }
 
-function groupIntoSingleColumnPages(qs: ProcessedQ[], firstPageBudget = AVAILABLE_COL_H): ProcessedQ[][] {
-  const pages: ProcessedQ[][] = [];
-  let current: ProcessedQ[] = [];
-  let h = 0;
-  let pgIdx = 0;
-  const budget = (i: number) => i === 0 ? firstPageBudget : AVAILABLE_COL_H;
-
-  for (const q of qs) {
-    const qh = estimateDissertativaH(q.statement, q.answerLines);
-    if (h + qh <= budget(pgIdx)) {
-      current.push(q); h += qh;
-    } else {
-      if (current.length) { pages.push(current); pgIdx++; }
-      current = [q]; h = qh;
-    }
-  }
-  if (current.length) pages.push(current);
-  return pages;
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 10, padding: PAGE_PADDING, backgroundColor: "#ffffff" },
   header: { marginBottom: 10, borderBottom: "1pt solid #cccccc", paddingBottom: 8, flexDirection: "row", alignItems: "center", gap: 8 },
@@ -128,7 +218,7 @@ const s = StyleSheet.create({
   setLabel: { position: "absolute", top: PAGE_PADDING, right: PAGE_PADDING, fontSize: 22, fontFamily: "Helvetica-Bold", color: "#aaaaaa" },
   sectionDivider: { borderTop: "1pt solid #999999", borderBottom: "1pt solid #999999", paddingVertical: 4, marginBottom: 8, marginTop: 2 },
   sectionDividerText: { fontFamily: "Helvetica-Bold", fontSize: 9, textAlign: "center", color: "#444444" },
-  columns: { flexDirection: "row", gap: 16 },
+  columns: { flexDirection: "row", gap: 16, marginBottom: 2 },
   column: { flex: 1 },
   question: { marginBottom: 12 },
   qHeader: { flexDirection: "row", gap: 4, marginBottom: 4 },
@@ -147,7 +237,6 @@ const s = StyleSheet.create({
   akImageWrap: { flex: 1, justifyContent: "flex-end", alignItems: "center", paddingBottom: PAGE_PADDING },
 });
 
-// ── Header block ──────────────────────────────────────────────────────────────
 function Header({ title, institution, setLabel, logoBuf }: { title: string; institution: string; setLabel: string; logoBuf: Buffer | null }) {
   return (
     <View style={s.header}>
@@ -162,7 +251,6 @@ function Header({ title, institution, setLabel, logoBuf }: { title: string; inst
   );
 }
 
-// ── Section divider ───────────────────────────────────────────────────────────
 function SectionDivider({ title }: { title: string }) {
   return (
     <View style={s.sectionDivider}>
@@ -171,12 +259,11 @@ function SectionDivider({ title }: { title: string }) {
   );
 }
 
-// ── Question renderers ────────────────────────────────────────────────────────
-function QuestionView({ q, globalIdx }: { q: ProcessedQ; globalIdx: number }) {
+function QuestionView({ q }: { q: NumberedQ }) {
   return (
     <View style={s.question}>
       <View style={s.qHeader}>
-        <Text style={s.qNum}>{globalIdx}.</Text>
+        <Text style={s.qNum}>{q.displayNumber}.</Text>
         <Text style={s.statement}>{q.statement}</Text>
       </View>
       {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -191,14 +278,13 @@ function QuestionView({ q, globalIdx }: { q: ProcessedQ; globalIdx: number }) {
   );
 }
 
-function VFQuestionView({ q, globalIdx }: { q: ProcessedQ; globalIdx: number }) {
-  // shuffledOptions is [0,1] or [1,0]; origIdx 0=Verdadeiro, 1=Falso
+function VFQuestionView({ q }: { q: NumberedQ }) {
   const labels = ["Verdadeiro", "Falso"];
   const opts = q.shuffledOptions.length === 2 ? q.shuffledOptions : [0, 1];
   return (
     <View style={s.question}>
       <View style={s.qHeader}>
-        <Text style={s.qNum}>{globalIdx}.</Text>
+        <Text style={s.qNum}>{q.displayNumber}.</Text>
         <Text style={s.statement}>{q.statement}</Text>
       </View>
       <View style={s.vfRow}>
@@ -213,22 +299,27 @@ function VFQuestionView({ q, globalIdx }: { q: ProcessedQ; globalIdx: number }) 
   );
 }
 
-function DissertativaQuestionView({ q, globalIdx }: { q: ProcessedQ; globalIdx: number }) {
+function DissertativaQuestionView({ q }: { q: NumberedQ }) {
   const lines = q.answerLines > 0 ? q.answerLines : 5;
   return (
     <View style={s.question}>
       <View style={s.qHeader}>
-        <Text style={s.qNum}>{globalIdx}.</Text>
+        <Text style={s.qNum}>{q.displayNumber}.</Text>
         <Text style={s.statement}>{q.statement}</Text>
       </View>
-      {Array.from({ length: lines }).map((_, i) => (
-        <View key={i} style={s.blankLine} />
+      {Array.from({ length: lines }).map((_, index) => (
+        <View key={index} style={s.blankLine} />
       ))}
     </View>
   );
 }
 
-// ── Answer key page ───────────────────────────────────────────────────────────
+function renderQuestion(q: NumberedQ) {
+  if (q.questionType === "dissertativa") return <DissertativaQuestionView key={q.id} q={q} />;
+  if (q.questionType === "verdadeiro_falso") return <VFQuestionView key={q.id} q={q} />;
+  return <QuestionView key={q.id} q={q} />;
+}
+
 function AnswerKeyPage({ gabaritoBuf }: { gabaritoBuf: Buffer | null }) {
   return (
     <Page size="A4" style={s.akPage}>
@@ -240,78 +331,6 @@ function AnswerKeyPage({ gabaritoBuf }: { gabaritoBuf: Buffer | null }) {
   );
 }
 
-// ── Section renderer helpers ──────────────────────────────────────────────────
-interface SectionProps {
-  setId: number;
-  sectionKey: string;
-  sectionTitle: string;
-  qs: ProcessedQ[];
-  startGlobalQ: number;
-  isSingleColumn: boolean;
-  set: ExamSet;
-  exam: Exam;
-  logoBuf: Buffer | null;
-}
-
-function renderTwoColumnSection({ setId, sectionKey, sectionTitle, qs, startGlobalQ, set, exam, logoBuf }: SectionProps): { els: React.ReactElement[]; finalGlobalQ: number } {
-  const firstBudget = AVAILABLE_COL_H - SECTION_DIVIDER_H;
-  const pages = groupIntoPages(qs, firstBudget);
-  const els: React.ReactElement[] = [];
-  let globalQ = startGlobalQ;
-
-  pages.forEach((pg, pi) => {
-    els.push(
-      <Page key={`${setId}-${sectionKey}-p${pi}`} size="A4" style={s.page}>
-        <Text style={s.setLabel}>{set.label}</Text>
-        <Header title={exam.title} institution={exam.institution} setLabel={set.label} logoBuf={logoBuf} />
-        {pi === 0 && <SectionDivider title={sectionTitle} />}
-        <View style={s.columns}>
-          <View style={s.column}>
-            {pg.col1.map((q) => {
-              globalQ++;
-              return q.questionType === "verdadeiro_falso"
-                ? <VFQuestionView key={q.id} q={q} globalIdx={globalQ} />
-                : <QuestionView key={q.id} q={q} globalIdx={globalQ} />;
-            })}
-          </View>
-          <View style={s.column}>
-            {pg.col2.map((q) => {
-              globalQ++;
-              return q.questionType === "verdadeiro_falso"
-                ? <VFQuestionView key={q.id} q={q} globalIdx={globalQ} />
-                : <QuestionView key={q.id} q={q} globalIdx={globalQ} />;
-            })}
-          </View>
-        </View>
-      </Page>
-    );
-  });
-  return { els, finalGlobalQ: globalQ };
-}
-
-function renderSingleColumnSection({ setId, sectionKey, sectionTitle, qs, startGlobalQ, set, exam, logoBuf }: SectionProps): { els: React.ReactElement[]; finalGlobalQ: number } {
-  const firstBudget = AVAILABLE_COL_H - SECTION_DIVIDER_H;
-  const pages = groupIntoSingleColumnPages(qs, firstBudget);
-  const els: React.ReactElement[] = [];
-  let globalQ = startGlobalQ;
-
-  pages.forEach((page, pi) => {
-    els.push(
-      <Page key={`${setId}-${sectionKey}-p${pi}`} size="A4" style={s.page}>
-        <Text style={s.setLabel}>{set.label}</Text>
-        <Header title={exam.title} institution={exam.institution} setLabel={set.label} logoBuf={logoBuf} />
-        {pi === 0 && <SectionDivider title={sectionTitle} />}
-        {page.map((q) => {
-          globalQ++;
-          return <DissertativaQuestionView key={q.id} q={q} globalIdx={globalQ} />;
-        })}
-      </Page>
-    );
-  });
-  return { els, finalGlobalQ: globalQ };
-}
-
-// ── Main set renderer ─────────────────────────────────────────────────────────
 function renderSet(set: ExamSet, exam: Exam, logoBuf: Buffer | null, gabaritoBuf: Buffer | null): React.ReactElement[] {
   const allProcessed: ProcessedQ[] = set.questions
     .sort((a, b) => a.position - b.position)
@@ -336,47 +355,54 @@ function renderSet(set: ExamSet, exam: Exam, logoBuf: Buffer | null, gabaritoBuf
   const vf = allProcessed.filter((q) => q.questionType === "verdadeiro_falso");
   const dissertativas = allProcessed.filter((q) => q.questionType === "dissertativa");
 
-  const els: React.ReactElement[] = [];
-  let globalQ = 0;
-  let totalPages = 0;
-
-  const sectionProps = { setId: set.id, set, exam, logoBuf, isSingleColumn: false };
-
-  if (objetivas.length) {
-    const sectionNum = "I";
-    const { els: sEls, finalGlobalQ } = renderTwoColumnSection({ ...sectionProps, sectionKey: "obj", sectionTitle: `${sectionNum}. Questões Objetivas`, qs: objetivas, startGlobalQ: globalQ });
-    els.push(...sEls);
-    globalQ = finalGlobalQ;
-    totalPages += sEls.length;
-  }
-
-  if (vf.length) {
-    const sectionNum = objetivas.length ? "II" : "I";
-    const { els: sEls, finalGlobalQ } = renderTwoColumnSection({ ...sectionProps, sectionKey: "vf", sectionTitle: `${sectionNum}. Questões de Verdadeiro ou Falso`, qs: vf, startGlobalQ: globalQ });
-    els.push(...sEls);
-    globalQ = finalGlobalQ;
-    totalPages += sEls.length;
-  }
-
+  const sections: SectionDefinition[] = [];
+  if (objetivas.length) sections.push({ key: "obj", title: "I. Questões Objetivas", layout: "two", qs: objetivas });
+  if (vf.length) sections.push({
+    key: "vf",
+    title: `${sections.length === 0 ? "I" : "II"}. Questões de Verdadeiro ou Falso`,
+    layout: "two",
+    qs: vf,
+  });
   if (dissertativas.length) {
-    const filled = (objetivas.length ? 1 : 0) + (vf.length ? 1 : 0);
-    const sectionNum = filled === 2 ? "III" : filled === 1 ? "II" : "I";
-    const { els: sEls, finalGlobalQ } = renderSingleColumnSection({ ...sectionProps, sectionKey: "diss", sectionTitle: `${sectionNum}. Questões Dissertativas`, qs: dissertativas, startGlobalQ: globalQ, isSingleColumn: true });
-    els.push(...sEls);
-    globalQ = finalGlobalQ;
-    totalPages += sEls.length;
+    const numeral = sections.length === 0 ? "I" : sections.length === 1 ? "II" : "III";
+    sections.push({
+      key: "diss",
+      title: `${numeral}. Questões Dissertativas`,
+      layout: "single",
+      qs: dissertativas,
+    });
   }
 
-  // Even-page guarantee (question pages + answer key = even total for double-sided)
-  if (totalPages % 2 === 0) {
-    els.push(<Page key={`${set.id}-blank`} size="A4" style={s.page}><View /></Page>);
+  const questionPages = buildQuestionPages(sections);
+  const elements = questionPages.map((page, pageIndex) => (
+    <Page key={`${set.id}-page-${pageIndex}`} size="A4" style={s.page}>
+      <Text style={s.setLabel}>{set.label}</Text>
+      <Header title={exam.title} institution={exam.institution} setLabel={set.label} logoBuf={logoBuf} />
+
+      {page.segments.map((segment, segmentIndex) => (
+        <React.Fragment key={`${set.id}-page-${pageIndex}-segment-${segmentIndex}`}>
+          {segment.title && <SectionDivider title={segment.title} />}
+          {segment.kind === "two" ? (
+            <View style={s.columns}>
+              <View style={s.column}>{segment.col1.map(renderQuestion)}</View>
+              <View style={s.column}>{segment.col2.map(renderQuestion)}</View>
+            </View>
+          ) : (
+            segment.qs.map(renderQuestion)
+          )}
+        </React.Fragment>
+      ))}
+    </Page>
+  ));
+
+  if (questionPages.length % 2 === 0) {
+    elements.push(<Page key={`${set.id}-blank`} size="A4" style={s.page}><View /></Page>);
   }
 
-  els.push(<AnswerKeyPage key={`${set.id}-ak`} gabaritoBuf={gabaritoBuf} />);
-  return els;
+  elements.push(<AnswerKeyPage key={`${set.id}-ak`} gabaritoBuf={gabaritoBuf} />);
+  return elements;
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
 export function ExamPdf({ exam }: { exam: Exam }) {
   const logoBuf = getLogoBuf();
   const gabaritoBuf = getGabaritoBuf(exam.id);

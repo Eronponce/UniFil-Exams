@@ -46,3 +46,23 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: each exam set accepts its own EvalBee image and places it on the last PDF page.
 - Reason: user marks/prepares the EvalBee sheet externally and uses EvalBee for correction.
 - Impact: app does not auto-mark EvalBee circles in V1; it still exports CSV answer keys by set.
+
+## 2026-04-23 - Global Process Feedback
+- Decision: standardize user feedback with global toasts plus URL-flash toasts for server-action redirects.
+- Reason: the user needs visibility into success and error states across the whole system, not only inside the current form.
+- Impact: create/update/delete/audit/upload/import/exam creation now expose consistent feedback states.
+
+## 2026-04-23 - AI Generation Observability
+- Decision: expose AI generation and batch import progress through SSE routes with incremental status and trace updates.
+- Reason: the user wants to understand where generation failed while the process is still running.
+- Impact: `/ai` and `/ai/import` now consume live events and show evolving trace data before completion.
+
+## 2026-04-23 - Exam Composition By Question Type
+- Decision: exam assembly accepts explicit counts for `objetiva`, `verdadeiro_falso`, and `dissertativa`.
+- Reason: teachers need deterministic section composition even when the audited pool is much larger than the final exam.
+- Impact: per-type counts take precedence over generic total question count when provided.
+
+## 2026-04-23 - Continuous PDF Section Packing
+- Decision: PDF sections should try to reuse the remaining vertical space on the current page before opening a new page.
+- Reason: forced page starts between sections wasted space and produced awkward breaks.
+- Impact: the renderer now packs section chunks sequentially per page instead of allocating a fresh page per section.

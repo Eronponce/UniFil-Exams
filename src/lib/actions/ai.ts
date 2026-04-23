@@ -28,6 +28,7 @@ export async function generateQuestionAction(_prev: GenerationState, formData: F
     const { question, trace } = await generateQuestion(provider, discipline.name, topic, questionType, ollamaModel);
     return { result: { ...question, disciplineId }, trace };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Erro ao gerar questão." };
+    const trace = (err as Record<string, unknown>).trace as AITrace | undefined;
+    return { error: err instanceof Error ? err.message : "Erro ao gerar questão.", trace };
   }
 }

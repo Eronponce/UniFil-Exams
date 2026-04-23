@@ -9,16 +9,27 @@ export function useOllamaModels(active: boolean) {
 
   useEffect(() => {
     if (!active) return;
-    setLoading(true);
-    setError(undefined);
-    fetch("/api/ollama/models")
-      .then((r) => r.json() as Promise<{ models: string[]; error?: string }>)
-      .then((data) => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError(undefined);
+      try {
+        const data = await fetch("/api/ollama/models").then((r) => r.json() as Promise<{ models: string[]; error?: string }>);
+        if (cancelled) return;
         setModels(data.models ?? []);
         if (data.error) setError(data.error);
-      })
-      .catch(() => setError("Ollama offline"))
-      .finally(() => setLoading(false));
+      } catch {
+        if (!cancelled) setError("Ollama offline");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [active]);
 
   return { models, loading, error };

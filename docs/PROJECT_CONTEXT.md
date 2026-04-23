@@ -3,7 +3,7 @@
 ## Stable Facts
 - Project name: UniFil Exams.
 - Repository started empty on 2026-04-22.
-- No application stack has been selected yet.
+- Current stack: Next.js 16.2.4 + React 19.2.4 + TypeScript + SQLite (`better-sqlite3`).
 - No remote `origin` is configured at scaffold time.
 
 ## Product Scope
@@ -17,14 +17,20 @@
 - Each set exports a print-ready PDF and a separate answer key CSV.
 - Each PDF includes the EvalBee image for that set on the last page.
 
+## Current Product State
+- Banco de questões já implementado com CRUD, auditoria e importação/exportação.
+- Tipos suportados: `objetiva`, `verdadeiro_falso`, `dissertativa`.
+- Geração IA já possui trace detalhado e agora também expõe status em tempo real durante a execução.
+- Feedback de processos usa toast global para geração IA, salvamentos, uploads, importações, auditoria e criação de prova.
+- Montagem de prova aceita seleção por quantidade de cada tipo de questão.
+- Exportação PDF agora tenta encaixar seções subsequentes na sobra da página anterior antes de abrir nova página.
+
 ## Current Assumptions
 - Keep docs markdown-first and Obsidian-friendly.
-- Keep implementation decisions reversible until product scope is clear.
 - Use persistent local memory for continuity, but avoid duplicating codebase facts that agents can inspect directly.
 - V1 is local-first, single-user, no login.
-- Programming-heavy implementation is deferred until the system structure is documented.
 
 ## Open Questions
 - Exact implementation timeline and phase split.
-- Final package/dependency choices for PDF, SQLite, and local model access.
-- Exact shape of import/export files beyond CSV answer key.
+- Real browser smoke of live AI streaming UX with each provider.
+- Fine-tuning of PDF layout density after real teacher feedback.

@@ -1,46 +1,56 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createExam, createExamSet } from "@/lib/db/exams";
 import { getQuestion } from "@/lib/db/questions";
 import { buildSets, type QuestionInfo } from "@/lib/exam/randomize";
+import { normalizeExamSelectionRequest, pickQuestionsForExam } from "@/lib/exam/select-questions";
+import { redirectWithToast } from "@/lib/toast";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
-
-function fisherYatesSample<T>(arr: T[], n: number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a.slice(0, n);
-}
 
 export async function createExamAction(formData: FormData) {
   const disciplineId = Number(formData.get("disciplineId"));
   const title = (formData.get("title") as string | null)?.trim() ?? "";
   const institution = (formData.get("institution") as string | null)?.trim() || "UniFil - Centro Universitário Filadélfia";
   const allQuestionIds = (formData.getAll("questionIds") as string[]).map(Number).filter(Boolean);
-  const numQuestions = Number(formData.get("numQuestions")) || 0;
-  // Sample numQuestions from pool if specified and smaller than pool
-  const questionIds = numQuestions > 0 && numQuestions < allQuestionIds.length
-    ? fisherYatesSample(allQuestionIds, numQuestions)
-    : allQuestionIds;
   const qty = Math.min(Math.max(Number(formData.get("quantitySets")) || 1, 1), 8);
   const labels = SET_LETTERS.slice(0, qty);
 
-  if (!disciplineId || !title || questionIds.length === 0) {
-    redirect("/exams?error=campos-obrigatorios");
+  if (!disciplineId || !title || allQuestionIds.length === 0) {
+    redirectWithToast("/exams?error=campos-obrigatorios", {
+      type: "error",
+      title: "Dados incompletos",
+      description: "Escolha a disciplina, o título e ao menos uma questão.",
+    });
   }
 
-  const questionInfos: QuestionInfo[] = questionIds
+  const questionInfos: QuestionInfo[] = allQuestionIds
     .map((id) => getQuestion(id))
     .filter(Boolean)
     .map((q) => ({ id: q!.id, correctIndex: q!.correctIndex, questionType: q!.questionType }));
 
-  const exam = createExam({ disciplineId, title, institution, questionIds });
-  const sets = buildSets(questionInfos, labels);
+  let selectedQuestionInfos: QuestionInfo[];
+  try {
+    selectedQuestionInfos = pickQuestionsForExam(questionInfos, normalizeExamSelectionRequest(formData));
+  } catch (error) {
+    redirectWithToast(`/exams?discipline=${disciplineId}&error=${encodeURIComponent(error instanceof Error ? error.message : "Seleção inválida")}`, {
+      type: "error",
+      title: "Seleção de questões inválida",
+      description: error instanceof Error ? error.message : "Revise as quantidades por tipo.",
+    });
+  }
+
+  if (selectedQuestionInfos.length === 0) {
+    redirectWithToast(`/exams?discipline=${disciplineId}&error=nenhuma-questao`, {
+      type: "error",
+      title: "Nenhuma questão selecionada",
+      description: "As quantidades informadas geraram uma prova vazia.",
+    });
+  }
+
+  const exam = createExam({ disciplineId, title, institution, questionIds: selectedQuestionInfos.map((q) => q.id) });
+  const sets = buildSets(selectedQuestionInfos, labels);
 
   for (const s of sets) {
     createExamSet(exam.id, {
@@ -54,5 +64,9 @@ export async function createExamAction(formData: FormData) {
   revalidatePath("/exams");
   revalidatePath("/exports");
   revalidatePath("/");
-  redirect(`/exports?exam=${exam.id}&new=1`);
+  redirectWithToast(`/exports?exam=${exam.id}&new=1`, {
+    type: "success",
+    title: "Prova criada",
+    description: `${selectedQuestionInfos.length} questão(ões) distribuídas em ${qty} set(s).`,
+  });
 }

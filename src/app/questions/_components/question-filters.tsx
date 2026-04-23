@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useTransition, useState, useEffect, useRef } from "react";
+import { useTransition, useRef } from "react";
 import Link from "next/link";
 
 interface Discipline { id: number; name: string }
@@ -14,10 +14,6 @@ export function QuestionFilters({ disciplines }: { disciplines: Discipline[] }) 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const urlSearch = searchParams.get("q") ?? "";
-  const [searchInput, setSearchInput] = useState(urlSearch);
-
-  // Sync local text when URL is externally reset (e.g. "Limpar" link)
-  useEffect(() => { setSearchInput(urlSearch); }, [urlSearch]);
 
   const hasFilters = searchParams.get("discipline") || searchParams.get("audited") || searchParams.get("q") || searchParams.get("type");
 
@@ -31,7 +27,6 @@ export function QuestionFilters({ disciplines }: { disciplines: Discipline[] }) 
   }
 
   function handleSearch(value: string) {
-    setSearchInput(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => navigate("q", value), 350);
   }
@@ -69,9 +64,10 @@ export function QuestionFilters({ disciplines }: { disciplines: Discipline[] }) 
       </select>
 
       <input
+        key={urlSearch}
         className="form-input"
         placeholder="Buscar enunciado…"
-        value={searchInput}
+        defaultValue={urlSearch}
         onChange={(e) => handleSearch(e.target.value)}
       />
 

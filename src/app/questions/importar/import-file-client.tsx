@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { QuestionExportFileSchema, parseCsvQuestions, type ExportedQuestion } from "@/lib/importexport/types";
 import { importQuestionsFromJsonAction } from "@/lib/actions/import";
+import { useToast } from "@/components/toast-provider";
 
 interface Discipline { id: number; name: string }
 
@@ -108,6 +109,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
   const [savedCount, setSavedCount] = useState(0);
   const [error, setError] = useState<string>();
   const [saving, startSaving] = useTransition();
+  const { pushToast, updateToast } = useToast();
 
   function handleFileSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -132,8 +134,19 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
         setQuestions(qs);
         setSelected(new Set(qs.map((_, i) => i)));
         setStep("preview");
+        pushToast({
+          type: "success",
+          title: "Arquivo carregado",
+          description: `${qs.length} questão(ões) pronta(s) para revisão antes da importação.`,
+        });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Erro ao ler arquivo.");
+        const message = err instanceof Error ? err.message : "Erro ao ler arquivo.";
+        setError(message);
+        pushToast({
+          type: "error",
+          title: "Falha ao ler arquivo",
+          description: message,
+        });
       }
     };
     reader.readAsText(file, "utf-8");
@@ -153,10 +166,29 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
     const toSave = questions.filter((_, i) => selected.has(i));
     setError(undefined);
     const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), questions: toSave });
+    const toastId = pushToast({
+      type: "info",
+      title: "Importando questões",
+      description: "Persistindo arquivo revisado no banco.",
+    });
     startSaving(async () => {
       const result = await importQuestionsFromJsonAction(payload, disciplineId);
-      if (result.errors.length) setError(result.errors[0]);
-      else { setSavedCount(result.count); setStep("done"); }
+      if (result.errors.length) {
+        setError(result.errors[0]);
+        updateToast(toastId, {
+          type: "error",
+          title: "Falha na importação",
+          description: result.errors[0],
+        });
+      } else {
+        setSavedCount(result.count);
+        setStep("done");
+        updateToast(toastId, {
+          type: "success",
+          title: "Importação concluída",
+          description: `${result.count} questão(ões) adicionada(s) ao banco.`,
+        });
+      }
     });
   }
 

@@ -28,6 +28,11 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
           .filter(Boolean) as string[]
       )].sort()
     : [];
+  const typeCounts = {
+    objetiva: auditedQuestions.filter((q) => q.questionType === "objetiva").length,
+    verdadeiro_falso: auditedQuestions.filter((q) => q.questionType === "verdadeiro_falso").length,
+    dissertativa: auditedQuestions.filter((q) => q.questionType === "dissertativa").length,
+  };
 
   return (
     <>
@@ -67,11 +72,43 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               <div className="form-group">
                 <label className="form-label">Questões por prova</label>
                 <input name="numQuestions" type="number" className="form-input" min={1} max={200} placeholder={`Todas (${auditedQuestions.length})`} />
-                <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Deixe em branco para usar todas selecionadas</span>
+                <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Fallback geral. Se preencher quantidades por tipo abaixo, elas têm prioridade.</span>
               </div>
               <div className="form-group">
                 <label className="form-label">Quantidade de Sets</label>
                 <input name="quantitySets" type="number" className="form-input" defaultValue={2} min={1} max={8} />
+              </div>
+            </div>
+
+            <div className="card" style={{ background: "#f8fafc", marginBottom: "1.25rem", padding: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.9rem" }}>
+                <div>
+                  <p style={{ fontWeight: 600, marginBottom: "0.2rem" }}>Quantidade por tipo</p>
+                  <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                    Preencha para montar a prova com composição fixa por categoria. Campo vazio = 0 quando qualquer tipo for usado.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  <span className="badge" style={{ background: "#dbeafe" }}>Objetivas disponíveis: {typeCounts.objetiva}</span>
+                  <span className="badge" style={{ background: "#fef9c3" }}>V/F disponíveis: {typeCounts.verdadeiro_falso}</span>
+                  <span className="badge" style={{ background: "#f3e8ff" }}>Dissertativas disponíveis: {typeCounts.dissertativa}</span>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Objetivas</label>
+                  <input name="numObjetivas" type="number" className="form-input" min={0} max={typeCounts.objetiva || 0} placeholder="0" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Verdadeiro/Falso</label>
+                  <input name="numVF" type="number" className="form-input" min={0} max={typeCounts.verdadeiro_falso || 0} placeholder="0" />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0, marginTop: "1rem" }}>
+                <label className="form-label">Dissertativas</label>
+                <input name="numDissertativas" type="number" className="form-input" min={0} max={typeCounts.dissertativa || 0} placeholder="0" />
               </div>
             </div>
 
@@ -97,6 +134,9 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
                       <span style={{ flex: 1 }}>
                         {q.statement.slice(0, 90)}{q.statement.length > 90 ? "…" : ""}
                         <span style={{ display: "flex", gap: "0.3rem", marginTop: "0.2rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: q.questionType === "objetiva" ? "#dbeafe" : q.questionType === "verdadeiro_falso" ? "#fef9c3" : "#f3e8ff" }}>
+                            {q.questionType === "objetiva" ? "Objetiva" : q.questionType === "verdadeiro_falso" ? "V/F" : "Dissertativa"}
+                          </span>
                           <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: DIFF_COLOR[q.difficulty] ?? "#f3f4f6" }}>
                             {DIFF_LABEL[q.difficulty]}
                           </span>
@@ -105,7 +145,13 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
                               {q.thematicArea}
                             </span>
                           )}
-                          <span style={{ fontSize: "0.7rem", color: "#888" }}>[{LETTERS[q.correctIndex]}]</span>
+                          <span style={{ fontSize: "0.7rem", color: "#888" }}>
+                            {q.questionType === "objetiva"
+                              ? `[${LETTERS[q.correctIndex]}]`
+                              : q.questionType === "verdadeiro_falso"
+                                ? `[${q.correctIndex === 0 ? "V" : "F"}]`
+                                : `[${q.answerLines} linhas]`}
+                          </span>
                         </span>
                       </span>
                     </label>

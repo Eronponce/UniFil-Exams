@@ -70,3 +70,16 @@
 - Visual/UI preference for local web app.
 - Exact PDF template details after structure approval.
 - Decision on starting Ollama and downloading/configuring Qwen model.
+
+## 2026-04-23
+- Added SSE routes for live AI generation status: `/api/ai/generate/stream` and `/api/ai/batch/stream`.
+- `/ai` and `/ai/import` now consume live status events and incremental trace updates during generation.
+- Added global toast system with flash-query integration in layout for redirect-based server actions.
+- Applied toast/process feedback to discipline CRUD, question CRUD/audit/delete, exam creation, file import, logo upload and gabarito upload.
+- Exam assembly now supports explicit counts by type: objetivas, V/F and dissertativas.
+- Added unit tests for exam type selection logic.
+- Reworked PDF packing so sections try to continue in the remaining space of the current page before starting a new page.
+- ESLint e Vitest agora ignoram `.claude/**` worktrees para não validar artefatos temporários do Claude junto com o repo principal.
+- Validation passed: `npm run typecheck`, `npm run lint`, `npm test -- --run`, `npm run build`.
+- Release preparada como `v2.1.0` sobre `main`, com `package.json`/`package-lock.json` atualizados e `CHANGELOG.md` criado.
+- Validação final de release repetida com sucesso: `npm run lint`, `npm test -- --run`, `npm run build`, `npm run typecheck`.

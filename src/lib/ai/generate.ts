@@ -37,7 +37,29 @@ export async function generateQuestion(
   else if (provider === "gemini") rawResponse = await callGemini(prompt);
   else rawResponse = await callOllama(prompt, 1024, ollamaModel);
 
-  const question = parser(rawResponse);
+  let question: GeneratedQuestion;
+  try {
+    question = parser(rawResponse);
+  } catch (error) {
+    const trace: AITrace = {
+      provider,
+      model: provider === "ollama" ? (ollamaModel ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest") : undefined,
+      questionType,
+      succeededRound: null,
+      rounds: [{
+        round: 1,
+        prompt,
+        rawResponse,
+        error: error instanceof Error ? error.message : "Falha ao interpretar a resposta da IA.",
+        succeeded: false,
+      }],
+    };
+
+    throw Object.assign(
+      new Error(error instanceof Error ? error.message : "Erro ao processar resposta da IA."),
+      { trace },
+    );
+  }
 
   const trace: AITrace = {
     provider,

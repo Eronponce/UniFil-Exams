@@ -1,13 +1,16 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { batchGenerateAction, type BatchState } from "@/lib/actions/ai-batch";
+import type { BatchState } from "@/lib/actions/ai-batch";
 import { batchSaveQuestionsAction } from "@/lib/actions/questions";
 import type { BatchGeneratedQuestion } from "@/lib/ai/batch-prompt";
 import type { QuestionType } from "@/types";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
 import { AITracePanel } from "@/components/ai-trace-panel";
+import { useToast } from "@/components/toast-provider";
+import type { AIStatusEvent, BatchStreamRequest } from "@/lib/ai/stream";
+import { consumeSseResponse } from "@/lib/sse/client";
 
 interface Discipline { id: number; name: string }
 
@@ -36,28 +39,111 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
   const [questionType, setQuestionType] = useState<QuestionType>("objetiva");
   const [rawText, setRawText] = useState("");
   const [ollamaModel, setOllamaModel] = useState("");
+  const [liveEvents, setLiveEvents] = useState<AIStatusEvent[]>([]);
+  const [generating, setGenerating] = useState(false);
   const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
+  const { pushToast, updateToast } = useToast();
 
-  const [generating, startGenerate] = useTransition();
   const [saving, startSaving] = useTransition();
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function appendEvent(event: AIStatusEvent) {
+    setLiveEvents((current) => [...current, event].slice(-10));
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData();
-    fd.set("disciplineId", disciplineId);
-    fd.set("provider", provider);
-    fd.set("questionType", questionType);
-    fd.set("rawText", rawText);
-    if (provider === "ollama" && ollamaModel) fd.set("ollamaModel", ollamaModel);
-    startGenerate(async () => {
-      const result = await batchGenerateAction({}, fd);
-      setBatchState(result);
-      if (result.results?.length) {
-        setQuestions(result.results);
-        setSelected(new Set(result.results.map((_, i) => i)));
-        setStep("preview");
-      }
+    const payload: BatchStreamRequest = {
+      disciplineId: Number(disciplineId),
+      provider: provider as BatchStreamRequest["provider"],
+      questionType,
+      rawText,
+      ...(provider === "ollama" && ollamaModel ? { ollamaModel } : {}),
+    };
+
+    setGenerating(true);
+    setBatchState({});
+    setLiveEvents([]);
+
+    const toastId = pushToast({
+      type: "info",
+      title: "Gerando lote",
+      description: "Acompanhe as rodadas e falhas em tempo real.",
     });
+    let failedMessage: string | undefined;
+    let generatedCount = 0;
+
+    try {
+      const response = await fetch("/api/ai/batch/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      await consumeSseResponse(response, (event) => {
+        if (event.type === "status") {
+          const status = event.payload as AIStatusEvent;
+          appendEvent(status);
+          updateToast(toastId, {
+            type: status.tone === "error" ? "error" : status.tone === "warning" ? "warning" : "info",
+            title: status.label,
+            description: status.detail ?? "Processo em andamento.",
+          });
+          return;
+        }
+
+        if (event.type === "trace") {
+          setBatchState((current) => ({
+            ...current,
+            disciplineId: Number(disciplineId),
+            trace: event.payload as BatchState["trace"],
+          }));
+          return;
+        }
+
+        if (event.type === "results") {
+          const payload = event.payload as { questions: BatchGeneratedQuestion[]; disciplineId: number };
+          generatedCount = payload.questions.length;
+          setBatchState((current) => ({
+            ...current,
+            disciplineId: payload.disciplineId,
+            results: payload.questions,
+          }));
+          setQuestions(payload.questions);
+          setSelected(new Set(payload.questions.map((_, i) => i)));
+          setStep("preview");
+          return;
+        }
+
+        if (event.type === "error") {
+          const payload = event.payload as { message: string; trace?: BatchState["trace"] };
+          failedMessage = payload.message;
+          setBatchState((current) => ({
+            ...current,
+            disciplineId: Number(disciplineId),
+            error: payload.message,
+            trace: payload.trace ?? current.trace,
+          }));
+        }
+      });
+    } catch (error) {
+      failedMessage = error instanceof Error ? error.message : "Erro ao iniciar streaming do lote.";
+      setBatchState({ error: failedMessage, disciplineId: Number(disciplineId) });
+    } finally {
+      setGenerating(false);
+      if (failedMessage) {
+        updateToast(toastId, {
+          type: "error",
+          title: "Falha na geração em lote",
+          description: failedMessage,
+        });
+      } else {
+        updateToast(toastId, {
+          type: "success",
+          title: "Lote gerado",
+          description: `${generatedCount} questão(ões) pronta(s) para revisão.`,
+        });
+      }
+    }
   }
 
   function updateArea(i: number, value: string) {
@@ -88,16 +174,35 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
         answerLines: q.answerLines ?? 0,
       }));
     setSaveError(undefined);
+    const toastId = pushToast({
+      type: "info",
+      title: "Salvando questões",
+      description: "Persistindo lote revisado no banco.",
+    });
     startSaving(async () => {
       const result = await batchSaveQuestionsAction(toSave, batchState.disciplineId!);
-      if (result.error) setSaveError(result.error);
-      else { setSavedCount(result.count); setStep("done"); }
+      if (result.error) {
+        setSaveError(result.error);
+        updateToast(toastId, {
+          type: "error",
+          title: "Falha ao salvar lote",
+          description: result.error,
+        });
+      } else {
+        setSavedCount(result.count);
+        setStep("done");
+        updateToast(toastId, {
+          type: "success",
+          title: "Lote salvo",
+          description: `${result.count} questão(ões) gravada(s) no banco.`,
+        });
+      }
     });
   }
 
   function resetToInput() {
     setBatchState({}); setQuestions([]); setStep("input");
-    setSavedCount(0); setSaveError(undefined); setSelected(new Set());
+    setSavedCount(0); setSaveError(undefined); setSelected(new Set()); setLiveEvents([]);
   }
 
   // ── Done ────────────────────────────────────────────────────────────────────
@@ -266,7 +371,9 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
           </div>
 
           {batchState.error && <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{batchState.error}</p>}
-          {batchState.trace && <AITracePanel trace={batchState.trace} />}
+          {(generating || batchState.trace || liveEvents.length > 0) && (
+            <AITracePanel trace={batchState.trace} liveEvents={liveEvents} isStreaming={generating} />
+          )}
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={generating}>

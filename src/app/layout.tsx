@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Nav } from "@/components/nav";
+import { ToastProvider } from "@/components/toast-provider";
 import styles from "./layout.module.css";
 import "./globals.css";
 
@@ -16,10 +17,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body>
-        <div className={styles.shell}>
-          <Nav />
-          <main className={styles.main}>{children}</main>
-        </div>
+        <ToastProvider>
+          <div className={styles.shell}>
+            <Nav />
+            <main className={styles.main}>{children}</main>
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );

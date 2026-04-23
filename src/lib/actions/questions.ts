@@ -1,11 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import type { QuestionType } from "@/types";
 import { createQuestion, updateQuestion, auditQuestion, deleteQuestion } from "@/lib/db/questions";
+import { redirectWithToast } from "@/lib/toast";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "questions");
 
@@ -26,7 +26,13 @@ export async function createQuestionAction(formData: FormData) {
   const thematicArea = (formData.get("thematicArea") as string | null)?.trim() || undefined;
   const explanation = (formData.get("explanation") as string | null)?.trim() || "";
 
-  if (!disciplineId || !statement) redirect("/questions/new?error=campos-obrigatorios");
+  if (!disciplineId || !statement) {
+    redirectWithToast("/questions/new?error=campos-obrigatorios", {
+      type: "error",
+      title: "Campos obrigatórios",
+      description: "Disciplina e enunciado são obrigatórios.",
+    });
+  }
 
   let options: string[];
   let correctIndex: number;
@@ -34,7 +40,13 @@ export async function createQuestionAction(formData: FormData) {
 
   if (questionType === "objetiva") {
     options = [0, 1, 2, 3, 4].map((i) => (formData.get(`option${i}`) as string | null)?.trim() ?? "");
-    if (options.some((o) => !o)) redirect("/questions/new?error=campos-obrigatorios");
+    if (options.some((o) => !o)) {
+      redirectWithToast("/questions/new?error=campos-obrigatorios", {
+        type: "error",
+        title: "Alternativas incompletas",
+        description: "Preencha as cinco alternativas da questão objetiva.",
+      });
+    }
     correctIndex = Number(formData.get("correctIndex"));
   } else if (questionType === "verdadeiro_falso") {
     options = ["Verdadeiro", "Falso"];
@@ -52,8 +64,13 @@ export async function createQuestionAction(formData: FormData) {
 
   createQuestion({ disciplineId, statement, options, correctIndex, difficulty: difficulty as "easy" | "medium" | "hard", source: source as "manual" | "ai", imagePath, thematicArea, explanation, questionType, answerLines });
   revalidatePath("/questions");
+  revalidatePath("/audit");
   revalidatePath("/");
-  redirect("/questions");
+  redirectWithToast("/questions", {
+    type: "success",
+    title: source === "ai" ? "Questão gerada salva" : "Questão criada",
+    description: source === "ai" ? "A questão gerada pela IA entrou no banco." : "A nova questão foi adicionada ao banco.",
+  });
 }
 
 export async function updateQuestionAction(formData: FormData) {
@@ -89,7 +106,11 @@ export async function updateQuestionAction(formData: FormData) {
   revalidatePath(`/questions/${id}`);
   revalidatePath("/audit");
   revalidatePath("/");
-  redirect(`/questions/${id}`);
+  redirectWithToast(`/questions/${id}`, {
+    type: "success",
+    title: "Questão atualizada",
+    description: "As alterações foram salvas.",
+  });
 }
 
 export async function auditQuestionAction(formData: FormData) {
@@ -101,7 +122,11 @@ export async function auditQuestionAction(formData: FormData) {
   revalidatePath(`/questions/${id}`);
   revalidatePath("/audit");
   revalidatePath("/");
-  redirect(back);
+  redirectWithToast(back, {
+    type: "success",
+    title: value ? "Questão auditada" : "Auditoria removida",
+    description: value ? "A questão foi marcada como auditada." : "A questão voltou para a fila de revisão.",
+  });
 }
 
 export async function deleteQuestionAction(formData: FormData) {
@@ -111,7 +136,11 @@ export async function deleteQuestionAction(formData: FormData) {
   revalidatePath("/questions");
   revalidatePath("/audit");
   revalidatePath("/");
-  redirect(back);
+  redirectWithToast(back, {
+    type: "success",
+    title: "Questão excluída",
+    description: "A questão foi removida do sistema.",
+  });
 }
 
 export async function batchSaveQuestionsAction(

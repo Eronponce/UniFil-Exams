@@ -1,11 +1,14 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useState } from "react";
 import type { Discipline, QuestionType } from "@/types";
-import { generateQuestionAction, type GenerationState } from "@/lib/actions/ai";
+import type { GenerationState } from "@/lib/actions/ai";
 import { createQuestionAction } from "@/lib/actions/questions";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
 import { AITracePanel } from "@/components/ai-trace-panel";
+import { useToast } from "@/components/toast-provider";
+import type { AIStatusEvent, GenerateStreamRequest } from "@/lib/ai/stream";
+import { consumeSseResponse } from "@/lib/sse/client";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -16,21 +19,92 @@ export function AIClient({ disciplines }: { disciplines: Discipline[] }) {
   const [provider, setProvider] = useState("ollama");
   const [questionType, setQuestionType] = useState<QuestionType>("objetiva");
   const [ollamaModel, setOllamaModel] = useState("");
+  const [liveEvents, setLiveEvents] = useState<AIStatusEvent[]>([]);
+  const [pending, setPending] = useState(false);
   const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
-  const [pending, startTransition] = useTransition();
+  const { pushToast, updateToast } = useToast();
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function appendEvent(event: AIStatusEvent) {
+    setLiveEvents((current) => [...current, event].slice(-8));
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData();
-    fd.set("disciplineId", disciplineId);
-    fd.set("provider", provider);
-    fd.set("topic", topic);
-    fd.set("questionType", questionType);
-    if (provider === "ollama" && ollamaModel) fd.set("ollamaModel", ollamaModel);
-    startTransition(async () => {
-      const result = await generateQuestionAction(state, fd);
-      setState(result);
+    const payload: GenerateStreamRequest = {
+      disciplineId: Number(disciplineId),
+      provider: provider as GenerateStreamRequest["provider"],
+      topic,
+      questionType,
+      ...(provider === "ollama" && ollamaModel ? { ollamaModel } : {}),
+    };
+
+    setPending(true);
+    setState({});
+    setLiveEvents([]);
+
+    const toastId = pushToast({
+      type: "info",
+      title: "Gerando questão",
+      description: "Acompanhando o processo da IA em tempo real.",
     });
+    let failedMessage: string | undefined;
+    let completed = false;
+
+    try {
+      const response = await fetch("/api/ai/generate/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      await consumeSseResponse(response, (event) => {
+        if (event.type === "status") {
+          const status = event.payload as AIStatusEvent;
+          appendEvent(status);
+          updateToast(toastId, {
+            type: status.tone === "error" ? "error" : status.tone === "warning" ? "warning" : "info",
+            title: status.label,
+            description: status.detail ?? "Processo em andamento.",
+          });
+          return;
+        }
+
+        if (event.type === "trace") {
+          setState((current) => ({ ...current, trace: event.payload as GenerationState["trace"] }));
+          return;
+        }
+
+        if (event.type === "result") {
+          completed = true;
+          setState((current) => ({ ...current, result: event.payload as NonNullable<GenerationState["result"]> }));
+          return;
+        }
+
+        if (event.type === "error") {
+          const payload = event.payload as { message: string; trace?: NonNullable<GenerationState["trace"]> };
+          failedMessage = payload.message;
+          setState((current) => ({ ...current, error: payload.message, trace: payload.trace ?? current.trace }));
+        }
+      });
+    } catch (error) {
+      failedMessage = error instanceof Error ? error.message : "Erro ao iniciar streaming da IA.";
+      setState({ error: failedMessage });
+    } finally {
+      setPending(false);
+      if (failedMessage) {
+        updateToast(toastId, {
+          type: "error",
+          title: "Falha na geração",
+          description: failedMessage,
+        });
+      } else if (completed) {
+        updateToast(toastId, {
+          type: "success",
+          title: "Questão gerada",
+          description: "Revise o resultado e salve no banco quando estiver pronto.",
+        });
+      }
+    }
   }
 
   const result = state.result;
@@ -132,9 +206,9 @@ export function AIClient({ disciplines }: { disciplines: Discipline[] }) {
       </div>
 
       {/* ── Trace panel ──────────────────────────────────────────────────── */}
-      {state.trace && (
+      {(pending || state.trace || liveEvents.length > 0) && (
         <div style={{ gridColumn: "1 / -1" }}>
-          <AITracePanel trace={state.trace} />
+          <AITracePanel trace={state.trace} liveEvents={liveEvents} isStreaming={pending} />
         </div>
       )}
 

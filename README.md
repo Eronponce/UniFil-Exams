@@ -1,6 +1,6 @@
 # UniFil Exams
 
-Banco de questões objetivas para professores universitários. Permite criar questões manualmente ou via IA, auditar, montar provas com randomização de alternativas e exportar em PDF/CSV.
+Banco local de questões para professores universitários. Suporta questões objetivas, verdadeiro/falso e dissertativas, com criação manual ou via IA, auditoria, montagem de provas, randomização, exportação em PDF/CSV e rastreamento em tempo real da geração por IA.
 
 ## Pré-requisitos
 
@@ -52,6 +52,23 @@ npm run dev
 Acesse em: [http://localhost:3000](http://localhost:3000)
 
 ## Funcionalidades
+
+### Banco e IA
+
+- Questões `objetivas`, `verdadeiro_falso` e `dissertativas`
+- Geração IA com `trace` em tempo real por status e rodada
+- Importação em lote via IA com acompanhamento ao vivo
+- Revisão antes de salvar no banco
+- Toasts globais para feedback de sucesso, erro e andamento
+
+### Montagem e exportação
+
+- Seleção manual do pool auditado
+- Definição de quantidades por tipo (`objetiva`, `V/F`, `dissertativa`) na prova
+- Randomização de ordem das questões e das alternativas quando aplicável
+- PDF com seções contínuas, tentando aproveitar a sobra da página anterior
+- CSV de gabarito por set
+- Upload de logo institucional e imagem de gabarito/EvalBee
 
 | Rota | Descrição |
 |------|-----------|

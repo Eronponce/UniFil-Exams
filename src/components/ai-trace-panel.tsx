@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { AIStatusEvent } from "@/lib/ai/stream";
 import type { AITrace } from "@/lib/ai/trace";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -91,13 +92,59 @@ function RoundCard({ round }: { round: AITrace["rounds"][number] }) {
   );
 }
 
-export function AITracePanel({ trace }: { trace: AITrace }) {
-  const [open, setOpen] = useState(false);
+function LiveEventRow({ event }: { event: AIStatusEvent }) {
+  const color = event.tone === "success"
+    ? "#4ade80"
+    : event.tone === "error"
+      ? "#f87171"
+      : event.tone === "warning"
+        ? "#facc15"
+        : "#93c5fd";
 
-  const statusColor = trace.succeededRound !== null ? "#4ade80" : "#f87171";
-  const statusText = trace.succeededRound !== null
-    ? `Gerado na rodada ${trace.succeededRound} de ${trace.rounds.length}`
-    : "Falhou em todas as rodadas";
+  return (
+    <div style={{ display: "flex", gap: "0.65rem", alignItems: "flex-start", fontSize: "0.76rem", padding: "0.35rem 0", borderBottom: "1px solid #334155" }}>
+      <span style={{ color, fontWeight: 700, minWidth: 56 }}>
+        {event.round ? `R${event.round}` : "SYS"}
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ color: "#e2e8f0", margin: 0 }}>{event.label}</p>
+        {event.detail && <p style={{ color: "#94a3b8", margin: "0.15rem 0 0" }}>{event.detail}</p>}
+      </div>
+    </div>
+  );
+}
+
+export function AITracePanel({
+  trace,
+  liveEvents = [],
+  isStreaming = false,
+}: {
+  trace?: AITrace;
+  liveEvents?: AIStatusEvent[];
+  isStreaming?: boolean;
+}) {
+  const [open, setOpen] = useState(isStreaming);
+
+  useEffect(() => {
+    if (!isStreaming) return;
+    const timer = window.setTimeout(() => setOpen(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [isStreaming]);
+
+  if (!trace && liveEvents.length === 0) return null;
+
+  const statusColor = isStreaming
+    ? "#93c5fd"
+    : trace?.succeededRound !== null
+      ? "#4ade80"
+      : "#f87171";
+  const succeededRound = trace?.succeededRound ?? null;
+  const statusText = isStreaming
+    ? "Execução em andamento"
+    : succeededRound !== null
+      ? `Gerado na rodada ${succeededRound} de ${trace?.rounds.length ?? 0}`
+      : "Falhou em todas as rodadas";
+  const roundCount = trace?.rounds.length ?? 0;
 
   return (
     <div style={{ marginTop: "1.5rem", background: "#1e293b", borderRadius: 8, padding: "0.85rem 1rem", fontFamily: "monospace" }}>
@@ -109,13 +156,16 @@ export function AITracePanel({ trace }: { trace: AITrace }) {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#94a3b8" }}>🔍 Processo interno da IA</span>
           <span style={{ fontSize: "0.75rem", color: statusColor }}>{statusText}</span>
+          {isStreaming && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#38bdf8", boxShadow: "0 0 0 4px rgba(56, 189, 248, 0.12)" }} />}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
-            {PROVIDER_LABEL[trace.provider] ?? trace.provider}
-            {trace.model ? ` · ${trace.model}` : ""}
-            {" · "}{TYPE_LABEL[trace.questionType] ?? trace.questionType}
-          </span>
+          {trace && (
+            <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+              {PROVIDER_LABEL[trace.provider] ?? trace.provider}
+              {trace.model ? ` · ${trace.model}` : ""}
+              {" · "}{TYPE_LABEL[trace.questionType] ?? trace.questionType}
+            </span>
+          )}
           <span style={{ color: "#64748b", fontSize: "0.78rem", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>▼</span>
         </div>
       </button>
@@ -128,13 +178,19 @@ export function AITracePanel({ trace }: { trace: AITrace }) {
             <span>Fluxo: prompt → resposta bruta → parse JSON → questão salva</span>
           </div>
 
-          {trace.rounds.map((r) => <RoundCard key={r.round} round={r} />)}
-
-          {trace.rounds.length > 1 && (
-            <p style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "0.5rem", margin: "0.5rem 0 0" }}>
-              {trace.rounds.length} rodadas = prompts progressivamente mais simples para contornar erros de schema do modelo
-            </p>
+          {liveEvents.length > 0 && (
+            <div style={{ marginBottom: "0.9rem", border: "1px solid #334155", borderRadius: 6, padding: "0 0.75rem", background: "#0f172a" }}>
+              {liveEvents.map((event) => <LiveEventRow key={event.id} event={event} />)}
+            </div>
           )}
+
+          {trace?.rounds.map((r) => <RoundCard key={r.round} round={r} />)}
+
+          {roundCount > 1 ? (
+            <p style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "0.5rem", margin: "0.5rem 0 0" }}>
+              {roundCount} rodadas = prompts progressivamente mais simples para contornar erros de schema do modelo
+            </p>
+          ) : null}
         </div>
       )}
     </div>
