@@ -5,11 +5,22 @@ import Link from "next/link";
 import { batchGenerateAction, type BatchState } from "@/lib/actions/ai-batch";
 import { batchSaveQuestionsAction } from "@/lib/actions/questions";
 import type { BatchGeneratedQuestion } from "@/lib/ai/batch-prompt";
+import type { QuestionType } from "@/types";
+import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
+import { AITracePanel } from "@/components/ai-trace-panel";
 
 interface Discipline { id: number; name: string }
 
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
+const TYPE_LABEL: Record<string, string> = { objetiva: "Objetiva", verdadeiro_falso: "V/F", dissertativa: "Dissertativa" };
+const TYPE_COLOR: Record<string, string> = { objetiva: "#dbeafe", verdadeiro_falso: "#fef9c3", dissertativa: "#f3e8ff" };
+
+const TYPE_PLACEHOLDER: Record<string, string> = {
+  objetiva: "Cole questões, tópicos ou enunciados. A IA gera 5 alternativas para cada um.\n\nEx:\n1. O que é herança em POO?\n2. Diferença entre classe abstrata e interface",
+  verdadeiro_falso: "Cole afirmações ou tópicos. A IA gera proposições de V ou F.\n\nEx:\nSobreposição de métodos\nPolimorfismo em Java\nInterfaces podem ter construtores",
+  dissertativa: "Cole tópicos ou enunciados rascunhados. A IA cria questões abertas.\n\nEx:\nHerança e reutilização de código\nPolimorfismo com exemplos práticos",
+};
 
 export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
   const [batchState, setBatchState] = useState<BatchState>({});
@@ -18,14 +29,28 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [savedCount, setSavedCount] = useState(0);
   const [saveError, setSaveError] = useState<string>();
+
+  // Controlled inputs — preserved on error
+  const [disciplineId, setDisciplineId] = useState(String(disciplines[0]?.id ?? ""));
+  const [provider, setProvider] = useState("ollama");
+  const [questionType, setQuestionType] = useState<QuestionType>("objetiva");
+  const [rawText, setRawText] = useState("");
+  const [ollamaModel, setOllamaModel] = useState("");
+  const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
+
   const [generating, startGenerate] = useTransition();
   const [saving, startSaving] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const fd = new FormData();
+    fd.set("disciplineId", disciplineId);
+    fd.set("provider", provider);
+    fd.set("questionType", questionType);
+    fd.set("rawText", rawText);
+    if (provider === "ollama" && ollamaModel) fd.set("ollamaModel", ollamaModel);
     startGenerate(async () => {
-      const result = await batchGenerateAction({}, formData);
+      const result = await batchGenerateAction({}, fd);
       setBatchState(result);
       if (result.results?.length) {
         setQuestions(result.results);
@@ -50,16 +75,17 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
   }
 
   function handleSave() {
-    // Explicitly map to the expected shape so no fields are silently dropped by serialization
     const toSave = questions
       .filter((_, i) => selected.has(i))
       .map((q) => ({
         statement: q.statement,
+        questionType: q.questionType,
         options: q.options,
         correctIndex: q.correctIndex,
         difficulty: q.difficulty,
         thematicArea: q.thematicArea ?? undefined,
         explanation: q.explanation ?? "",
+        answerLines: q.answerLines ?? 0,
       }));
     setSaveError(undefined);
     startSaving(async () => {
@@ -74,6 +100,7 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
     setSavedCount(0); setSaveError(undefined); setSelected(new Set());
   }
 
+  // ── Done ────────────────────────────────────────────────────────────────────
   if (step === "done") {
     return (
       <>
@@ -92,6 +119,7 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
     );
   }
 
+  // ── Preview ─────────────────────────────────────────────────────────────────
   if (step === "preview") {
     const allSelected = selected.size === questions.length;
     return (
@@ -119,14 +147,33 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
                 <input type="checkbox" checked={selected.has(i)} onChange={(e) => toggleOne(i, e.target.checked)} style={{ marginTop: "0.25rem", flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>{i + 1}. {q.statement}</p>
-                  <ol type="A" style={{ margin: 0, paddingLeft: "1.5rem", marginBottom: "0.5rem" }}>
-                    {q.options.map((opt, oi) => (
-                      <li key={oi} style={{ color: oi === q.correctIndex ? "#16a34a" : "inherit", fontWeight: oi === q.correctIndex ? 600 : 400, marginBottom: "0.15rem" }}>
-                        {opt}
-                      </li>
-                    ))}
-                  </ol>
+
+                  {q.questionType === "objetiva" && q.options.length > 0 && (
+                    <ol type="A" style={{ margin: 0, paddingLeft: "1.5rem", marginBottom: "0.5rem" }}>
+                      {q.options.map((opt, oi) => (
+                        <li key={oi} style={{ color: oi === q.correctIndex ? "#16a34a" : "inherit", fontWeight: oi === q.correctIndex ? 600 : 400, marginBottom: "0.15rem" }}>
+                          {opt}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+
+                  {q.questionType === "verdadeiro_falso" && (
+                    <p style={{ marginBottom: "0.5rem", fontSize: "0.9rem" }}>
+                      Correto: <strong style={{ color: "#16a34a" }}>{q.correctIndex === 0 ? "Verdadeiro" : "Falso"}</strong>
+                    </p>
+                  )}
+
+                  {q.questionType === "dissertativa" && (
+                    <p style={{ marginBottom: "0.5rem", fontSize: "0.85rem", opacity: 0.7 }}>
+                      {q.answerLines ?? 6} linha{(q.answerLines ?? 6) !== 1 ? "s" : ""} em branco no PDF
+                    </p>
+                  )}
+
                   <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0.1rem 0.4rem", borderRadius: 99, background: TYPE_COLOR[q.questionType] ?? "#f3f4f6" }}>
+                      {TYPE_LABEL[q.questionType] ?? q.questionType}
+                    </span>
                     <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0.1rem 0.4rem", borderRadius: 99, background: DIFF_COLOR[q.difficulty ?? "medium"] ?? "#f3f4f6" }}>
                       {DIFF_LABEL[q.difficulty ?? "medium"]}
                     </span>
@@ -147,38 +194,79 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
     );
   }
 
+  // ── Input form ───────────────────────────────────────────────────────────────
   return (
     <>
       <div className="page-header"><h1 className="page-title">Importar Questões via IA</h1></div>
       <div className="card" style={{ maxWidth: 700 }}>
         <p style={{ marginBottom: "1.5rem", opacity: 0.75, fontSize: "0.9rem" }}>
-          Cole o texto com as questões. A IA identifica cada uma, gera 5 alternativas, classifica a dificuldade e sugere a área temática automaticamente.
+          Cole o texto com as questões ou tópicos. A IA gera questões do tipo selecionado, classifica a dificuldade e sugere a área temática.
         </p>
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Disciplina *</label>
-              <select name="disciplineId" className="form-select" required>
+              <select className="form-select" value={disciplineId} onChange={(e) => setDisciplineId(e.target.value)} required>
                 {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Provedor IA</label>
-              <select name="provider" className="form-select">
-                <option value="ollama">Ollama (local)</option>
-                <option value="claude">Claude</option>
-                <option value="gemini">Gemini</option>
+              <label className="form-label">Tipo de questão</label>
+              <select className="form-select" value={questionType} onChange={(e) => setQuestionType(e.target.value as QuestionType)}>
+                <option value="objetiva">Objetiva (A–E)</option>
+                <option value="verdadeiro_falso">Verdadeiro ou Falso</option>
+                <option value="dissertativa">Dissertativa</option>
               </select>
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Texto com as questões *</label>
-            <textarea name="rawText" className="form-textarea" rows={12} required
-              placeholder={"Cole aqui as questões em texto. Exemplo:\n\n1. O que é herança em POO?\n\n2. Diferença entre classe abstrata e interface\n\n3. Explique polimorfismo..."} />
+            <label className="form-label">Provedor IA</label>
+            <select className="form-select" value={provider} onChange={(e) => setProvider(e.target.value)}>
+              <option value="ollama">Ollama (local)</option>
+              <option value="claude">Claude</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </div>
+
+          {provider === "ollama" && (
+            <div className="form-group">
+              <label className="form-label">Modelo Ollama</label>
+              {loadingModels ? (
+                <p style={{ fontSize: "0.82rem", opacity: 0.6 }}>Carregando modelos…</p>
+              ) : ollamaModels.length > 0 ? (
+                <select className="form-select" value={ollamaModel} onChange={(e) => setOllamaModel(e.target.value)}>
+                  <option value="">— padrão (.env) —</option>
+                  {ollamaModels.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              ) : (
+                <div>
+                  <input
+                    className="form-input"
+                    placeholder="Ex: qwen2.5:14b"
+                    value={ollamaModel}
+                    onChange={(e) => setOllamaModel(e.target.value)}
+                  />
+                  {ollamaError && <p style={{ fontSize: "0.78rem", color: "#dc2626", marginTop: "0.25rem" }}>{ollamaError} — verifique se o Ollama está rodando</p>}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label className="form-label">Texto / tópicos *</label>
+            <textarea
+              className="form-textarea"
+              rows={12}
+              required
+              placeholder={TYPE_PLACEHOLDER[questionType]}
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+            />
           </div>
 
           {batchState.error && <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{batchState.error}</p>}
+          {batchState.trace && <AITracePanel trace={batchState.trace} />}
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={generating}>

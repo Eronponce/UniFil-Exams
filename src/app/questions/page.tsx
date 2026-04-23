@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
+import { QuestionFilters } from "./_components/question-filters";
 import type { QuestionType } from "@/types";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
@@ -41,30 +42,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <form className="filter-bar" method="GET">
-        <select name="discipline" className="form-select" defaultValue={sp.discipline ?? ""}>
-          <option value="">Todas as disciplinas</option>
-          {disciplines.map((d) => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
-        </select>
-        <select name="type" className="form-select" defaultValue={sp.type ?? ""}>
-          <option value="">Todos os tipos</option>
-          <option value="objetiva">Objetiva</option>
-          <option value="verdadeiro_falso">V ou F</option>
-          <option value="dissertativa">Dissertativa</option>
-        </select>
-        <select name="audited" className="form-select" defaultValue={sp.audited ?? ""}>
-          <option value="">Todos os status</option>
-          <option value="0">Rascunho</option>
-          <option value="1">Auditada</option>
-        </select>
-        <input name="q" className="form-input" placeholder="Buscar enunciado…" defaultValue={sp.q ?? ""} />
-        <button type="submit" className="btn btn-ghost">Filtrar</button>
-        {(sp.discipline || sp.audited || sp.q || sp.type) && (
-          <Link href="/questions" className="btn btn-ghost">Limpar</Link>
-        )}
-      </form>
+      <QuestionFilters disciplines={disciplines} />
 
       {questions.length === 0 ? (
         <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>

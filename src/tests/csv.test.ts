@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ExamSet, Question } from "@/types";
 
-const mockGetQuestion = vi.fn<[number], Question | undefined>();
+const mockGetQuestion = vi.fn<(id: number) => Question | undefined>();
 
 vi.mock("@/lib/db/questions", () => ({
   getQuestion: (id: number) => mockGetQuestion(id),

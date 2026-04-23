@@ -12,6 +12,94 @@ const TYPE_COLOR: Record<string, string> = { objetiva: "#dbeafe", verdadeiro_fal
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
 
+// ── Template data ─────────────────────────────────────────────────────────────
+const TEMPLATE_QUESTIONS = [
+  {
+    type: "objetiva",
+    typeLabel: "Objetiva",
+    statement: "Qual linguagem é utilizada para estilizar páginas web?",
+    preview: "A) HTML · B) CSS ✓ · C) JavaScript · D) Python · E) Java",
+    note: "5 opções • correct_index = 1",
+  },
+  {
+    type: "verdadeiro_falso",
+    typeLabel: "V ou F",
+    statement: "O protocolo HTTP não mantém estado entre requisições consecutivas.",
+    preview: "Correto: Verdadeiro",
+    note: "correct_index = 0 (Verdadeiro) ou 1 (Falso)",
+  },
+  {
+    type: "dissertativa",
+    typeLabel: "Dissertativa",
+    statement: "Explique o conceito de herança na programação orientada a objetos e apresente um exemplo prático.",
+    preview: "8 linhas em branco no PDF",
+    note: "options vazio • answer_lines = 8",
+  },
+];
+
+const TEMPLATE_JSON = JSON.stringify(
+  {
+    version: 1,
+    exportedAt: "2026-01-01T00:00:00.000Z",
+    questions: [
+      {
+        statement: "Qual linguagem é utilizada para estilizar páginas web?",
+        questionType: "objetiva",
+        options: ["HTML", "CSS", "JavaScript", "Python", "Java"],
+        correctIndex: 1,
+        difficulty: "easy",
+        thematicArea: "Desenvolvimento Web",
+        explanation: "CSS é a linguagem responsável pela apresentação visual de páginas HTML.",
+        answerLines: 0,
+      },
+      {
+        statement: "O protocolo HTTP não mantém estado entre requisições consecutivas.",
+        questionType: "verdadeiro_falso",
+        options: ["Verdadeiro", "Falso"],
+        correctIndex: 0,
+        difficulty: "medium",
+        thematicArea: "Redes de Computadores",
+        explanation: "HTTP é stateless: cada requisição é independente e não há sessão automática.",
+        answerLines: 0,
+      },
+      {
+        statement: "Explique o conceito de herança na programação orientada a objetos e apresente um exemplo prático.",
+        questionType: "dissertativa",
+        options: [],
+        correctIndex: 0,
+        difficulty: "medium",
+        thematicArea: "Programação Orientada a Objetos",
+        explanation: "Espera-se que o aluno descreva reutilização de código e hierarquia de classes.",
+        answerLines: 8,
+      },
+    ],
+  },
+  null,
+  2,
+);
+
+const TEMPLATE_CSV = [
+  "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines",
+  "Qual linguagem é utilizada para estilizar páginas web?,objetiva,easy,HTML,CSS,JavaScript,Python,Java,1,Desenvolvimento Web,0",
+  "O protocolo HTTP não mantém estado entre requisições consecutivas.,verdadeiro_falso,medium,Verdadeiro,Falso,,,,0,Redes de Computadores,0",
+  "Explique o conceito de herança na POO e apresente um exemplo prático.,dissertativa,medium,,,,,,0,Programação Orientada a Objetos,8",
+].join("\n");
+
+function downloadTemplate(format: "json" | "csv") {
+  const content = format === "json" ? TEMPLATE_JSON : TEMPLATE_CSV;
+  const mimeType = format === "json" ? "application/json" : "text/csv;charset=utf-8";
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `template_questoes.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export function ImportFileClient({ disciplines }: { disciplines: Discipline[] }) {
   const [step, setStep] = useState<"input" | "preview" | "done">("input");
   const [questions, setQuestions] = useState<ExportedQuestion[]>([]);
@@ -77,6 +165,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
     setSavedCount(0); setError(undefined);
   }
 
+  // ── Done ──────────────────────────────────────────────────────────────────
   if (step === "done") {
     return (
       <>
@@ -95,6 +184,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
     );
   }
 
+  // ── Preview ───────────────────────────────────────────────────────────────
   if (step === "preview") {
     const allSelected = selected.size === questions.length;
     return (
@@ -169,15 +259,48 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
     );
   }
 
+  // ── Input ─────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="page-header">
         <h1 className="page-title">Importar Questões</h1>
         <Link href="/questions" className="btn btn-ghost">← Voltar</Link>
       </div>
+
+      {/* Template reference */}
+      <div className="card" style={{ maxWidth: 760, marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+          <h2 style={{ fontSize: "0.95rem", fontWeight: 600, margin: 0 }}>Referência de formato</h2>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => downloadTemplate("json")}>
+              ↓ Template JSON
+            </button>
+            <button className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => downloadTemplate("csv")}>
+              ↓ Template CSV
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          {TEMPLATE_QUESTIONS.map((tq) => (
+            <div key={tq.type} style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "0.75rem", background: "#fafafa" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.45rem", borderRadius: 99, background: TYPE_COLOR[tq.type] }}>
+                  {tq.typeLabel}
+                </span>
+                <span style={{ fontSize: "0.78rem", opacity: 0.5 }}>{tq.note}</span>
+              </div>
+              <p style={{ fontSize: "0.85rem", fontWeight: 500, margin: "0 0 0.25rem" }}>{tq.statement}</p>
+              <p style={{ fontSize: "0.78rem", color: "#16a34a", margin: 0 }}>{tq.preview}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Upload form */}
       <div className="card" style={{ maxWidth: 600 }}>
         <p style={{ marginBottom: "1.5rem", opacity: 0.75, fontSize: "0.9rem" }}>
-          Importe questões a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines).
+          Importe a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines).
         </p>
         <form onSubmit={handleFileSubmit}>
           <div className="form-group">

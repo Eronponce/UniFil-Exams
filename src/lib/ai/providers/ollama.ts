@@ -1,8 +1,8 @@
 import { buildPrompt, parseResponse, type GeneratedQuestion } from "../prompt";
 
-export async function callOllama(prompt: string, numPredict = 1024): Promise<string> {
+export async function callOllama(prompt: string, numPredict = 1024, model?: string): Promise<string> {
   const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
-  const model = process.env.OLLAMA_MODEL ?? "qwen2.5:latest";
+  model = model ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest";
 
   let res: Response;
   try {
@@ -30,6 +30,6 @@ export async function callOllama(prompt: string, numPredict = 1024): Promise<str
   return data.response;
 }
 
-export async function generateWithOllama(discipline: string, topic: string): Promise<GeneratedQuestion> {
-  return parseResponse(await callOllama(buildPrompt(discipline, topic)));
+export async function generateWithOllama(discipline: string, topic: string, model?: string): Promise<GeneratedQuestion> {
+  return parseResponse(await callOllama(buildPrompt(discipline, topic), 1024, model));
 }

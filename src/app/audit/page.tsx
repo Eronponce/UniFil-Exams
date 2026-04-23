@@ -4,6 +4,7 @@ import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { auditQuestionAction, deleteQuestionAction } from "@/lib/actions/questions";
 import { ConfirmButton } from "@/components/confirm-button";
+import { AuditFilters } from "./_components/audit-filters";
 
 import type { Question } from "@/types";
 
@@ -51,14 +52,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         <span style={{ color: "var(--muted)", fontSize: "0.875rem" }}>{pending.length} pendente(s) · {audited.length} auditada(s)</span>
       </div>
 
-      <form className="filter-bar" method="GET">
-        <select name="discipline" className="form-select" defaultValue={sp.discipline ?? ""}>
-          <option value="">Todas as disciplinas</option>
-          {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
-        <button type="submit" className="btn btn-ghost">Filtrar</button>
-        {sp.discipline && <Link href="/audit" className="btn btn-ghost">Limpar</Link>}
-      </form>
+      <AuditFilters disciplines={disciplines} />
 
       {/* Seção pendentes */}
       <div style={{ marginBottom: "2rem" }}>
