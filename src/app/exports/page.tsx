@@ -1,12 +1,21 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listExams, listAllExamQuestionIds } from "@/lib/db/exams";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { getQuestion } from "@/lib/db/questions";
+import type { Question } from "@/types";
 import { GabaritoUpload, LogoUpload } from "./upload-panel";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
+
+function quickAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, q: Question | undefined): string {
+  if (!q) return "?";
+  if (q.questionType === "dissertativa") return "D";
+  if (q.questionType === "verdadeiro_falso") return (sq.shuffledOptions[sq.correctShuffledIndex] === 0) ? "V" : "F";
+  return LETTERS[sq.correctShuffledIndex] ?? "?";
+}
 
 export default async function ExportsPage({ searchParams }: { searchParams: Promise<{ exam?: string; new?: string }> }) {
   const sp = await searchParams;
@@ -17,11 +26,11 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
   const selectedExam = sp.exam ? exams.find((e) => e.id === Number(sp.exam)) : exams[0];
   const isNew = sp.new === "1";
 
-  // All unique questions used in any exam — deduplicated
   const allExamQuestionIds = listAllExamQuestionIds();
   const allExamQuestions = allExamQuestionIds
     .map((id) => getQuestion(id))
     .filter((q): q is NonNullable<typeof q> => q != null);
+  const qMap = Object.fromEntries(allExamQuestions.map((q) => [q.id, q]));
 
   return (
     <>
@@ -89,7 +98,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                           <strong>Set {set.label}</strong>
                           <span style={{ fontSize: "0.8rem", color: "var(--muted)", marginLeft: "0.5rem" }}>
                             {[...set.questions].sort((a, b) => a.position - b.position).map((sq, i) =>
-                              `Q${i + 1}→${LETTERS[sq.correctShuffledIndex]}`
+                              `Q${i + 1}→${quickAnswer(sq, qMap[sq.questionId])}`
                             ).join("  ")}
                           </span>
                         </div>
@@ -102,7 +111,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
             )}
           </div>
 
-          {/* Gabarito Completo — todas as questões únicas de todas as provas */}
+          {/* Gabarito Completo */}
           {allExamQuestions.length > 0 && (
             <div className="card">
               <h3 style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "0.25rem" }}>
@@ -115,14 +124,14 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 {allExamQuestions.map((q, idx) => (
                   <div key={q.id} style={{ paddingBottom: "1.5rem", borderBottom: "1px solid #f3f4f6" }}>
-                    {/* Header */}
                     <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", marginBottom: "0.6rem" }}>
-                      <span style={{ fontWeight: 700, color: "var(--muted)", minWidth: 28, fontSize: "0.9rem" }}>
-                        {idx + 1}.
-                      </span>
+                      <span style={{ fontWeight: 700, color: "var(--muted)", minWidth: 28, fontSize: "0.9rem" }}>{idx + 1}.</span>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 600, marginBottom: "0.25rem" }}>{q.statement}</p>
                         <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: 99, background: q.questionType === "objetiva" ? "#dbeafe" : q.questionType === "verdadeiro_falso" ? "#fef9c3" : "#f3e8ff" }}>
+                            {q.questionType === "objetiva" ? "Objetiva" : q.questionType === "verdadeiro_falso" ? "V ou F" : "Dissertativa"}
+                          </span>
                           <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: 99, background: DIFF_COLOR[q.difficulty] ?? "#f3f4f6" }}>
                             {DIFF_LABEL[q.difficulty]}
                           </span>
@@ -131,36 +140,51 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                               {q.thematicArea}
                             </span>
                           )}
-                          <span style={{ fontSize: "0.7rem", color: "#888" }}>
-                            {discMap[q.disciplineId]}
-                          </span>
+                          <span style={{ fontSize: "0.7rem", color: "#888" }}>{discMap[q.disciplineId]}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Options */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginLeft: 28, marginBottom: "0.75rem" }}>
-                      {q.options.map((opt) => {
-                        const isCorrect = opt.index === q.correctIndex;
-                        return (
-                          <div key={opt.index} style={{
-                            display: "flex", gap: "0.4rem", padding: "0.25rem 0.5rem", borderRadius: 4,
-                            background: isCorrect ? "#dcfce7" : "transparent",
-                          }}>
-                            <span style={{ fontWeight: 700, minWidth: 20, color: isCorrect ? "#15803d" : "var(--muted)", fontSize: "0.85rem" }}>
-                              {LETTERS[opt.index]})
-                            </span>
-                            <span style={{ fontSize: "0.875rem", color: isCorrect ? "#15803d" : "inherit", fontWeight: isCorrect ? 600 : 400 }}>
-                              {opt.text}
-                              {isCorrect && <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem" }}>✓</span>}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {/* Options / answer by type */}
+                    {q.questionType === "objetiva" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginLeft: 28, marginBottom: "0.75rem" }}>
+                        {q.options.map((opt) => {
+                          const isCorrect = opt.index === q.correctIndex;
+                          return (
+                            <div key={opt.index} style={{ display: "flex", gap: "0.4rem", padding: "0.25rem 0.5rem", borderRadius: 4, background: isCorrect ? "#dcfce7" : "transparent" }}>
+                              <span style={{ fontWeight: 700, minWidth: 20, color: isCorrect ? "#15803d" : "var(--muted)", fontSize: "0.85rem" }}>{LETTERS[opt.index]})</span>
+                              <span style={{ fontSize: "0.875rem", color: isCorrect ? "#15803d" : "inherit", fontWeight: isCorrect ? 600 : 400 }}>
+                                {opt.text}{isCorrect && <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem" }}>✓</span>}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                    {/* Explanation */}
-                    {q.explanation && (
+                    {q.questionType === "verdadeiro_falso" && (
+                      <div style={{ display: "flex", gap: "1rem", marginLeft: 28, marginBottom: "0.75rem" }}>
+                        {["Verdadeiro", "Falso"].map((label, i) => {
+                          const isCorrect = i === q.correctIndex;
+                          return (
+                            <div key={i} style={{ display: "flex", gap: "0.4rem", padding: "0.25rem 0.5rem", borderRadius: 4, background: isCorrect ? "#dcfce7" : "transparent" }}>
+                              <span style={{ fontWeight: 700, color: isCorrect ? "#15803d" : "var(--muted)", fontSize: "0.85rem" }}>{i === 0 ? "V" : "F"})</span>
+                              <span style={{ fontSize: "0.875rem", color: isCorrect ? "#15803d" : "inherit", fontWeight: isCorrect ? 600 : 400 }}>
+                                {label}{isCorrect && <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem" }}>✓</span>}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {q.questionType === "dissertativa" && (
+                      <p style={{ marginLeft: 28, marginBottom: "0.75rem", fontSize: "0.85rem", opacity: 0.65 }}>
+                        Questão dissertativa · {q.answerLines} linha{q.answerLines !== 1 ? "s" : ""} em branco no PDF
+                      </p>
+                    )}
+
+                    {q.explanation && q.questionType !== "dissertativa" && (
                       <div style={{ marginLeft: 28, fontSize: "0.825rem", color: "#1e40af", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 4, padding: "0.4rem 0.7rem" }}>
                         <strong>Justificativa:</strong> {q.explanation}
                       </div>

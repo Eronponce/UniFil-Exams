@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createExam, createExamSet } from "@/lib/db/exams";
 import { getQuestion } from "@/lib/db/questions";
-import { buildSets } from "@/lib/exam/randomize";
+import { buildSets, type QuestionInfo } from "@/lib/exam/randomize";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
@@ -34,14 +34,13 @@ export async function createExamAction(formData: FormData) {
     redirect("/exams?error=campos-obrigatorios");
   }
 
-  const correctIndices: Record<number, number> = {};
-  for (const qid of questionIds) {
-    const q = getQuestion(qid);
-    if (q) correctIndices[qid] = q.correctIndex;
-  }
+  const questionInfos: QuestionInfo[] = questionIds
+    .map((id) => getQuestion(id))
+    .filter(Boolean)
+    .map((q) => ({ id: q!.id, correctIndex: q!.correctIndex, questionType: q!.questionType }));
 
   const exam = createExam({ disciplineId, title, institution, questionIds });
-  const sets = buildSets(questionIds, correctIndices, labels);
+  const sets = buildSets(questionInfos, labels);
 
   for (const s of sets) {
     createExamSet(exam.id, {

@@ -1,4 +1,4 @@
-import type { Question, QuestionOption } from "@/types";
+import type { Question, QuestionOption, QuestionType } from "@/types";
 import { getDb } from "./client";
 
 interface QuestionRow {
@@ -13,6 +13,8 @@ interface QuestionRow {
   audited: number;
   thematic_area: string | null;
   explanation: string;
+  question_type: QuestionType;
+  answer_lines: number;
   created_at: string;
 }
 
@@ -30,6 +32,8 @@ function toModel(row: QuestionRow): Question {
     audited: row.audited === 1,
     thematicArea: row.thematic_area ?? null,
     explanation: row.explanation ?? "",
+    questionType: (row.question_type ?? "objetiva") as QuestionType,
+    answerLines: row.answer_lines ?? 0,
     createdAt: row.created_at,
   };
 }
@@ -50,13 +54,15 @@ export function getQuestion(id: number): Question | undefined {
 export interface CreateQuestionInput {
   disciplineId: number;
   statement: string;
-  options: [string, string, string, string, string];
+  options: string[];
   correctIndex: number;
   imagePath?: string;
   difficulty?: "easy" | "medium" | "hard";
   source?: "manual" | "ai";
   thematicArea?: string;
   explanation?: string;
+  questionType?: QuestionType;
+  answerLines?: number;
 }
 
 export function createQuestion(data: CreateQuestionInput): Question {
@@ -64,8 +70,8 @@ export function createQuestion(data: CreateQuestionInput): Question {
   const result = db
     .prepare(
       `INSERT INTO questions
-        (discipline_id, statement, options, correct_index, image_path, difficulty, source, thematic_area, explanation)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (discipline_id, statement, options, correct_index, image_path, difficulty, source, thematic_area, explanation, question_type, answer_lines)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       data.disciplineId,
@@ -76,7 +82,9 @@ export function createQuestion(data: CreateQuestionInput): Question {
       data.difficulty ?? "medium",
       data.source ?? "manual",
       data.thematicArea ?? null,
-      data.explanation ?? ""
+      data.explanation ?? "",
+      data.questionType ?? "objetiva",
+      data.answerLines ?? 0
     );
   return getQuestion(result.lastInsertRowid as number)!;
 }
@@ -94,6 +102,8 @@ export function updateQuestion(id: number, data: Partial<Omit<CreateQuestionInpu
   if (data.difficulty !== undefined) db.prepare("UPDATE questions SET difficulty = ? WHERE id = ?").run(data.difficulty, id);
   if (data.thematicArea !== undefined) db.prepare("UPDATE questions SET thematic_area = ? WHERE id = ?").run(data.thematicArea || null, id);
   if (data.explanation !== undefined) db.prepare("UPDATE questions SET explanation = ? WHERE id = ?").run(data.explanation, id);
+  if (data.questionType !== undefined) db.prepare("UPDATE questions SET question_type = ? WHERE id = ?").run(data.questionType, id);
+  if (data.answerLines !== undefined) db.prepare("UPDATE questions SET answer_lines = ? WHERE id = ?").run(data.answerLines, id);
   return getQuestion(id);
 }
 

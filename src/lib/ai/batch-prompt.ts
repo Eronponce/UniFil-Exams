@@ -4,11 +4,31 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { AIProvider } from "./generate";
+import type { QuestionType } from "@/types";
+import type { AITrace, TraceRound } from "./trace";
 
-// ── Zod schema ────────────────────────────────────────────────────────────────
+// ── Result type ────────────────────────────────────────────────────────────────
+export interface BatchGenerationResult {
+  questions: BatchGeneratedQuestion[];
+  trace: AITrace;
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+export type BatchGeneratedQuestion = {
+  statement: string;
+  questionType: QuestionType;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  difficulty?: "easy" | "medium" | "hard";
+  thematicArea?: string;
+  answerLines?: number;
+};
+
+// ── Zod schemas ────────────────────────────────────────────────────────────────
 const optionText = z.string().transform((s) => s.replace(/^[A-Ea-e1-5][\)\.\-]\s*/, "").trim());
 
-const QuestionSchema = z.object({
+const ObjetivaSchema = z.object({
   questions: z.array(
     z.object({
       statement: z.string().min(10),
@@ -21,18 +41,32 @@ const QuestionSchema = z.object({
   ).min(1),
 });
 
-export type BatchGeneratedQuestion = {
-  statement: string;
-  options: [string, string, string, string, string];
-  correctIndex: number;
-  explanation: string;
-  difficulty?: "easy" | "medium" | "hard";
-  thematicArea?: string;
-};
+const VFSchema = z.object({
+  questions: z.array(
+    z.object({
+      statement: z.string().min(5),
+      isTrue: z.boolean(),
+      explanation: z.string(),
+      difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      thematic_area: z.string().optional(),
+    })
+  ).min(1),
+});
 
-// ── Prompts ────────────────────────────────────────────────────────────────────
-// Round 1 — full prompt with context
-function promptFull(discipline: string, rawText: string): string {
+const DissertativaSchema = z.object({
+  questions: z.array(
+    z.object({
+      statement: z.string().min(10),
+      answerLines: z.number().int().min(1).max(20).default(6),
+      explanation: z.string(),
+      difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      thematic_area: z.string().optional(),
+    })
+  ).min(1),
+});
+
+// ── Objetiva prompts ───────────────────────────────────────────────────────────
+function promptObjetivaFull(discipline: string, rawText: string): string {
   return `Você é um especialista na disciplina "${discipline}" criando questões de prova objetivas universitárias.
 
 Analise o texto abaixo. Para CADA questão ou tópico identificado:
@@ -47,8 +81,7 @@ Texto:
 ${rawText}`;
 }
 
-// Round 2 — prompt simplificado para quando o modelo travar no schema
-function promptSimple(discipline: string, rawText: string): string {
+function promptObjetivaSimple(discipline: string, rawText: string): string {
   return `Disciplina: ${discipline}
 
 Para cada tópico/questão do texto abaixo, gere uma questão de múltipla escolha com 5 alternativas.
@@ -58,22 +91,84 @@ Texto:
 ${rawText}`;
 }
 
-// Round 3 — prompt mínimo, mais tolerante
-function promptMinimal(discipline: string, rawText: string): string {
+function promptObjetivaMinimal(discipline: string, rawText: string): string {
   return `Gere questões de múltipla escolha sobre "${discipline}" baseadas no texto abaixo.
 JSON: {"questions":[{"statement":"...","options":["op1","op2","op3","op4","op5"],"correctIndex":0,"explanation":"...","difficulty":"medium","thematic_area":"..."}]}
 
 Texto: ${rawText}`;
 }
 
-const ROUND_PROMPTS = [promptFull, promptSimple, promptMinimal];
+// ── V/F prompts ────────────────────────────────────────────────────────────────
+function promptVFFull(discipline: string, rawText: string): string {
+  return `Você é um especialista na disciplina "${discipline}" criando questões de prova universitárias.
+
+Analise o texto abaixo. Para CADA proposição ou tópico identificado, crie UMA proposição de Verdadeiro ou Falso.
+Misture proposições verdadeiras e falsas (não coloque todas iguais).
+
+Regras:
+- statement deve ser uma afirmação completa, não uma pergunta
+- isTrue: true se a afirmação é correta, false se é incorreta
+- difficulty: easy|medium|hard
+
+Texto:
+${rawText}`;
+}
+
+function promptVFSimple(discipline: string, rawText: string): string {
+  return `Disciplina: ${discipline}
+
+Para cada item do texto, gere uma proposição V/F. Misture verdadeiras e falsas.
+Retorne JSON com array "questions". Cada item: statement (afirmação, não pergunta), isTrue (bool), explanation, difficulty (easy/medium/hard), thematic_area.
+
+Texto:
+${rawText}`;
+}
+
+function promptVFMinimal(discipline: string, rawText: string): string {
+  return `Gere proposições V/F sobre "${discipline}". Misture verdadeiras e falsas.
+JSON: {"questions":[{"statement":"...","isTrue":true,"explanation":"...","difficulty":"medium","thematic_area":"..."}]}
+
+Texto: ${rawText}`;
+}
+
+// ── Dissertativa prompts ───────────────────────────────────────────────────────
+function promptDissertativaFull(discipline: string, rawText: string): string {
+  return `Você é um especialista na disciplina "${discipline}" criando questões de prova universitárias.
+
+Analise o texto abaixo. Para CADA tópico identificado, crie UMA questão dissertativa que estimule resposta elaborada.
+
+Regras:
+- statement deve ser questão aberta (use 'Explique', 'Descreva', 'Compare', 'Justifique')
+- answerLines: linhas em branco necessárias para resposta (inteiro 4–20)
+- difficulty: easy|medium|hard
+
+Texto:
+${rawText}`;
+}
+
+function promptDissertativaSimple(discipline: string, rawText: string): string {
+  return `Disciplina: ${discipline}
+
+Para cada tópico do texto, gere uma questão dissertativa aberta.
+Retorne JSON com array "questions". Cada item: statement (questão aberta), answerLines (int 4-20), explanation, difficulty (easy/medium/hard), thematic_area.
+
+Texto:
+${rawText}`;
+}
+
+function promptDissertativaMinimal(discipline: string, rawText: string): string {
+  return `Gere questões dissertativas sobre "${discipline}".
+JSON: {"questions":[{"statement":"...","answerLines":8,"explanation":"...","difficulty":"medium","thematic_area":"..."}]}
+
+Texto: ${rawText}`;
+}
 
 // ── Model factory ──────────────────────────────────────────────────────────────
-function getModel(provider: AIProvider) {
+function getModel(provider: AIProvider, ollamaModel?: string) {
   switch (provider) {
     case "ollama": {
       const baseURL = (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434") + "/v1";
-      const model = process.env.OLLAMA_MODEL ?? "qwen2.5:latest";
+      const model = ollamaModel ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest";
       return createOpenAICompatible({ name: "ollama", baseURL })(model);
     }
     case "claude":
@@ -83,43 +178,112 @@ function getModel(provider: AIProvider) {
   }
 }
 
-// ── Single attempt ─────────────────────────────────────────────────────────────
-async function attempt(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
-  const { object } = await generateObject({ model, schema: QuestionSchema, prompt, maxRetries: 0 });
+// ── Attempt helpers ────────────────────────────────────────────────────────────
+async function attemptObjetiva(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
+  const { object } = await generateObject({ model, schema: ObjetivaSchema, prompt, maxRetries: 0 });
   return object.questions.map((q) => ({
     statement: q.statement,
-    options: q.options as [string, string, string, string, string],
+    questionType: "objetiva" as const,
+    options: [...q.options],
     correctIndex: q.correctIndex,
     explanation: q.explanation,
     difficulty: q.difficulty,
     thematicArea: q.thematic_area ?? undefined,
+    answerLines: 0,
   }));
 }
 
-// ── Main: 3 rounds × 2 parallel agents each ───────────────────────────────────
+async function attemptVF(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
+  const { object } = await generateObject({ model, schema: VFSchema, prompt, maxRetries: 0 });
+  return object.questions.map((q) => ({
+    statement: q.statement,
+    questionType: "verdadeiro_falso" as const,
+    options: ["Verdadeiro", "Falso"],
+    correctIndex: q.isTrue ? 0 : 1,
+    explanation: q.explanation,
+    difficulty: q.difficulty,
+    thematicArea: q.thematic_area ?? undefined,
+    answerLines: 0,
+  }));
+}
+
+async function attemptDissertativa(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
+  const { object } = await generateObject({ model, schema: DissertativaSchema, prompt, maxRetries: 0 });
+  return object.questions.map((q) => ({
+    statement: q.statement,
+    questionType: "dissertativa" as const,
+    options: [],
+    correctIndex: 0,
+    explanation: q.explanation,
+    difficulty: q.difficulty,
+    thematicArea: q.thematic_area ?? undefined,
+    answerLines: q.answerLines,
+  }));
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
 export async function generateBatchQuestions(
   discipline: string,
   rawText: string,
-  provider: AIProvider
-): Promise<BatchGeneratedQuestion[]> {
-  const model = getModel(provider);
-  const errors: string[] = [];
+  provider: AIProvider,
+  questionType: QuestionType = "objetiva",
+  ollamaModel?: string,
+): Promise<BatchGenerationResult> {
+  const model = getModel(provider, ollamaModel);
 
-  for (let round = 0; round < ROUND_PROMPTS.length; round++) {
-    const prompt = ROUND_PROMPTS[round]!(discipline, rawText);
+  const [prompts, attemptFn]: [((d: string, t: string) => string)[], (m: ReturnType<typeof getModel>, p: string) => Promise<BatchGeneratedQuestion[]>] =
+    questionType === "verdadeiro_falso"
+      ? [[promptVFFull, promptVFSimple, promptVFMinimal], attemptVF]
+      : questionType === "dissertativa"
+      ? [[promptDissertativaFull, promptDissertativaSimple, promptDissertativaMinimal], attemptDissertativa]
+      : [[promptObjetivaFull, promptObjetivaSimple, promptObjetivaMinimal], attemptObjetiva];
 
-    // Two parallel agents per round — first to succeed wins
-    const result = await Promise.any([
-      attempt(model, prompt),
-      attempt(model, prompt),
-    ]).catch((agg: AggregateError) => {
-      errors.push(`Rodada ${round + 1}: ${agg.errors.map((e: unknown) => e instanceof Error ? e.message : String(e)).join(" | ")}`);
-      return null;
+  const traceRounds: TraceRound[] = [];
+
+  for (let round = 0; round < prompts.length; round++) {
+    const prompt = prompts[round]!(discipline, rawText);
+    let result: BatchGeneratedQuestion[] | null = null;
+    let roundError: string | undefined;
+
+    await Promise.any([
+      attemptFn(model, prompt),
+      attemptFn(model, prompt),
+    ]).then((r) => { result = r; })
+      .catch((agg: AggregateError) => {
+        roundError = agg.errors.map((e: unknown) => e instanceof Error ? e.message : String(e)).join(" | ");
+      });
+
+    traceRounds.push({
+      round: round + 1,
+      prompt,
+      resultJson: result ? JSON.stringify(result, null, 2) : undefined,
+      error: roundError,
+      succeeded: result !== null,
     });
 
-    if (result) return result;
+    if (result) {
+      return {
+        questions: result,
+        trace: {
+          provider,
+          model: provider === "ollama" ? (ollamaModel ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest") : undefined,
+          questionType,
+          rounds: traceRounds,
+          succeededRound: round + 1,
+        },
+      };
+    }
   }
 
-  // All 6 attempts failed
-  throw new Error(`Não foi possível gerar questões válidas após 3 rodadas (6 tentativas).\n${errors.join("\n")}`);
+  const errorTrace: AITrace = {
+    provider,
+    model: provider === "ollama" ? (ollamaModel ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest") : undefined,
+    questionType,
+    rounds: traceRounds,
+    succeededRound: null,
+  };
+  throw Object.assign(
+    new Error(`Não foi possível gerar questões válidas após 3 rodadas (6 tentativas).`),
+    { trace: errorTrace },
+  );
 }

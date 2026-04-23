@@ -1,5 +1,7 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listDisciplines } from "@/lib/db/disciplines";
+import { ExamDisciplineFilter } from "./_components/exam-discipline-filter";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { listExams } from "@/lib/db/exams";
 import { createExamAction } from "@/lib/actions/exams";
@@ -42,29 +44,10 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
             </div>
           )}
 
-          {/* Filtro de disciplina + área (GET) */}
-          <form method="GET" style={{ marginBottom: "1.25rem" }}>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Disciplina *</label>
-                <select name="discipline" className="form-select" defaultValue={sp.discipline ?? ""}>
-                  <option value="">Selecione para ver questões…</option>
-                  {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </div>
-              {allAreasForDiscipline.length > 0 && (
-                <div className="form-group">
-                  <label className="form-label">Área Temática</label>
-                  <select name="area" className="form-select" defaultValue={selectedArea}>
-                    <option value="">Todas as áreas</option>
-                    {allAreasForDiscipline.map((a) => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                </div>
-              )}
-            </div>
-            <button type="submit" className="btn btn-ghost" style={{ fontSize: "0.8rem" }}>Filtrar questões</button>
-            {sp.discipline && <Link href="/exams" className="btn btn-ghost" style={{ fontSize: "0.8rem", marginLeft: "0.5rem" }}>Limpar</Link>}
-          </form>
+          {/* Filtro de disciplina + área */}
+          <div style={{ marginBottom: "1.25rem" }}>
+            <ExamDisciplineFilter disciplines={disciplines} areas={allAreasForDiscipline} />
+          </div>
 
           {/* Formulário de criação (POST) */}
           <form action={createExamAction}>

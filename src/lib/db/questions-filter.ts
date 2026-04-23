@@ -1,4 +1,4 @@
-import type { Question } from "@/types";
+import type { Question, QuestionType } from "@/types";
 import { getDb } from "./client";
 
 interface QuestionRow {
@@ -13,6 +13,8 @@ interface QuestionRow {
   audited: number;
   thematic_area: string | null;
   explanation: string;
+  question_type: QuestionType;
+  answer_lines: number;
   created_at: string;
 }
 
@@ -30,6 +32,8 @@ function toModel(row: QuestionRow): Question {
     audited: row.audited === 1,
     thematicArea: row.thematic_area ?? null,
     explanation: row.explanation ?? "",
+    questionType: (row.question_type ?? "objetiva") as QuestionType,
+    answerLines: row.answer_lines ?? 0,
     createdAt: row.created_at,
   };
 }
@@ -39,6 +43,7 @@ export interface QuestionFilters {
   audited?: boolean;
   search?: string;
   thematicArea?: string;
+  questionType?: QuestionType;
 }
 
 export function listQuestionsFiltered(filters: QuestionFilters = {}): Question[] {
@@ -61,6 +66,10 @@ export function listQuestionsFiltered(filters: QuestionFilters = {}): Question[]
   if (filters.thematicArea) {
     conditions.push("q.thematic_area = ?");
     params.push(filters.thematicArea);
+  }
+  if (filters.questionType) {
+    conditions.push("q.question_type = ?");
+    params.push(filters.questionType);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
