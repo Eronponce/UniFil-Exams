@@ -8,6 +8,7 @@ const links = [
   { href: "/", label: "Dashboard", exact: true },
   { href: "/disciplines", label: "Disciplinas" },
   { href: "/questions", label: "Banco de Questões" },
+  { href: "/questions/importar", label: "Importar Questões" },
   { href: "/audit", label: "Auditoria" },
   { href: "/ai", label: "Geração IA", exact: true },
   { href: "/ai/import", label: "Importar IA" },

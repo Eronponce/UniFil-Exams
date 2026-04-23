@@ -1,10 +1,41 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { auditQuestionAction, deleteQuestionAction } from "@/lib/actions/questions";
 import { ConfirmButton } from "@/components/confirm-button";
 
+import type { Question } from "@/types";
+
 const LETTERS = ["A", "B", "C", "D", "E"];
+
+function OptionsDisplay({ q }: { q: Question }) {
+  if (q.questionType === "dissertativa") {
+    return <p style={{ fontSize: "0.85rem", opacity: 0.65 }}>{q.answerLines} linha{q.answerLines !== 1 ? "s" : ""} em branco no PDF</p>;
+  }
+  if (q.questionType === "verdadeiro_falso") {
+    return (
+      <div style={{ display: "flex", gap: "1rem" }}>
+        {["Verdadeiro", "Falso"].map((label, i) => (
+          <div key={i} style={{ display: "flex", gap: "0.5rem", padding: "0.2rem 0", color: i === q.correctIndex ? "var(--success)" : "var(--text)", fontWeight: i === q.correctIndex ? 600 : 400, fontSize: "0.875rem" }}>
+            <span>{i === 0 ? "V" : "F"}.</span><span>{label}</span>
+            {i === q.correctIndex && <span>✓</span>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div>
+      {q.options.map((opt) => (
+        <div key={opt.index} style={{ display: "flex", gap: "0.5rem", padding: "0.35rem 0", color: opt.index === q.correctIndex ? "var(--success)" : "var(--text)", fontWeight: opt.index === q.correctIndex ? 600 : 400, fontSize: "0.875rem" }}>
+          <span>{LETTERS[opt.index]}.</span><span>{opt.text}</span>
+          {opt.index === q.correctIndex && <span>✓</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<{ discipline?: string }> }) {
   const sp = await searchParams;
@@ -45,23 +76,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 600, marginBottom: "0.75rem", lineHeight: 1.5 }}>{q.statement}</p>
-                    <div>
-                      {q.options.map((opt) => (
-                        <div
-                          key={opt.index}
-                          style={{
-                            display: "flex", gap: "0.5rem", padding: "0.35rem 0",
-                            color: opt.index === q.correctIndex ? "var(--success)" : "var(--text)",
-                            fontWeight: opt.index === q.correctIndex ? 600 : 400,
-                            fontSize: "0.875rem",
-                          }}
-                        >
-                          <span>{LETTERS[opt.index]}.</span>
-                          <span>{opt.text}</span>
-                          {opt.index === q.correctIndex && <span>✓</span>}
-                        </div>
-                      ))}
-                    </div>
+                    <OptionsDisplay q={q} />
                   </div>
                   <div className="actions-row" style={{ flexDirection: "column", alignItems: "flex-end" }}>
                     <form action={auditQuestionAction}>
@@ -109,23 +124,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 500, marginBottom: "0.5rem", lineHeight: 1.5, fontSize: "0.9rem" }}>{q.statement}</p>
-                    <div>
-                      {q.options.map((opt) => (
-                        <div
-                          key={opt.index}
-                          style={{
-                            display: "flex", gap: "0.5rem", padding: "0.2rem 0",
-                            color: opt.index === q.correctIndex ? "var(--success)" : "var(--text)",
-                            fontWeight: opt.index === q.correctIndex ? 600 : 400,
-                            fontSize: "0.82rem",
-                          }}
-                        >
-                          <span>{LETTERS[opt.index]}.</span>
-                          <span>{opt.text}</span>
-                          {opt.index === q.correctIndex && <span>✓</span>}
-                        </div>
-                      ))}
-                    </div>
+                    <OptionsDisplay q={q} />
                   </div>
                   <div className="actions-row" style={{ flexDirection: "column", alignItems: "flex-end" }}>
                     <form action={auditQuestionAction}>

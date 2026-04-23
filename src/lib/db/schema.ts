@@ -63,6 +63,8 @@ export function migrate(): void {
   const qCols = (db.prepare("PRAGMA table_info(questions)").all() as { name: string }[]).map((c) => c.name);
   if (!qCols.includes("thematic_area")) db.exec("ALTER TABLE questions ADD COLUMN thematic_area TEXT");
   if (!qCols.includes("explanation")) db.exec("ALTER TABLE questions ADD COLUMN explanation TEXT NOT NULL DEFAULT ''");
+  if (!qCols.includes("question_type")) db.exec("ALTER TABLE questions ADD COLUMN question_type TEXT NOT NULL DEFAULT 'objetiva'");
+  if (!qCols.includes("answer_lines")) db.exec("ALTER TABLE questions ADD COLUMN answer_lines INTEGER NOT NULL DEFAULT 0");
   const eCols = (db.prepare("PRAGMA table_info(exams)").all() as { name: string }[]).map((c) => c.name);
   if (!eCols.includes("institution")) db.exec("ALTER TABLE exams ADD COLUMN institution TEXT NOT NULL DEFAULT 'UniFil - Centro Universitário Filadélfia'");
 }

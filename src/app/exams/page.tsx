@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";

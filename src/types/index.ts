@@ -1,5 +1,7 @@
 export type ID = number;
 
+export type QuestionType = "objetiva" | "verdadeiro_falso" | "dissertativa";
+
 export interface Discipline {
   id: ID;
   name: string;
@@ -19,6 +21,8 @@ export interface Question {
   audited: boolean;
   thematicArea: string | null;
   explanation: string;
+  questionType: QuestionType;
+  answerLines: number;
   createdAt: string;
 }
 

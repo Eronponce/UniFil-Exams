@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listDisciplinesWithCount } from "@/lib/db/stats";
 import { deleteDisciplineAction } from "@/lib/actions/disciplines";

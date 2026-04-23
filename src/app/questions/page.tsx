@@ -1,23 +1,44 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
+import type { QuestionType } from "@/types";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
-export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; q?: string }> }) {
+function correctLabel(type: QuestionType, idx: number): string {
+  if (type === "dissertativa") return "—";
+  if (type === "verdadeiro_falso") return idx === 0 ? "V" : "F";
+  return LETTERS[idx] ?? "?";
+}
+
+export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; q?: string; type?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const questions = listQuestionsFiltered({
     disciplineId: sp.discipline ? Number(sp.discipline) : undefined,
     audited: sp.audited === "1" ? true : sp.audited === "0" ? false : undefined,
     search: sp.q,
+    questionType: (sp.type ?? undefined) as QuestionType | undefined,
   });
+
+  // Build export query params from current filters
+  const exportParams = new URLSearchParams();
+  if (sp.discipline) exportParams.set("discipline", sp.discipline);
+  if (sp.audited) exportParams.set("audited", sp.audited);
+  if (sp.type) exportParams.set("type", sp.type);
+  const exportBase = `/api/export/questions?${exportParams.toString()}`;
 
   return (
     <>
       <div className="page-header">
         <h1 className="page-title">Banco de Questões</h1>
-        <Link href="/questions/new" className="btn btn-primary">+ Nova Questão</Link>
+        <div className="actions-row">
+          <Link href="/questions/importar" className="btn btn-ghost">↑ Importar</Link>
+          <a href={`${exportBase}&format=json`} download className="btn btn-ghost">↓ JSON</a>
+          <a href={`${exportBase}&format=csv`} download className="btn btn-ghost">↓ CSV</a>
+          <Link href="/questions/new" className="btn btn-primary">+ Nova Questão</Link>
+        </div>
       </div>
 
       <form className="filter-bar" method="GET">
@@ -27,6 +48,12 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
         </select>
+        <select name="type" className="form-select" defaultValue={sp.type ?? ""}>
+          <option value="">Todos os tipos</option>
+          <option value="objetiva">Objetiva</option>
+          <option value="verdadeiro_falso">V ou F</option>
+          <option value="dissertativa">Dissertativa</option>
+        </select>
         <select name="audited" className="form-select" defaultValue={sp.audited ?? ""}>
           <option value="">Todos os status</option>
           <option value="0">Rascunho</option>
@@ -34,7 +61,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
         </select>
         <input name="q" className="form-input" placeholder="Buscar enunciado…" defaultValue={sp.q ?? ""} />
         <button type="submit" className="btn btn-ghost">Filtrar</button>
-        {(sp.discipline || sp.audited || sp.q) && (
+        {(sp.discipline || sp.audited || sp.q || sp.type) && (
           <Link href="/questions" className="btn btn-ghost">Limpar</Link>
         )}
       </form>
@@ -48,6 +75,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
           <thead>
             <tr>
               <th>Enunciado</th>
+              <th>Tipo</th>
               <th>Correta</th>
               <th>Dificuldade</th>
               <th>Status</th>
@@ -58,10 +86,15 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
           <tbody>
             {questions.map((q) => (
               <tr key={q.id}>
-                <td style={{ maxWidth: 360 }}>
-                  <Link href={`/questions/${q.id}`}>{q.statement.slice(0, 90)}{q.statement.length > 90 ? "…" : ""}</Link>
+                <td style={{ maxWidth: 340 }}>
+                  <Link href={`/questions/${q.id}`}>{q.statement.slice(0, 80)}{q.statement.length > 80 ? "…" : ""}</Link>
                 </td>
-                <td>{LETTERS[q.correctIndex]}</td>
+                <td>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0.1rem 0.4rem", borderRadius: 99, background: q.questionType === "objetiva" ? "#dbeafe" : q.questionType === "verdadeiro_falso" ? "#fef9c3" : "#f3e8ff" }}>
+                    {q.questionType === "objetiva" ? "Obj" : q.questionType === "verdadeiro_falso" ? "V/F" : "Diss"}
+                  </span>
+                </td>
+                <td>{correctLabel(q.questionType, q.correctIndex)}</td>
                 <td>{q.difficulty}</td>
                 <td>
                   <span className={`badge ${q.audited ? "badge-audited" : "badge-draft"}`}>
