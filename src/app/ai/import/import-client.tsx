@@ -30,7 +30,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [savedCount, setSavedCount] = useState(0);
   const [saveError, setSaveError] = useState<string>();
-  const [queuedTaskId, setQueuedTaskId] = useState<string | null>(null);
+  const [queuedTaskId, setQueuedTaskId] = useState<string | null>(initialTaskId ?? null);
 
   // Controlled inputs — preserved on error
   const [disciplineId, setDisciplineId] = useState(String(disciplines[0]?.id ?? ""));
@@ -44,23 +44,60 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
 
   const [saving, startSaving] = useTransition();
 
-  // Load queued task result when arriving via ?task=
   useEffect(() => {
-    if (!initialTaskId) return;
-    fetch(`/api/queue/${initialTaskId}/result`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data?.result) return;
-        const result = data.result as BatchGenerationResult;
-        const payload = data.payload as { disciplineId: number };
-        setBatchState({ disciplineId: payload.disciplineId, results: result.questions, trace: result.trace });
-        setQuestions(result.questions);
-        setSelected(new Set(result.questions.map((_, i) => i)));
-        setDisciplineId(String(payload.disciplineId));
-        setStep("preview");
-      })
-      .catch(() => null);
-  }, [initialTaskId]);
+    if (!queuedTaskId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function pollTask() {
+      if (!active || !queuedTaskId) return;
+      try {
+        const statusRes = await fetch(`/api/queue/${queuedTaskId}`, { cache: "no-store" });
+        if (statusRes.ok) {
+          const task = await statusRes.json() as { status: string; errorMessage?: string };
+          if (task.status === "error" || task.status === "cancelled") {
+            setBatchState((current) => ({ ...current, error: task.errorMessage ?? `Tarefa ${task.status}.` }));
+            setQueuedTaskId(null);
+            return;
+          }
+          if (task.status === "done") {
+            const resultRes = await fetch(`/api/queue/${queuedTaskId}/result`, { cache: "no-store" });
+            if (resultRes.ok) {
+              const data = await resultRes.json();
+              const result = data.result as BatchGenerationResult;
+              const payload = data.payload as {
+                disciplineId: number;
+                rawText?: string;
+                provider?: string;
+                questionType?: QuestionType;
+                ollamaModel?: string;
+              };
+              setBatchState({ disciplineId: payload.disciplineId, results: result.questions, trace: result.trace });
+              setQuestions(result.questions);
+              setSelected(new Set(result.questions.map((_, i) => i)));
+              setDisciplineId(String(payload.disciplineId));
+              if (payload.rawText) setRawText(payload.rawText);
+              if (payload.provider) setProvider(payload.provider);
+              if (payload.questionType) setQuestionType(payload.questionType);
+              if (payload.ollamaModel) setOllamaModel(payload.ollamaModel);
+              setQueuedTaskId(null);
+              setStep("preview");
+              return;
+            }
+          }
+        }
+      } catch {
+        // keep polling while the dev server is reachable again
+      }
+      if (active) timer = setTimeout(pollTask, 1000);
+    }
+
+    pollTask();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [queuedTaskId]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,7 +105,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
     const toastId = pushToast({
       type: "info",
       title: "Lote enviado para a fila",
-      description: "A geração segue em background. O resultado aparece em Ver quando concluir.",
+      description: "A geração segue em background e aparece nesta tela quando concluir.",
     });
 
     try {
@@ -91,7 +128,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
       updateToast(toastId, {
         type: "success",
         title: isNew ? "Tarefa criada" : "Tarefa já estava na fila",
-        description: "Acompanhe no painel global de tarefas.",
+        description: "Voce pode navegar; esta tela atualiza quando o lote ficar pronto.",
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao enfileirar geração.";
@@ -329,7 +366,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
           {batchState.error && <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{batchState.error}</p>}
           {queuedTaskId && (
             <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginBottom: "1rem" }}>
-              Tarefa {queuedTaskId} registrada. Use o painel de tarefas para cancelar ou abrir o resultado.
+              Tarefa {queuedTaskId} registrada. Pode navegar pelo site; quando terminar, o lote aparece aqui e no painel inferior.
             </p>
           )}
 

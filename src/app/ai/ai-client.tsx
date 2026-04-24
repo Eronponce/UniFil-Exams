@@ -25,19 +25,48 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
   const { pushToast, updateToast } = useToast();
 
   useEffect(() => {
-    if (!initialTaskId) return;
-    fetch(`/api/queue/${initialTaskId}/result`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data?.result) return;
-        const result = data.result as GenerationResult;
-        const payload = data.payload as { disciplineId: number; topic?: string };
-        setState({ result: { ...result.question, disciplineId: payload.disciplineId }, trace: result.trace });
-        setDisciplineId(String(payload.disciplineId));
-        if (payload.topic) setTopic(payload.topic);
-      })
-      .catch(() => null);
-  }, [initialTaskId]);
+    if (!queuedTaskId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function pollTask() {
+      if (!active || !queuedTaskId) return;
+      try {
+        const statusRes = await fetch(`/api/queue/${queuedTaskId}`, { cache: "no-store" });
+        if (statusRes.ok) {
+          const task = await statusRes.json() as { status: string; errorMessage?: string };
+          if (task.status === "error" || task.status === "cancelled") {
+            setState((current) => ({ ...current, error: task.errorMessage ?? `Tarefa ${task.status}.` }));
+            setQueuedTaskId(null);
+            return;
+          }
+          if (task.status === "done") {
+            const resultRes = await fetch(`/api/queue/${queuedTaskId}/result`, { cache: "no-store" });
+            if (resultRes.ok) {
+              const data = await resultRes.json();
+              const result = data.result as GenerationResult;
+              const payload = data.payload as { disciplineId: number; topic?: string };
+              setState({ result: { ...result.question, disciplineId: payload.disciplineId }, trace: result.trace });
+              setDisciplineId(String(payload.disciplineId));
+              setQuestionType(result.question.questionType);
+              if (payload.topic) setTopic(payload.topic);
+              setQueuedTaskId(null);
+              return;
+            }
+          }
+        }
+      } catch {
+        // keep polling while the dev server is reachable again
+      }
+      if (active) timer = setTimeout(pollTask, 1000);
+    }
+
+    pollTask();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [queuedTaskId]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,7 +74,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
     const toastId = pushToast({
       type: "info",
       title: "Questão enviada para a fila",
-      description: "A geração segue em background. O resultado aparece em Ver quando concluir.",
+      description: "A geração segue em background e aparece nesta tela quando concluir.",
     });
 
     try {
@@ -63,12 +92,12 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
         updateToast(toastId, { type: "error", title: "Falha ao enfileirar", description: error });
         return;
       }
-      setState((current) => ({ ...current, error: undefined }));
+      setState({});
       setQueuedTaskId(taskId);
       updateToast(toastId, {
         type: "success",
         title: isNew ? "Tarefa criada" : "Tarefa já estava na fila",
-        description: "Acompanhe no painel global de tarefas.",
+        description: "Voce pode navegar; esta tela atualiza quando o resultado ficar pronto.",
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao enfileirar geração.";
@@ -176,7 +205,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
           </button>
           {queuedTaskId && (
             <p style={{ marginTop: "0.75rem", fontSize: "0.8rem", color: "var(--muted)" }}>
-              Tarefa {queuedTaskId} registrada. Use o painel de tarefas para cancelar ou abrir o resultado.
+              Tarefa {queuedTaskId} registrada. Pode navegar pelo site; quando terminar, o resultado aparece aqui e no painel inferior.
             </p>
           )}
         </form>

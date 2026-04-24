@@ -111,3 +111,8 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: keep implementation-critical Obsidian Markdown under `docs/` and commit it with code.
 - Reason: future agents need stable, versioned project context instead of relying on chat history or local-only memory.
 - Impact: added [[PROMPT_T1_T11_STATUS]] and [[OBSIDIAN_GITHUB]]; `.obsidian/` stays ignored as local UI state unless explicitly shared later.
+
+## 2026-04-24 - Queue Singleton Stored In globalThis
+- Decision: store the in-memory task queue in `globalThis.__UNIFIL_EXAMS_TASK_QUEUE__` and register handlers lazily from Server Actions and queue API routes.
+- Reason: in Next.js dev/runtime bundling, Server Actions and Route Handlers can load separate module instances; a plain module-level `const queue = []` can make tasks invisible to `/api/queue`.
+- Impact: audit and AI tasks are visible to the bottom task panel, continue processing while navigating, and pages refresh when task status reaches a terminal state.

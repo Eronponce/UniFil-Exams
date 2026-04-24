@@ -21,16 +21,29 @@ export interface TaskRecord {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TaskHandler = (task: TaskRecord) => Promise<any>;
 
-const queue: TaskRecord[] = [];
-const handlers = new Map<TaskType, TaskHandler>();
-let processing = false;
+interface TaskQueueState {
+  queue: TaskRecord[];
+  handlers: Map<TaskType, TaskHandler>;
+  processing: boolean;
+}
+
+const globalState = globalThis as typeof globalThis & {
+  __UNIFIL_EXAMS_TASK_QUEUE__?: TaskQueueState;
+};
+
+const state = globalState.__UNIFIL_EXAMS_TASK_QUEUE__ ??= {
+  queue: [],
+  handlers: new Map<TaskType, TaskHandler>(),
+  processing: false,
+};
 
 export function registerHandler(type: TaskType, handler: TaskHandler) {
-  handlers.set(type, handler);
+  state.handlers.set(type, handler);
+  scheduleProcessing();
 }
 
 export function enqueueTask(params: Omit<TaskRecord, "id" | "status" | "createdAt">): { task: TaskRecord; isNew: boolean } {
-  const existing = queue.find(
+  const existing = state.queue.find(
     (t) => t.dedupKey === params.dedupKey && (t.status === "pending" || t.status === "processing"),
   );
   if (existing) return { task: existing, isNew: false };
@@ -41,13 +54,13 @@ export function enqueueTask(params: Omit<TaskRecord, "id" | "status" | "createdA
     status: "pending",
     createdAt: Date.now(),
   };
-  queue.push(task);
+  state.queue.push(task);
   scheduleProcessing();
   return { task, isNew: true };
 }
 
 export function cancelTask(id: string): boolean {
-  const task = queue.find((t) => t.id === id);
+  const task = state.queue.find((t) => t.id === id);
   if (!task) return false;
   if (task.status === "pending") {
     task.status = "cancelled";
@@ -62,29 +75,31 @@ export function cancelTask(id: string): boolean {
 }
 
 export function getQueue(): TaskRecord[] {
-  return [...queue].reverse().slice(0, 50);
+  scheduleProcessing();
+  return [...state.queue].reverse().slice(0, 50);
 }
 
 export function getTask(id: string): TaskRecord | undefined {
-  return queue.find((t) => t.id === id);
+  scheduleProcessing();
+  return state.queue.find((t) => t.id === id);
 }
 
 function scheduleProcessing() {
-  if (processing) return;
-  setImmediate(processNext);
+  if (state.processing) return;
+  setTimeout(processNext, 0);
 }
 
 async function processNext() {
-  if (processing) return;
-  const task = queue.find((t) => t.status === "pending");
-  if (!task) { processing = false; return; }
+  if (state.processing) return;
+  const task = state.queue.find((t) => t.status === "pending");
+  if (!task) { state.processing = false; return; }
 
-  processing = true;
+  state.processing = true;
   task.status = "processing";
   task.startedAt = Date.now();
 
   try {
-    const handler = handlers.get(task.type);
+    const handler = state.handlers.get(task.type);
     if (!handler) throw new Error(`No handler for task type: ${task.type}`);
     const result = await handler(task);
     if (task.status === "processing") {
@@ -99,8 +114,8 @@ async function processNext() {
       task.finishedAt = Date.now();
     }
   } finally {
-    processing = false;
-    const hasMore = queue.some((t) => t.status === "pending");
-    if (hasMore) setImmediate(processNext);
+    state.processing = false;
+    const hasMore = state.queue.some((t) => t.status === "pending");
+    if (hasMore) setTimeout(processNext, 0);
   }
 }

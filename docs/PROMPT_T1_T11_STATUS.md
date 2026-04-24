@@ -49,6 +49,11 @@ flowchart TD
     Result --> Review["Human review before saving"]
 ```
 
+- Queue storage: `globalThis.__UNIFIL_EXAMS_TASK_QUEUE__`.
+- Handler registration: lazy registration from `instrumentation.ts`, queue Server Actions, and queue API routes.
+- UI refresh: `QueuePanel` polls every 1 second and calls `router.refresh()` when tasks finish.
+- AI result UX: `/ai` and `/ai/import` poll their active `taskId` and show the review screen automatically when done.
+
 ## PDF Rule
 
 - Build question pages for every set first.

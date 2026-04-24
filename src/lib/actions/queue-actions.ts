@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { enqueueTask, cancelTask } from "@/lib/task-queue";
+import { registerDefaultTaskHandlers } from "@/lib/task-handlers";
 import { getQuestion } from "@/lib/db/questions";
 import type { QuestionType } from "@/types";
 
 export async function enqueueAuditAction(questionId: number, value: boolean): Promise<{ taskId: string; isNew: boolean; error?: string }> {
+  registerDefaultTaskHandlers();
   const q = getQuestion(questionId);
   if (!q) return { taskId: "", isNew: false, error: "Questão não encontrada." };
 
@@ -31,6 +33,7 @@ export async function enqueueAiGenerationAction(params: {
   questionType: QuestionType;
   ollamaModel?: string;
 }): Promise<{ taskId: string; isNew: boolean; error?: string }> {
+  registerDefaultTaskHandlers();
   if (!params.rawText.trim()) return { taskId: "", isNew: false, error: "Texto de entrada vazio." };
   if (!params.disciplineId) return { taskId: "", isNew: false, error: "Disciplina não selecionada." };
 
@@ -61,6 +64,7 @@ export async function enqueueSingleAiGenerationAction(params: {
   questionType: QuestionType;
   ollamaModel?: string;
 }): Promise<{ taskId: string; isNew: boolean; error?: string }> {
+  registerDefaultTaskHandlers();
   if (!params.topic.trim()) return { taskId: "", isNew: false, error: "Tema de entrada vazio." };
   if (!params.disciplineId) return { taskId: "", isNew: false, error: "Disciplina não selecionada." };
 
@@ -84,5 +88,6 @@ export async function enqueueSingleAiGenerationAction(params: {
 }
 
 export async function cancelTaskAction(taskId: string): Promise<{ ok: boolean }> {
+  registerDefaultTaskHandlers();
   return { ok: cancelTask(taskId) };
 }

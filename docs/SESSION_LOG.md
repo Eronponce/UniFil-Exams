@@ -165,3 +165,21 @@
 - `npm run lint`: passou.
 - `npm test -- --run`: passou, 36 testes em 6 arquivos.
 - `npm run build`: passou, 28 rotas app listadas.
+
+## 2026-04-24 — Correção operacional da fila
+
+### Problema observado
+- Usuario clicou para auditar; tarefa ficou na fila mas a questao nao foi auditada.
+- Usuario enfileirou IA; mensagem mencionava painel, mas o painel nao estava evidente/visivel.
+- Expectativa: navegar entre telas enquanto auditoria/IA processam em background e atualizar a tela quando a tarefa termina.
+
+### Causa provavel
+- `src/lib/task-queue.ts` usava estado module-level comum (`const queue = []`).
+- Em Next.js, Server Actions e Route Handlers podem carregar instancias separadas do modulo, deixando a tarefa invisivel para `/api/queue` e para o painel.
+
+### Correção
+- Fila movida para `globalThis.__UNIFIL_EXAMS_TASK_QUEUE__`.
+- Handlers padrao movidos para `src/lib/task-handlers.ts` e registrados de forma preguiçosa em actions, API e instrumentation.
+- `/api/queue/[taskId]` agora tem `GET` para status individual.
+- `QueuePanel` fica sempre visivel no rodape, inicia aberto, faz polling a cada 1 s e chama `router.refresh()` quando tarefa termina.
+- `/ai` e `/ai/import` fazem polling do task ativo e carregam resultado automaticamente quando fica pronto.

@@ -57,9 +57,10 @@ V1 usa IA para sugerir questoes objetivas. Nada gerado por IA entra no banco sem
 - `/ai` usa `enqueueSingleAiGenerationAction` para gerar uma questao individual em background.
 - `/ai/import` usa `enqueueAiGenerationAction` para gerar lotes em background.
 - `instrumentation.ts` registra `ai-generate-single` e `ai-generate`.
+- A fila usa singleton em `globalThis` para ser compartilhada entre Server Actions e rotas `/api/queue`.
 - Tarefa sobrevive navegacao de pagina enquanto o servidor Node.js estiver ativo.
 - Ao concluir, o `QueuePanel` exibe link "Ver": `/ai?task=[taskId]` para individual ou `/ai/import?task=[taskId]` para lote.
-- As paginas carregam resultado via `GET /api/queue/[taskId]/result` ao receber `searchParams.task`.
+- As paginas tambem fazem polling do `taskId` ativo e carregam resultado automaticamente quando ele fica pronto.
 - Deduplicacao por `dedupKey` evita submissao dupla enquanto a tarefa esta aguardando ou processando.
 
 ## Observabilidade

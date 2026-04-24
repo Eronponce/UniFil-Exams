@@ -52,13 +52,15 @@ Mapa funcional de telas para orientar a implementacao futura.
 - Botão "Gerar questões na fila" para geração assíncrona via fila.
 
 ## Fila de Tarefas (QueuePanel)
-- Componente fixo canto inferior direito (z-index 9999).
+- Componente fixo no rodape, canto inferior direito (z-index 9999).
+- Fica sempre visivel; quando vazio mostra "Painel de tarefas · vazio".
 - Exibe até 50 tarefas recentes (audit + ai-generate + ai-generate-single).
-- Expansível/recolhível.
+- Expansível/recolhível; inicia aberto para tornar tarefas ativas evidentes.
 - Badges por status: pending (amarelo), processing (azul pulsando), done (verde), error (vermelho), cancelled (cinza).
 - Botão cancelar para pending/processing.
 - Link "Ver" → `/ai/import?task=[id]` para lotes concluídos.
 - Link "Ver" → `/ai?task=[id]` para geração individual concluída.
+- Quando uma tarefa termina, o painel chama `router.refresh()` para atualizar a tela atual, por exemplo mover uma questao auditada para a secao de baixo.
 
 ## Montagem de Prova
 - Selecionar disciplina.
