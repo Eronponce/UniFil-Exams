@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.2.0] - 2026-04-24
+
+### Features
+
+- Persist workspace state across navigation (`feat: persist workspace state`)
+- Add "Nova Questão" nav link with Zustand-persisted draft state — navigate to Auditoria and back without losing the form
+
+### Bug Fixes
+
+- Enlarge answer key image for better readability (`fix: enlarge answer key image`)
+- Stabilize background task queue to prevent race conditions (`fix: stabilize background task queue`)
+- Fix broken UTF-8 encoding in `exams/page.tsx` and `exam-draft-fields.tsx` (mojibake chars like `Ã§`, `Â·`, `â†'` replaced with correct Unicode)
+- Fix controlled-input reset bug that blocked typing in AI Generation and AI Import fields
+
+### Chores
+
+- Complete prompt bundle with queued AI and docs
+
+---
+
 ## v2.1.0 - 2026-04-23
 
 ### Added
