@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useActionState } from "react";
 import Image from "next/image";
 import type { Question, QuestionType } from "@/types";
+import type { QuestionFormState } from "@/lib/actions/questions";
 
 interface Discipline { id: number; name: string }
 
@@ -20,8 +21,7 @@ const TYPES = [
 
 interface Props {
   disciplines: Discipline[];
-  // Server action (createQuestionAction or updateQuestionAction)
-  action: (formData: FormData) => Promise<void>;
+  action: (prev: QuestionFormState | undefined, formData: FormData) => Promise<QuestionFormState | undefined>;
   question?: Question;
   cancelHref: string;
   title: string;
@@ -30,6 +30,7 @@ interface Props {
 
 export function QuestionForm({ disciplines, action, question, cancelHref, title, submitLabel = "Salvar Questão" }: Props) {
   const [questionType, setQuestionType] = useState<QuestionType>(question?.questionType ?? "objetiva");
+  const [state, formAction, isPending] = useActionState(action, undefined);
 
   return (
     <>
@@ -38,9 +39,15 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
         <a href={cancelHref} className="btn btn-ghost">← Voltar</a>
       </div>
       <div className="card" style={{ maxWidth: 700 }}>
-        <form action={action}>
+        <form action={formAction}>
           {question && <input type="hidden" name="id" value={question.id} />}
           <input type="hidden" name="source" value="manual" />
+
+          {state?.error && (
+            <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 6, padding: "0.75rem", marginBottom: "1rem", fontSize: "0.875rem", color: "#991b1b" }}>
+              {state.error}
+            </div>
+          )}
 
           <div className="form-row">
             <div className="form-group">
@@ -137,12 +144,10 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
             <input id="thematicArea" name="thematicArea" className="form-input" defaultValue={question?.thematicArea ?? ""} placeholder="Ex: Herança, Polimorfismo, Normalização…" />
           </div>
 
-          {questionType !== "dissertativa" && (
-            <div className="form-group">
-              <label className="form-label" htmlFor="explanation">Justificativa da resposta</label>
-              <textarea id="explanation" name="explanation" className="form-textarea" rows={3} defaultValue={question?.explanation ?? ""} placeholder="Explique por que a alternativa correta é a correta…" />
-            </div>
-          )}
+          <div className="form-group">
+            <label className="form-label" htmlFor="explanation">Justificativa da resposta{questionType === "dissertativa" ? " / gabarito esperado" : ""}</label>
+            <textarea id="explanation" name="explanation" className="form-textarea" rows={3} defaultValue={question?.explanation ?? ""} placeholder={questionType === "dissertativa" ? "Descreva o que se espera como resposta correta…" : "Explique por que a alternativa correta é a correta…"} />
+          </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="image">Imagem{question?.imageUrl ? " (substituir)" : " (opcional)"}</label>
@@ -155,7 +160,7 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-primary">{submitLabel}</button>
+            <button type="submit" className="btn btn-primary" disabled={isPending}>{isPending ? "Salvando…" : submitLabel}</button>
             <a href={cancelHref} className="btn btn-ghost">Cancelar</a>
           </div>
         </form>

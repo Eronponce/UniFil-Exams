@@ -66,3 +66,48 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: PDF sections should try to reuse the remaining vertical space on the current page before opening a new page.
 - Reason: forced page starts between sections wasted space and produced awkward breaks.
 - Impact: the renderer now packs section chunks sequentially per page instead of allocating a fresh page per section.
+
+## 2026-04-24 - Uniform PDF Page Count Per Batch
+- Decision: two-pass PDF rendering to ensure all sets in a batch have the same (even) page count; shorter sets are padded with blank pages before the gabarito.
+- Reason: when printing a batch of exam sets, every set must land on the same number of sheets so fronts and backs align correctly and the gabarito is always the true last page.
+- Impact: `prepareSetSections` runs for all sets to find max question-page count; target = max + 1 (gabarito), rounded up to even; blank pages inserted before gabarito as needed.
+
+## 2026-04-24 - In-Memory Task Queue (Audit + AI)
+- Decision: introduce a module-level in-memory queue (`src/lib/task-queue.ts`) for audit and AI-generate operations; queue persists across page navigations (same Node.js process) but not across server restarts.
+- Reason: audit operations were blocking the UI on each click; AI generation needed a fire-and-forget flow so the user could leave the page and retrieve the result on return.
+- Impact: `enqueueAuditAction` / `enqueueAiGenerationAction` server actions enqueue tasks; `QueuePanel` (fixed-position client component) polls `/api/queue` every 3 s and shows status; deduplication via `dedupKey` prevents double-submission.
+
+## 2026-04-24 - Explanation Column In All Question Flows
+- Decision: add `explanation` (justificativa/gabarito) field to all question types, including dissertativa which previously had none.
+- Reason: teachers need to record the expected answer or rationale for every question type; the field was already in the schema but not exposed for dissertativa, and was absent from CSV exports.
+- Impact: question form, edit page, audit page, exports page, JSON export, CSV export (new column 12), JSON/CSV import parser, and AI review form all now handle `explanation` consistently.
+
+## 2026-04-24 - React 19 useActionState For Form Preservation
+- Decision: use React 19 `useActionState` in `QuestionForm` to return validation errors inline without page redirect.
+- Reason: previous pattern (redirect with error param) wiped all form fields on validation failure.
+- Impact: `createQuestionAction` and `updateQuestionAction` now accept `(prev, formData)` signature; the `ai-client.tsx` review form bridges with `async (fd) => createQuestionAction(undefined, fd)`.
+
+## 2026-04-24 - Exam Form Title/Institution Preservation
+- Decision: preserve title and institution inputs across exam-creation validation errors by forwarding them as URL params on redirect.
+- Reason: consistent with how discipline filter already used URL params; avoids `useActionState` complexity in a server-rendered page.
+- Impact: `createExamAction` appends `title` and `institution` to redirect URL on every error path; `ExamsPage` reads them as `searchParams` and sets `defaultValue`.
+
+## 2026-04-24 - Remove Generic numQuestions Field
+- Decision: remove the generic "questões por prova" total count input from exam creation; per-type counts are the only mechanism.
+- Reason: having both fields created ambiguity about which took precedence when they conflicted.
+- Impact: `normalizeExamSelectionRequest` only reads `numObjetivas`, `numVF`, `numDissertativas`; throws if all are zero; exam creation form no longer renders the generic count input.
+
+## 2026-04-24 - Safe Filenames For CSV/PDF Downloads
+- Decision: derive download filenames from exam titles using a slug transformation (`toLowerCase` + replace non-alphanumeric with `-`).
+- Reason: arbitrary Unicode in filenames breaks `Content-Disposition` headers on Linux and some Windows locales.
+- Impact: `/api/csv/[setId]` and PDF routes now produce filenames like `gabarito-prova-1-poo-2026-set-a.csv`.
+
+## 2026-04-24 - AI Generation Queue Is The Primary UX
+- Decision: both `/ai` and `/ai/import` enqueue generation tasks instead of making the primary button wait on a foreground streaming request.
+- Reason: the prompt requires AI generation to continue while the user leaves the page, with visible status and recoverable results.
+- Impact: added `ai-generate-single`; `QueuePanel` links individual results to `/ai?task=[id]` and batch results to `/ai/import?task=[id]`.
+
+## 2026-04-24 - Obsidian Notes Are Project Source
+- Decision: keep implementation-critical Obsidian Markdown under `docs/` and commit it with code.
+- Reason: future agents need stable, versioned project context instead of relying on chat history or local-only memory.
+- Impact: added [[PROMPT_T1_T11_STATUS]] and [[OBSIDIAN_GITHUB]]; `.obsidian/` stays ignored as local UI state unless explicitly shared later.

@@ -1,109 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Discipline, QuestionType } from "@/types";
 import type { GenerationState } from "@/lib/actions/ai";
+import type { GenerationResult } from "@/lib/ai/generate";
 import { createQuestionAction } from "@/lib/actions/questions";
+import { enqueueSingleAiGenerationAction } from "@/lib/actions/queue-actions";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
 import { AITracePanel } from "@/components/ai-trace-panel";
 import { useToast } from "@/components/toast-provider";
-import type { AIStatusEvent, GenerateStreamRequest } from "@/lib/ai/stream";
-import { consumeSseResponse } from "@/lib/sse/client";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
-export function AIClient({ disciplines }: { disciplines: Discipline[] }) {
+export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipline[]; initialTaskId?: string }) {
   const [state, setState] = useState<GenerationState>({});
   const [topic, setTopic] = useState("");
   const [disciplineId, setDisciplineId] = useState(String(disciplines[0]?.id ?? ""));
   const [provider, setProvider] = useState("ollama");
   const [questionType, setQuestionType] = useState<QuestionType>("objetiva");
   const [ollamaModel, setOllamaModel] = useState("");
-  const [liveEvents, setLiveEvents] = useState<AIStatusEvent[]>([]);
   const [pending, setPending] = useState(false);
+  const [queuedTaskId, setQueuedTaskId] = useState<string | null>(initialTaskId ?? null);
   const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
   const { pushToast, updateToast } = useToast();
 
-  function appendEvent(event: AIStatusEvent) {
-    setLiveEvents((current) => [...current, event].slice(-8));
-  }
+  useEffect(() => {
+    if (!initialTaskId) return;
+    fetch(`/api/queue/${initialTaskId}/result`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.result) return;
+        const result = data.result as GenerationResult;
+        const payload = data.payload as { disciplineId: number; topic?: string };
+        setState({ result: { ...result.question, disciplineId: payload.disciplineId }, trace: result.trace });
+        setDisciplineId(String(payload.disciplineId));
+        if (payload.topic) setTopic(payload.topic);
+      })
+      .catch(() => null);
+  }, [initialTaskId]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const payload: GenerateStreamRequest = {
-      disciplineId: Number(disciplineId),
-      provider: provider as GenerateStreamRequest["provider"],
-      topic,
-      questionType,
-      ...(provider === "ollama" && ollamaModel ? { ollamaModel } : {}),
-    };
-
     setPending(true);
-    setState({});
-    setLiveEvents([]);
-
     const toastId = pushToast({
       type: "info",
-      title: "Gerando questão",
-      description: "Acompanhando o processo da IA em tempo real.",
+      title: "Questão enviada para a fila",
+      description: "A geração segue em background. O resultado aparece em Ver quando concluir.",
     });
-    let failedMessage: string | undefined;
-    let completed = false;
 
     try {
-      const response = await fetch("/api/ai/generate/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const discipline = disciplines.find((d) => String(d.id) === disciplineId);
+      const { taskId, error, isNew } = await enqueueSingleAiGenerationAction({
+        disciplineName: discipline?.name ?? "Disciplina",
+        disciplineId: Number(disciplineId),
+        topic,
+        provider,
+        questionType,
+        ollamaModel: provider === "ollama" && ollamaModel ? ollamaModel : undefined,
       });
-
-      await consumeSseResponse(response, (event) => {
-        if (event.type === "status") {
-          const status = event.payload as AIStatusEvent;
-          appendEvent(status);
-          updateToast(toastId, {
-            type: status.tone === "error" ? "error" : status.tone === "warning" ? "warning" : "info",
-            title: status.label,
-            description: status.detail ?? "Processo em andamento.",
-          });
-          return;
-        }
-
-        if (event.type === "trace") {
-          setState((current) => ({ ...current, trace: event.payload as GenerationState["trace"] }));
-          return;
-        }
-
-        if (event.type === "result") {
-          completed = true;
-          setState((current) => ({ ...current, result: event.payload as NonNullable<GenerationState["result"]> }));
-          return;
-        }
-
-        if (event.type === "error") {
-          const payload = event.payload as { message: string; trace?: NonNullable<GenerationState["trace"]> };
-          failedMessage = payload.message;
-          setState((current) => ({ ...current, error: payload.message, trace: payload.trace ?? current.trace }));
-        }
+      if (error) {
+        setState((current) => ({ ...current, error }));
+        updateToast(toastId, { type: "error", title: "Falha ao enfileirar", description: error });
+        return;
+      }
+      setState((current) => ({ ...current, error: undefined }));
+      setQueuedTaskId(taskId);
+      updateToast(toastId, {
+        type: "success",
+        title: isNew ? "Tarefa criada" : "Tarefa já estava na fila",
+        description: "Acompanhe no painel global de tarefas.",
       });
     } catch (error) {
-      failedMessage = error instanceof Error ? error.message : "Erro ao iniciar streaming da IA.";
-      setState({ error: failedMessage });
+      const message = error instanceof Error ? error.message : "Erro ao enfileirar geração.";
+      setState((current) => ({ ...current, error: message }));
+      updateToast(toastId, { type: "error", title: "Falha ao enfileirar", description: message });
     } finally {
       setPending(false);
-      if (failedMessage) {
-        updateToast(toastId, {
-          type: "error",
-          title: "Falha na geração",
-          description: failedMessage,
-        });
-      } else if (completed) {
-        updateToast(toastId, {
-          type: "success",
-          title: "Questão gerada",
-          description: "Revise o resultado e salve no banco quando estiver pronto.",
-        });
-      }
     }
   }
 
@@ -200,15 +172,20 @@ export function AIClient({ disciplines }: { disciplines: Discipline[] }) {
           )}
 
           <button type="submit" className="btn btn-primary" disabled={pending} style={{ opacity: pending ? 0.7 : 1 }}>
-            {pending ? "Gerando…" : "Gerar Questão"}
+            {pending ? "Enfileirando…" : "Gerar questão na fila"}
           </button>
+          {queuedTaskId && (
+            <p style={{ marginTop: "0.75rem", fontSize: "0.8rem", color: "var(--muted)" }}>
+              Tarefa {queuedTaskId} registrada. Use o painel de tarefas para cancelar ou abrir o resultado.
+            </p>
+          )}
         </form>
       </div>
 
       {/* ── Trace panel ──────────────────────────────────────────────────── */}
-      {(pending || state.trace || liveEvents.length > 0) && (
+      {state.trace && (
         <div style={{ gridColumn: "1 / -1" }}>
-          <AITracePanel trace={state.trace} liveEvents={liveEvents} isStreaming={pending} />
+          <AITracePanel trace={state.trace} liveEvents={[]} isStreaming={false} />
         </div>
       )}
 
@@ -216,7 +193,7 @@ export function AIClient({ disciplines }: { disciplines: Discipline[] }) {
       {result && (
         <div className="card">
           <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1.25rem" }}>Questão Gerada — Revise antes de salvar</h2>
-          <form action={createQuestionAction}>
+          <form action={async (fd: FormData) => { await createQuestionAction(undefined, fd); }}>
             <input type="hidden" name="disciplineId" value={result.disciplineId} />
             <input type="hidden" name="source" value="ai" />
             <input type="hidden" name="questionType" value={result.questionType} />

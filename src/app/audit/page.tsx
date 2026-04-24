@@ -1,10 +1,9 @@
 export const dynamic = "force-dynamic";
-import Link from "next/link";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { listDisciplines } from "@/lib/db/disciplines";
-import { auditQuestionAction, deleteQuestionAction } from "@/lib/actions/questions";
-import { ConfirmButton } from "@/components/confirm-button";
 import { AuditFilters } from "./_components/audit-filters";
+import { AuditCardActions } from "./_components/audit-card-actions";
+import { AuditPendingActions } from "./_components/audit-pending-actions";
 
 import type { Question } from "@/types";
 
@@ -34,6 +33,21 @@ function OptionsDisplay({ q }: { q: Question }) {
           {opt.index === q.correctIndex && <span>✓</span>}
         </div>
       ))}
+    </div>
+  );
+}
+
+function ExplanationDisplay({ q }: { q: Question }) {
+  if (!q.explanation) {
+    return (
+      <p style={{ fontSize: "0.78rem", color: "var(--muted)", fontStyle: "italic", marginTop: "0.4rem" }}>
+        Sem justificativa cadastrada.
+      </p>
+    );
+  }
+  return (
+    <div style={{ marginTop: "0.5rem", fontSize: "0.825rem", color: "#1e40af", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 4, padding: "0.4rem 0.7rem" }}>
+      <strong>{q.questionType === "dissertativa" ? "Gabarito esperado:" : "Justificativa:"}</strong> {q.explanation}
     </div>
   );
 }
@@ -71,23 +85,9 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 600, marginBottom: "0.75rem", lineHeight: 1.5 }}>{q.statement}</p>
                     <OptionsDisplay q={q} />
+                    <ExplanationDisplay q={q} />
                   </div>
-                  <div className="actions-row" style={{ flexDirection: "column", alignItems: "flex-end" }}>
-                    <form action={auditQuestionAction}>
-                      <input type="hidden" name="id" value={q.id} />
-                      <input type="hidden" name="audited" value="true" />
-                      <input type="hidden" name="back" value="/audit" />
-                      <button type="submit" className="btn btn-success btn-sm">✓ Auditar</button>
-                    </form>
-                    <Link href={`/questions/${q.id}/edit`} className="btn btn-ghost btn-sm">Editar</Link>
-                    <form action={deleteQuestionAction}>
-                      <input type="hidden" name="id" value={q.id} />
-                      <input type="hidden" name="back" value="/audit" />
-                      <ConfirmButton type="submit" className="btn btn-danger btn-sm" confirm="Excluir questão?">
-                        Excluir
-                      </ConfirmButton>
-                    </form>
-                  </div>
+                  <AuditPendingActions questionId={q.id} />
                 </div>
                 <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", fontWeight: 600, padding: "0.15rem 0.5rem", borderRadius: 99, background: "#fef9c3", color: "#92400e" }}>
@@ -119,18 +119,9 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 500, marginBottom: "0.5rem", lineHeight: 1.5, fontSize: "0.9rem" }}>{q.statement}</p>
                     <OptionsDisplay q={q} />
+                    <ExplanationDisplay q={q} />
                   </div>
-                  <div className="actions-row" style={{ flexDirection: "column", alignItems: "flex-end" }}>
-                    <form action={auditQuestionAction}>
-                      <input type="hidden" name="id" value={q.id} />
-                      <input type="hidden" name="audited" value="false" />
-                      <input type="hidden" name="back" value="/audit" />
-                      <ConfirmButton type="submit" className="btn btn-ghost btn-sm" confirm="Remover auditoria desta questão?">
-                        Des-auditar
-                      </ConfirmButton>
-                    </form>
-                    <Link href={`/questions/${q.id}/edit`} className="btn btn-ghost btn-sm">Editar</Link>
-                  </div>
+                  <AuditCardActions questionId={q.id} />
                 </div>
                 <div style={{ marginTop: "0.4rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", fontWeight: 600, padding: "0.15rem 0.5rem", borderRadius: 99, background: "#dcfce7", color: "#166534" }}>

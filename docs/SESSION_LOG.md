@@ -65,11 +65,6 @@
 - IA local validada via Ollama: geração simples e geração em lote retornaram questão estruturada; Claude/Gemini não foram chamados porque `.env.local` não tem API keys.
 - Banco limpo novamente ao fim da sessão; arquivos de upload existentes foram preservados.
 
-## Next Useful Inputs
-- Phase split for implementation.
-- Visual/UI preference for local web app.
-- Exact PDF template details after structure approval.
-- Decision on starting Ollama and downloading/configuring Qwen model.
 
 ## 2026-04-23
 - Added SSE routes for live AI generation status: `/api/ai/generate/stream` and `/api/ai/batch/stream`.
@@ -83,3 +78,90 @@
 - Validation passed: `npm run typecheck`, `npm run lint`, `npm test -- --run`, `npm run build`.
 - Release preparada como `v2.1.0` sobre `main`, com `package.json`/`package-lock.json` atualizados e `CHANGELOG.md` criado.
 - Validação final de release repetida com sucesso: `npm run lint`, `npm test -- --run`, `npm run build`, `npm run typecheck`.
+
+## 2026-04-24
+
+### T1 — Justificativa para questões dissertativas
+- `explanation` field exposed in question form, edit page, and AI review form for all question types.
+- Dissertativa uses label "Justificativa / gabarito esperado" and a distinct placeholder.
+- Audit page shows the field for all types: "Gabarito esperado:" for dissertativa, "Justificativa:" otherwise; shows italic placeholder when empty.
+
+### T2 — Justificativa visível na auditoria
+- `ExplanationDisplay` component added to `src/app/audit/page.tsx`.
+- Previously only objetiva/V/F showed explanation; dissertativa was excluded.
+
+### T3 — Correção dos botões da auditoria (reload, formulário aninhado)
+- Extracted `AuditPendingActions` and `AuditCardActions` as client components in `src/app/audit/_components/`.
+- All buttons are `type="button"`; no nested `<form>` elements.
+- `useTransition` used for non-blocking server action calls from client components.
+- Two-click confirm pattern for delete (no `window.alert`).
+
+### T4 — Downloads CSV/PDF portáveis no Linux
+- `/api/csv/[setId]/route.ts` now derives filename from exam title via slug (`toLowerCase` + replace non-alphanumeric).
+- Format: `gabarito-{safe-title}-set-{label}.csv`. UTF-8 BOM not added (Content-Type already specifies charset).
+
+### T5 — Copiar para clipboard na página de importação
+- Added "⎘ Copiar JSON" and "⎘ Copiar CSV" buttons in `src/app/questions/importar/import-file-client.tsx`.
+- Uses `navigator.clipboard.writeText()`; button shows "Copiado!" for 2 s.
+- `TEMPLATE_CSV` updated to include `explanation` column with realistic example values.
+
+### T6 — Remover campo genérico numQuestions
+- `normalizeExamSelectionRequest` no longer reads `numQuestions`.
+- `pickQuestionsForExam` throws "Preencha a quantidade de questões para pelo menos um tipo..." when all type counts are zero.
+- Exam creation form removed the generic total-count input.
+- 3 unit tests rewritten in `src/tests/exam-selection.test.ts`.
+
+### T7 — PDF uniforme por batch (mesma contagem de páginas)
+- Two-pass PDF rendering in `src/lib/pdf/exam-pdf.tsx`.
+- Pass 1: build question page list for every set → find max.
+- Target = max + 1 (gabarito), rounded up to even.
+- Pass 2: render each set; pad with blank pages before gabarito until target is reached.
+- Gabarito is always the final page of every set.
+
+### T8 — Fila para auditoria
+- `src/lib/task-queue.ts`: module-level queue with `setImmediate`-based sequential processing; `TaskRecord` typed with `dedupKey`, `status`, `result`, `errorMessage`.
+- `src/lib/actions/queue-actions.ts`: `enqueueAuditAction`, `enqueueAiGenerationAction`, `cancelTaskAction`.
+- `src/instrumentation.ts` registers audit handler: calls `auditQuestion(id, value)`.
+- REST API: `GET /api/queue`, `DELETE /api/queue/[taskId]`, `GET /api/queue/[taskId]/result`.
+- `src/components/queue-panel.tsx`: fixed-position panel, polls every 3 s, expandable, cancel support.
+- `<QueuePanel />` added to root layout.
+
+### T9 — Fila para geração IA (background, resultado recuperável)
+- `src/instrumentation.ts` registers ai-generate handler: delegates to `generateBatchQuestions`.
+- `enqueueAiGenerationAction` in queue-actions.ts returns `taskId`.
+- `src/app/ai/import/import-client.tsx` accepts `initialTaskId` prop; fetches result from `/api/queue/[taskId]/result` on mount.
+- `src/app/ai/import/page.tsx` reads `searchParams.task` and passes it to client.
+- QueuePanel "Ver" link → `/ai/import?task=[taskId]` for completed ai-generate tasks.
+
+### T10 — Preservar dados do formulário após erros
+- **Questão**: `QuestionForm` uses React 19 `useActionState`; `createQuestionAction`/`updateQuestionAction` return `{ error }` on validation failures instead of redirecting.
+- **Prova**: `createExamAction` appends `title` and `institution` to redirect URL on errors; `ExamsPage` reads them as `defaultValue`.
+- **IA**: form fields are controlled state; survive AI errors without reset.
+
+### Validação final (2026-04-24)
+- `npm run typecheck`: limpo (0 erros).
+- `npm run lint`: limpo (0 warnings).
+- `npm test -- --run`: 33 testes passando (5 arquivos).
+- `npm run build`: sucesso, 28 rotas compiladas.
+
+## 2026-04-24 — Fechamento dos pontos parciais T1-T11
+
+### Complementos de implementacao
+- `/ai` agora enfileira geracao individual via `ai-generate-single`; resultado recupera em `/ai?task=[taskId]`.
+- `/ai/import` agora usa fila como fluxo primario para lotes; o botao de streaming direto saiu da UX principal.
+- `QueuePanel` mostra link "Ver" para lote e para geracao individual concluida.
+- Formulario de prova preserva `quantitySets`, `numObjetivas`, `numVF` e `numDissertativas` em redirecionamentos de erro.
+- Tela `/questions/importar` agora exibe campos read-only com sintaxe JSON e CSV copiavel.
+- `/api/pdf/[setId]` passou a renderizar apenas o set solicitado, mantendo o tamanho uniforme calculado pelo lote inteiro.
+- CSV de gabarito agora tem cabecalho coerente com tres colunas: `Questão`, `Resposta`, `Enunciado`.
+
+### Documentacao Obsidian
+- Nova nota [[PROMPT_T1_T11_STATUS]] registra cobertura T1-T11, fila, PDF, JSON/CSV e validacao.
+- Nova nota [[OBSIDIAN_GITHUB]] define o que deve ir ao GitHub e o que fica local.
+- [[INDEX]], [[AI_GENERATION]], [[EXPORTS_EVALBEE]], [[SCREEN_MAP]], [[DECISIONS]], [[TODO]] e README foram atualizados para refletir o estado final.
+
+### Validacao final do fechamento
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+- `npm test -- --run`: passou, 36 testes em 6 arquivos.
+- `npm run build`: passou, 28 rotas app listadas.

@@ -13,9 +13,9 @@ aliases:
 Use this note with [[SESSION_LOG]] and [[DECISIONS]] to track the latest requested implementation bundle.
 
 > [!note]
-> Checklist opened from the 2026-04-23 request to improve observability, exam composition, and PDF layout.
+> Last bundle: 2026-04-24 — T1–T11 (justificativa, audit fix, PDF uniform, queue, form preservation).
 
-## Requested Scope
+## 2026-04-23 Bundle
 - [x] Expor geração IA em tempo real para depuração de falhas.
 - [x] Mostrar mensagens de estado dos processos principais do sistema.
 - [x] Criar sistema global de toast/flash para feedback consistente.
@@ -23,6 +23,22 @@ Use this note with [[SESSION_LOG]] and [[DECISIONS]] to track the latest request
 - [x] Permitir escolher quantas questões `objetivas`, `V/F` e `dissertativas` entram na prova.
 - [x] Registrar as mudanças em documentação e memória persistente.
 
-## Follow-up
-- [ ] Fazer smoke manual no navegador dos fluxos de streaming com Ollama/Claude/Gemini reais.
-- [ ] Validar visualmente PDFs longos com combinações mistas de seção para ajustar densidade se necessário.
+## 2026-04-24 Bundle
+- [x] T1: Justificativa para questões dissertativas (form, edit, audit, export, import).
+- [x] T2: Justificativa visível na auditoria para todos os tipos.
+- [x] T3: Corrigir botões de auditoria (type="button", sem form aninhado, sem reload).
+- [x] T4: Downloads CSV/PDF portáveis no Linux (filenames safe, UTF-8).
+- [x] T5: Botões copiar-para-clipboard na página de importação.
+- [x] T6: Remover campo genérico numQuestions; validar ao menos um tipo > 0.
+- [x] T7: PDF uniforme por batch (mesma contagem de páginas pares; gabarito sempre último).
+- [x] T8: Fila em memória para auditoria (dedup, cancel, painel de status).
+- [x] T9: Fila em memória para geração IA (resultado recuperável ao voltar para a página).
+- [x] T10: Preservar dados do formulário após erros (questão, prova, IA).
+- [x] T11: Atualizar documentação do projeto.
+- [x] Fechar lacunas finais: fila tambem em `/ai`, campos visiveis JSON/CSV, PDF individual por set e preservacao de quantidades da prova.
+- [x] Criar notas Obsidian versionaveis: [[PROMPT_T1_T11_STATUS]] e [[OBSIDIAN_GITHUB]].
+
+## Follow-up (pendente)
+- [ ] Smoke manual no navegador dos fluxos de streaming com Ollama/Claude/Gemini reais.
+- [ ] Validar visualmente PDFs longos com combinações mistas de seção para ajustar densidade.
+- [ ] Testar QueuePanel no navegador com operações reais de auditoria e geração IA.

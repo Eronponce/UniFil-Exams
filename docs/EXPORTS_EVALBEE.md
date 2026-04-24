@@ -13,12 +13,20 @@ status: draft
 O sistema gera prova para impressao e gabarito separado. A correcao acontece fora, no EvalBee.
 
 ## PDF da Prova
-- Um PDF por set.
+- PDF completo por prova: todos os sets em sequencia.
+- PDF individual por set: renderiza apenas o set pedido, mas usa a mesma contagem fixa calculada para o lote.
 - Layout em duas colunas.
 - Questoes numeradas conforme ordem final do set.
 - Alternativas exibidas conforme ordem randomizada.
 - Imagens de questao dimensionadas para caber na coluna.
-- Ultima pagina reservada para imagem EvalBee do set.
+- Gabarito/imagem EvalBee fica sempre na ultima pagina do bloco do set.
+
+## Regra de paginas pares por lote
+- O gerador calcula as paginas de questoes de todos os sets antes de renderizar.
+- `targetTotalPages = max(paginasDeQuestoes) + 1 pagina de gabarito`.
+- Se `targetTotalPages` for impar, soma 1 para ficar par.
+- Sets menores recebem paginas totalmente vazias antes do gabarito.
+- Resultado: todos os sets do lote possuem a mesma quantidade par de frentes.
 
 ## Imagem EvalBee por Set
 - Usuario anexa uma imagem diferente para cada set.
@@ -28,11 +36,17 @@ O sistema gera prova para impressao e gabarito separado. A correcao acontece for
 
 ## CSV de Gabarito
 - Um CSV por set.
-- Deve conter:
-  - codigo do set.
-  - numero da questao na prova.
-  - identificador interno da questao.
-  - letra correta apos randomizacao.
+- Colunas: `Questão`, `Resposta`, `Enunciado`.
+- Questao objetiva usa letra final ja randomizada (`A`-`E`).
+- Verdadeiro/falso usa `V` ou `F`.
+- Dissertativa usa `Dissertativa`.
+- Filename: `gabarito-{safe-title}-set-{label}.csv` (slug a partir do título da prova; portável em Linux).
+- Encoding: UTF-8 sem BOM; `Content-Disposition: attachment`.
+
+## Exportacao de banco de questoes
+- JSON e CSV de questoes ficam em `/api/export/questions`.
+- JSON inclui `explanation` para todos os tipos.
+- CSV inclui `explanation` como coluna final, depois de `answer_lines`.
 
 ## Fluxo de Exportacao
 ```mermaid

@@ -21,9 +21,12 @@
 - Banco de questões já implementado com CRUD, auditoria e importação/exportação.
 - Tipos suportados: `objetiva`, `verdadeiro_falso`, `dissertativa`.
 - Geração IA já possui trace detalhado e agora também expõe status em tempo real durante a execução.
+- Geração IA individual e em lote usa fila em memória como fluxo principal; resultado é recuperável via `?task=`.
 - Feedback de processos usa toast global para geração IA, salvamentos, uploads, importações, auditoria e criação de prova.
 - Montagem de prova aceita seleção por quantidade de cada tipo de questão.
 - Exportação PDF agora tenta encaixar seções subsequentes na sobra da página anterior antes de abrir nova página.
+- Exportação PDF usa contagem uniforme e par de páginas por set dentro do mesmo lote; PDF individual por set respeita o alvo do lote.
+- Documentação Obsidian versionável vive em `docs/`; comece por [[INDEX]].
 
 ## Current Assumptions
 - Keep docs markdown-first and Obsidian-friendly.

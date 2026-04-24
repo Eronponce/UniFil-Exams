@@ -47,3 +47,22 @@ V1 usa IA para sugerir questoes objetivas. Nada gerado por IA entra no banco sem
 - Mostrar erro claro e preservar texto do pedido do usuario.
 - Nao salvar resposta invalida automaticamente.
 - Permitir editar a questao gerada antes de salvar.
+
+## Tipos de questão suportados (2026-04-24)
+- `objetiva`: 5 alternativas (A–E), `correctIndex` 0–4, `explanation` (justificativa).
+- `verdadeiro_falso`: `correctIndex` 0 = Verdadeiro, 1 = Falso, `explanation`.
+- `dissertativa`: `answerLines` (linhas em branco para resposta), `explanation` = gabarito esperado.
+
+## Fila de geracao em background (2026-04-24)
+- `/ai` usa `enqueueSingleAiGenerationAction` para gerar uma questao individual em background.
+- `/ai/import` usa `enqueueAiGenerationAction` para gerar lotes em background.
+- `instrumentation.ts` registra `ai-generate-single` e `ai-generate`.
+- Tarefa sobrevive navegacao de pagina enquanto o servidor Node.js estiver ativo.
+- Ao concluir, o `QueuePanel` exibe link "Ver": `/ai?task=[taskId]` para individual ou `/ai/import?task=[taskId]` para lote.
+- As paginas carregam resultado via `GET /api/queue/[taskId]/result` ao receber `searchParams.task`.
+- Deduplicacao por `dedupKey` evita submissao dupla enquanto a tarefa esta aguardando ou processando.
+
+## Observabilidade
+- `QueuePanel` mostra status global: aguardando, processando, concluida, erro ou cancelada.
+- `AITracePanel` mostra trace final quando o usuario abre uma tarefa concluida.
+- Rotas SSE antigas (`/api/ai/generate/stream` e `/api/ai/batch/stream`) ainda existem, mas o fluxo de usuario agora prioriza fila.

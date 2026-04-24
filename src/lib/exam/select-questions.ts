@@ -2,7 +2,6 @@ import type { QuestionType } from "@/types";
 import type { QuestionInfo } from "./randomize";
 
 export interface ExamSelectionRequest {
-  totalRequested: number;
   requestedByType: Record<QuestionType, number>;
 }
 
@@ -16,9 +15,7 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 export function normalizeExamSelectionRequest(formData: FormData): ExamSelectionRequest {
-  const totalRequested = Math.max(Number(formData.get("numQuestions")) || 0, 0);
   return {
-    totalRequested,
     requestedByType: {
       objetiva: Math.max(Number(formData.get("numObjetivas")) || 0, 0),
       verdadeiro_falso: Math.max(Number(formData.get("numVF")) || 0, 0),
@@ -28,12 +25,10 @@ export function normalizeExamSelectionRequest(formData: FormData): ExamSelection
 }
 
 export function pickQuestionsForExam(questions: QuestionInfo[], request: ExamSelectionRequest): QuestionInfo[] {
-  const hasTypeSpecificSelection = Object.values(request.requestedByType).some((value) => value > 0);
-  if (!hasTypeSpecificSelection) {
-    if (request.totalRequested > 0 && request.totalRequested < questions.length) {
-      return shuffle(questions).slice(0, request.totalRequested);
-    }
-    return questions;
+  const totalRequested = Object.values(request.requestedByType).reduce((sum, v) => sum + v, 0);
+
+  if (totalRequested === 0) {
+    throw new Error("Preencha a quantidade de questões para pelo menos um tipo (Objetivas, V/F ou Dissertativas).");
   }
 
   const grouped = {
@@ -50,6 +45,7 @@ export function pickQuestionsForExam(questions: QuestionInfo[], request: ExamSel
     }
   }
 
+  // Order: objetivas → verdadeiro_falso → dissertativas
   return [
     ...shuffle(grouped.objetiva).slice(0, request.requestedByType.objetiva),
     ...shuffle(grouped.verdadeiro_falso).slice(0, request.requestedByType.verdadeiro_falso),

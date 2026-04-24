@@ -10,7 +10,7 @@ const LETTERS = ["A", "B", "C", "D", "E"];
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
 
-export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string }> }) {
+export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const exams = listExams();
@@ -60,24 +60,17 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
 
             <div className="form-group">
               <label className="form-label">Título *</label>
-              <input name="title" className="form-input" placeholder="Ex: Prova 1 — POO 2026" required />
+              <input name="title" className="form-input" placeholder="Ex: Prova 1 — POO 2026" defaultValue={sp.title ?? ""} required />
             </div>
 
             <div className="form-group">
               <label className="form-label">Instituição</label>
-              <input name="institution" className="form-input" defaultValue="UniFil - Centro Universitário Filadélfia" />
+              <input name="institution" className="form-input" defaultValue={sp.institution ?? "UniFil - Centro Universitário Filadélfia"} />
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Questões por prova</label>
-                <input name="numQuestions" type="number" className="form-input" min={1} max={200} placeholder={`Todas (${auditedQuestions.length})`} />
-                <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Fallback geral. Se preencher quantidades por tipo abaixo, elas têm prioridade.</span>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Quantidade de Sets</label>
-                <input name="quantitySets" type="number" className="form-input" defaultValue={2} min={1} max={8} />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Quantidade de Sets</label>
+              <input name="quantitySets" type="number" className="form-input" defaultValue={sp.quantitySets ?? 2} min={1} max={8} style={{ maxWidth: 120 }} />
             </div>
 
             <div className="card" style={{ background: "#f8fafc", marginBottom: "1.25rem", padding: "1rem" }}>
@@ -98,17 +91,17 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               <div className="form-row">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Objetivas</label>
-                  <input name="numObjetivas" type="number" className="form-input" min={0} max={typeCounts.objetiva || 0} placeholder="0" />
+                  <input name="numObjetivas" type="number" className="form-input" min={0} max={typeCounts.objetiva || 0} placeholder="0" defaultValue={sp.numObjetivas ?? ""} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Verdadeiro/Falso</label>
-                  <input name="numVF" type="number" className="form-input" min={0} max={typeCounts.verdadeiro_falso || 0} placeholder="0" />
+                  <input name="numVF" type="number" className="form-input" min={0} max={typeCounts.verdadeiro_falso || 0} placeholder="0" defaultValue={sp.numVF ?? ""} />
                 </div>
               </div>
 
               <div className="form-group" style={{ marginBottom: 0, marginTop: "1rem" }}>
                 <label className="form-label">Dissertativas</label>
-                <input name="numDissertativas" type="number" className="form-input" min={0} max={typeCounts.dissertativa || 0} placeholder="0" />
+                <input name="numDissertativas" type="number" className="form-input" min={0} max={typeCounts.dissertativa || 0} placeholder="0" defaultValue={sp.numDissertativas ?? ""} />
               </div>
             </div>
 

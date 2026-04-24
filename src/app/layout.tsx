@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Nav } from "@/components/nav";
 import { ToastProvider } from "@/components/toast-provider";
+import { QueuePanel } from "@/components/queue-panel";
 import styles from "./layout.module.css";
 import "./globals.css";
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Nav />
             <main className={styles.main}>{children}</main>
           </div>
+          <QueuePanel />
         </ToastProvider>
       </body>
     </html>

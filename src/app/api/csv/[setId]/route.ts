@@ -17,7 +17,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ set
   if (!set) return new NextResponse("Set não encontrado", { status: 404 });
 
   const csv = buildAnswerKeyCsv(exam.title, set);
-  const filename = `gabarito-${exam.title.replace(/[^a-z0-9]/gi, "_")}-set-${set.label}.csv`;
+  const safeName = exam.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const filename = `gabarito-${safeName}-set-${set.label.toLowerCase()}.csv`;
 
   return new NextResponse(csv, {
     headers: {

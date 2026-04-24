@@ -31,7 +31,7 @@ export function parseCsvQuestions(csvText: string): ExportedQuestion[] {
   for (const row of rows) {
     if (!row.trim()) continue;
     const cells = parseCsvRow(row);
-    const [statement, questionType, difficulty, optA, optB, optC, optD, optE, correctIndexRaw, thematicArea, answerLinesRaw] = cells;
+    const [statement, questionType, difficulty, optA, optB, optC, optD, optE, correctIndexRaw, thematicArea, answerLinesRaw, explanationRaw] = cells;
 
     const options: string[] = [optA, optB, optC, optD, optE].filter(Boolean);
     const parsed = ExportedQuestionSchema.safeParse({
@@ -41,7 +41,7 @@ export function parseCsvQuestions(csvText: string): ExportedQuestion[] {
       correctIndex: Number(correctIndexRaw ?? 0),
       difficulty: difficulty || "medium",
       thematicArea: thematicArea || null,
-      explanation: "",
+      explanation: explanationRaw ?? "",
       answerLines: Number(answerLinesRaw ?? 0),
     });
     if (parsed.success) results.push(parsed.data);

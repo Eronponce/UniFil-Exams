@@ -184,9 +184,9 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                       </p>
                     )}
 
-                    {q.explanation && q.questionType !== "dissertativa" && (
+                    {q.explanation && (
                       <div style={{ marginLeft: 28, fontSize: "0.825rem", color: "#1e40af", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 4, padding: "0.4rem 0.7rem" }}>
-                        <strong>Justificativa:</strong> {q.explanation}
+                        <strong>{q.questionType === "dissertativa" ? "Gabarito esperado:" : "Justificativa:"}</strong> {q.explanation}
                       </div>
                     )}
                   </div>

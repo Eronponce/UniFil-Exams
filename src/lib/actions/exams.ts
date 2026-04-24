@@ -13,12 +13,26 @@ export async function createExamAction(formData: FormData) {
   const disciplineId = Number(formData.get("disciplineId"));
   const title = (formData.get("title") as string | null)?.trim() ?? "";
   const institution = (formData.get("institution") as string | null)?.trim() || "UniFil - Centro Universitário Filadélfia";
+  const quantitySetsRaw = (formData.get("quantitySets") as string | null) ?? "1";
+  const numObjetivasRaw = (formData.get("numObjetivas") as string | null) ?? "";
+  const numVFRaw = (formData.get("numVF") as string | null) ?? "";
+  const numDissertativasRaw = (formData.get("numDissertativas") as string | null) ?? "";
   const allQuestionIds = (formData.getAll("questionIds") as string[]).map(Number).filter(Boolean);
-  const qty = Math.min(Math.max(Number(formData.get("quantitySets")) || 1, 1), 8);
+  const qty = Math.min(Math.max(Number(quantitySetsRaw) || 1, 1), 8);
   const labels = SET_LETTERS.slice(0, qty);
 
+  function buildErrorParams(error: string) {
+    const params = new URLSearchParams({ error, title, institution, quantitySets: String(qty) });
+    if (disciplineId) params.set("discipline", String(disciplineId));
+    if (numObjetivasRaw) params.set("numObjetivas", numObjetivasRaw);
+    if (numVFRaw) params.set("numVF", numVFRaw);
+    if (numDissertativasRaw) params.set("numDissertativas", numDissertativasRaw);
+    return params;
+  }
+
   if (!disciplineId || !title || allQuestionIds.length === 0) {
-    redirectWithToast("/exams?error=campos-obrigatorios", {
+    const params = buildErrorParams("campos-obrigatorios");
+    redirectWithToast(`/exams?${params.toString()}`, {
       type: "error",
       title: "Dados incompletos",
       description: "Escolha a disciplina, o título e ao menos uma questão.",
@@ -34,15 +48,18 @@ export async function createExamAction(formData: FormData) {
   try {
     selectedQuestionInfos = pickQuestionsForExam(questionInfos, normalizeExamSelectionRequest(formData));
   } catch (error) {
-    redirectWithToast(`/exams?discipline=${disciplineId}&error=${encodeURIComponent(error instanceof Error ? error.message : "Seleção inválida")}`, {
+    const msg = error instanceof Error ? error.message : "Seleção inválida";
+    const params = buildErrorParams(msg);
+    redirectWithToast(`/exams?${params.toString()}`, {
       type: "error",
       title: "Seleção de questões inválida",
-      description: error instanceof Error ? error.message : "Revise as quantidades por tipo.",
+      description: msg,
     });
   }
 
   if (selectedQuestionInfos.length === 0) {
-    redirectWithToast(`/exams?discipline=${disciplineId}&error=nenhuma-questao`, {
+    const params = buildErrorParams("nenhuma-questao");
+    redirectWithToast(`/exams?${params.toString()}`, {
       type: "error",
       title: "Nenhuma questão selecionada",
       description: "As quantidades informadas geraram uma prova vazia.",

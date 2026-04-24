@@ -80,10 +80,10 @@ const TEMPLATE_JSON = JSON.stringify(
 );
 
 const TEMPLATE_CSV = [
-  "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines",
-  "Qual linguagem é utilizada para estilizar páginas web?,objetiva,easy,HTML,CSS,JavaScript,Python,Java,1,Desenvolvimento Web,0",
-  "O protocolo HTTP não mantém estado entre requisições consecutivas.,verdadeiro_falso,medium,Verdadeiro,Falso,,,,0,Redes de Computadores,0",
-  "Explique o conceito de herança na POO e apresente um exemplo prático.,dissertativa,medium,,,,,,0,Programação Orientada a Objetos,8",
+  "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines,explanation",
+  "Qual linguagem é utilizada para estilizar páginas web?,objetiva,easy,HTML,CSS,JavaScript,Python,Java,1,Desenvolvimento Web,0,CSS é a linguagem responsável pela apresentação visual de páginas HTML.",
+  "O protocolo HTTP não mantém estado entre requisições consecutivas.,verdadeiro_falso,medium,Verdadeiro,Falso,,,,0,Redes de Computadores,0,HTTP é stateless: cada requisição é independente e não há sessão automática.",
+  "Explique o conceito de herança na POO e apresente um exemplo prático.,dissertativa,medium,,,,,,0,Programação Orientada a Objetos,8,Espera-se que o aluno descreva reutilização de código e hierarquia de classes.",
 ].join("\n");
 
 function downloadTemplate(format: "json" | "csv") {
@@ -93,11 +93,21 @@ function downloadTemplate(format: "json" | "csv") {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `template_questoes.${format}`;
+  a.download = `template-questoes.${format}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+async function copyTemplate(format: "json" | "csv"): Promise<boolean> {
+  const content = format === "json" ? TEMPLATE_JSON : TEMPLATE_CSV;
+  try {
+    await navigator.clipboard.writeText(content);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -109,7 +119,16 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
   const [savedCount, setSavedCount] = useState(0);
   const [error, setError] = useState<string>();
   const [saving, startSaving] = useTransition();
+  const [copied, setCopied] = useState<"json" | "csv" | null>(null);
   const { pushToast, updateToast } = useToast();
+
+  async function handleCopy(format: "json" | "csv") {
+    const ok = await copyTemplate(format);
+    if (ok) {
+      setCopied(format);
+      setTimeout(() => setCopied(null), 2000);
+    }
+  }
 
   function handleFileSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -303,12 +322,18 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
       <div className="card" style={{ maxWidth: 760, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
           <h2 style={{ fontSize: "0.95rem", fontWeight: 600, margin: 0 }}>Referência de formato</h2>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => downloadTemplate("json")}>
-              ↓ Template JSON
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => downloadTemplate("json")}>
+              ↓ Baixar JSON
             </button>
-            <button className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => downloadTemplate("csv")}>
-              ↓ Template CSV
+            <button type="button" className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => handleCopy("json")}>
+              {copied === "json" ? "✓ Copiado!" : "⎘ Copiar JSON"}
+            </button>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => downloadTemplate("csv")}>
+              ↓ Baixar CSV
+            </button>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }} onClick={() => handleCopy("csv")}>
+              {copied === "csv" ? "✓ Copiado!" : "⎘ Copiar CSV"}
             </button>
           </div>
         </div>
@@ -327,12 +352,37 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
             </div>
           ))}
         </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "0.75rem", marginTop: "1rem" }}>
+          <div>
+            <label className="form-label" htmlFor="template-json">JSON</label>
+            <textarea
+              id="template-json"
+              className="form-textarea"
+              rows={12}
+              readOnly
+              value={TEMPLATE_JSON}
+              style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.72rem", whiteSpace: "pre", overflowX: "auto" }}
+            />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="template-csv">CSV</label>
+            <textarea
+              id="template-csv"
+              className="form-textarea"
+              rows={12}
+              readOnly
+              value={TEMPLATE_CSV}
+              style={{ fontFamily: "var(--font-geist-mono)", fontSize: "0.72rem", whiteSpace: "pre", overflowX: "auto" }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Upload form */}
       <div className="card" style={{ maxWidth: 600 }}>
         <p style={{ marginBottom: "1.5rem", opacity: 0.75, fontSize: "0.9rem" }}>
-          Importe a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines).
+          Importe a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines, explanation).
         </p>
         <form onSubmit={handleFileSubmit}>
           <div className="form-group">

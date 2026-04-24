@@ -93,6 +93,24 @@ Data: 2026-04-22
 
 ---
 
+## US-12 · Justificativa para questões dissertativas
+
+**Como** professor, **quero** registrar o gabarito esperado (justificativa) para questões dissertativas,
+**para** poder consultar a resposta esperada durante a correção.
+
+**Status:** ✅ Implementado (2026-04-24) — campo `explanation` exposto em todos os fluxos para todos os tipos.
+
+---
+
+## US-13 · Fila de tarefas em memória (auditoria + geração IA)
+
+**Como** professor, **quero** auditar questões e gerar questões por IA sem bloquear a interface,
+**para** continuar navegando enquanto as operações processam em background.
+
+**Status:** ✅ Implementado (2026-04-24) — `QueuePanel` fixo no canto inferior direito; dedup; cancel; resultado recuperável.
+
+---
+
 ## Backlog Futuro
 
 | ID | Descrição | Prioridade |
@@ -102,3 +120,6 @@ Data: 2026-04-22
 | US-09 | Edição inline do gabarito na tela de exportação | Média |
 | US-10 | Exportação de prova em formato DOCX | Baixa |
 | US-11 | Banco de questões compartilhado entre disciplinas (cross-discipline) | Baixa |
+| US-14 | Smoke manual no navegador: streaming com Ollama/Claude/Gemini reais | Alta |
+| US-15 | Validar visualmente PDFs longos com mixes de seção para ajustar density | Média |
+| US-16 | Compartilhar configuracao Obsidian `.obsidian/` no GitHub se a equipe quiser padronizar plugins/tema | Baixa |

@@ -88,9 +88,11 @@ export default async function QuestionPage({ params }: { params: Promise<{ id: s
           <p style={{ opacity: 0.65, fontSize: "0.875rem" }}>Questão dissertativa · {question.answerLines} linha{question.answerLines !== 1 ? "s" : ""} em branco no PDF</p>
         )}
 
-        {question.explanation && question.questionType !== "dissertativa" && (
+        {question.explanation && (
           <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#eff6ff", borderRadius: 6, borderLeft: "3px solid #3b82f6" }}>
-            <p style={{ fontSize: "0.85rem", margin: 0 }}><strong>Justificativa:</strong> {question.explanation}</p>
+            <p style={{ fontSize: "0.85rem", margin: 0 }}>
+              <strong>{question.questionType === "dissertativa" ? "Gabarito esperado:" : "Justificativa:"}</strong> {question.explanation}
+            </p>
           </div>
         )}
       </div>

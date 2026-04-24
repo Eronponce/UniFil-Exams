@@ -31,7 +31,7 @@ function escapeCsv(value: string): string {
 }
 
 export function questionsToCsv(questions: Question[]): string {
-  const header = "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines";
+  const header = "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines,explanation";
   const rows = questions.map((q) => {
     const opts = q.options.map((o) => o.text);
     // Pad to 5 slots (V/F has 2, dissertativa has 0)
@@ -48,6 +48,7 @@ export function questionsToCsv(questions: Question[]): string {
       String(q.correctIndex),
       escapeCsv(q.thematicArea ?? ""),
       String(q.answerLines),
+      escapeCsv(q.explanation ?? ""),
     ].join(",");
   });
   return [header, ...rows].join("\n");

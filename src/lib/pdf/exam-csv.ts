@@ -15,7 +15,7 @@ function resolveAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: nu
 
 export function buildAnswerKeyCsv(examTitle: string, set: ExamSet): string {
   const rows: string[] = [`"Prova","${examTitle} — Set ${set.label}"`];
-  rows.push(`"Questão","Alternativa Correta"`);
+  rows.push(`"Questão","Resposta","Enunciado"`);
 
   const sorted = [...set.questions].sort((a, b) => a.position - b.position);
   sorted.forEach((sq, idx) => {

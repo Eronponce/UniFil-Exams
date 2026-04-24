@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import type { BatchState } from "@/lib/actions/ai-batch";
 import { batchSaveQuestionsAction } from "@/lib/actions/questions";
-import type { BatchGeneratedQuestion } from "@/lib/ai/batch-prompt";
+import type { BatchGeneratedQuestion, BatchGenerationResult } from "@/lib/ai/batch-prompt";
 import type { QuestionType } from "@/types";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
-import { AITracePanel } from "@/components/ai-trace-panel";
 import { useToast } from "@/components/toast-provider";
-import type { AIStatusEvent, BatchStreamRequest } from "@/lib/ai/stream";
-import { consumeSseResponse } from "@/lib/sse/client";
+import { enqueueAiGenerationAction } from "@/lib/actions/queue-actions";
 
 interface Discipline { id: number; name: string }
 
@@ -25,13 +23,14 @@ const TYPE_PLACEHOLDER: Record<string, string> = {
   dissertativa: "Cole tópicos ou enunciados rascunhados. A IA cria questões abertas.\n\nEx:\nHerança e reutilização de código\nPolimorfismo com exemplos práticos",
 };
 
-export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
+export function ImportClient({ disciplines, initialTaskId }: { disciplines: Discipline[]; initialTaskId?: string }) {
   const [batchState, setBatchState] = useState<BatchState>({});
   const [step, setStep] = useState<"input" | "preview" | "done">("input");
   const [questions, setQuestions] = useState<BatchGeneratedQuestion[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [savedCount, setSavedCount] = useState(0);
   const [saveError, setSaveError] = useState<string>();
+  const [queuedTaskId, setQueuedTaskId] = useState<string | null>(null);
 
   // Controlled inputs — preserved on error
   const [disciplineId, setDisciplineId] = useState(String(disciplines[0]?.id ?? ""));
@@ -39,110 +38,67 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
   const [questionType, setQuestionType] = useState<QuestionType>("objetiva");
   const [rawText, setRawText] = useState("");
   const [ollamaModel, setOllamaModel] = useState("");
-  const [liveEvents, setLiveEvents] = useState<AIStatusEvent[]>([]);
-  const [generating, setGenerating] = useState(false);
+  const [queueing, setQueueing] = useState(false);
   const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
   const { pushToast, updateToast } = useToast();
 
   const [saving, startSaving] = useTransition();
 
-  function appendEvent(event: AIStatusEvent) {
-    setLiveEvents((current) => [...current, event].slice(-10));
-  }
+  // Load queued task result when arriving via ?task=
+  useEffect(() => {
+    if (!initialTaskId) return;
+    fetch(`/api/queue/${initialTaskId}/result`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.result) return;
+        const result = data.result as BatchGenerationResult;
+        const payload = data.payload as { disciplineId: number };
+        setBatchState({ disciplineId: payload.disciplineId, results: result.questions, trace: result.trace });
+        setQuestions(result.questions);
+        setSelected(new Set(result.questions.map((_, i) => i)));
+        setDisciplineId(String(payload.disciplineId));
+        setStep("preview");
+      })
+      .catch(() => null);
+  }, [initialTaskId]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const payload: BatchStreamRequest = {
-      disciplineId: Number(disciplineId),
-      provider: provider as BatchStreamRequest["provider"],
-      questionType,
-      rawText,
-      ...(provider === "ollama" && ollamaModel ? { ollamaModel } : {}),
-    };
-
-    setGenerating(true);
-    setBatchState({});
-    setLiveEvents([]);
-
+    setQueueing(true);
     const toastId = pushToast({
       type: "info",
-      title: "Gerando lote",
-      description: "Acompanhe as rodadas e falhas em tempo real.",
+      title: "Lote enviado para a fila",
+      description: "A geração segue em background. O resultado aparece em Ver quando concluir.",
     });
-    let failedMessage: string | undefined;
-    let generatedCount = 0;
 
     try {
-      const response = await fetch("/api/ai/batch/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const d = disciplines.find((x) => String(x.id) === disciplineId);
+      const { taskId, isNew, error } = await enqueueAiGenerationAction({
+        disciplineName: d?.name ?? "Disciplina",
+        disciplineId: Number(disciplineId),
+        rawText,
+        provider,
+        questionType,
+        ollamaModel: provider === "ollama" && ollamaModel ? ollamaModel : undefined,
       });
-
-      await consumeSseResponse(response, (event) => {
-        if (event.type === "status") {
-          const status = event.payload as AIStatusEvent;
-          appendEvent(status);
-          updateToast(toastId, {
-            type: status.tone === "error" ? "error" : status.tone === "warning" ? "warning" : "info",
-            title: status.label,
-            description: status.detail ?? "Processo em andamento.",
-          });
-          return;
-        }
-
-        if (event.type === "trace") {
-          setBatchState((current) => ({
-            ...current,
-            disciplineId: Number(disciplineId),
-            trace: event.payload as BatchState["trace"],
-          }));
-          return;
-        }
-
-        if (event.type === "results") {
-          const payload = event.payload as { questions: BatchGeneratedQuestion[]; disciplineId: number };
-          generatedCount = payload.questions.length;
-          setBatchState((current) => ({
-            ...current,
-            disciplineId: payload.disciplineId,
-            results: payload.questions,
-          }));
-          setQuestions(payload.questions);
-          setSelected(new Set(payload.questions.map((_, i) => i)));
-          setStep("preview");
-          return;
-        }
-
-        if (event.type === "error") {
-          const payload = event.payload as { message: string; trace?: BatchState["trace"] };
-          failedMessage = payload.message;
-          setBatchState((current) => ({
-            ...current,
-            disciplineId: Number(disciplineId),
-            error: payload.message,
-            trace: payload.trace ?? current.trace,
-          }));
-        }
+      if (error) {
+        setBatchState((current) => ({ ...current, error }));
+        updateToast(toastId, { type: "error", title: "Falha ao enfileirar", description: error });
+        return;
+      }
+      setQueuedTaskId(taskId);
+      setBatchState((current) => ({ ...current, error: undefined, disciplineId: Number(disciplineId) }));
+      updateToast(toastId, {
+        type: "success",
+        title: isNew ? "Tarefa criada" : "Tarefa já estava na fila",
+        description: "Acompanhe no painel global de tarefas.",
       });
     } catch (error) {
-      failedMessage = error instanceof Error ? error.message : "Erro ao iniciar streaming do lote.";
-      setBatchState({ error: failedMessage, disciplineId: Number(disciplineId) });
+      const message = error instanceof Error ? error.message : "Erro ao enfileirar geração.";
+      setBatchState({ error: message, disciplineId: Number(disciplineId) });
+      updateToast(toastId, { type: "error", title: "Falha ao enfileirar", description: message });
     } finally {
-      setGenerating(false);
-      if (failedMessage) {
-        updateToast(toastId, {
-          type: "error",
-          title: "Falha na geração em lote",
-          description: failedMessage,
-        });
-      } else {
-        updateToast(toastId, {
-          type: "success",
-          title: "Lote gerado",
-          description: `${generatedCount} questão(ões) pronta(s) para revisão.`,
-        });
-      }
+      setQueueing(false);
     }
   }
 
@@ -202,7 +158,7 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
 
   function resetToInput() {
     setBatchState({}); setQuestions([]); setStep("input");
-    setSavedCount(0); setSaveError(undefined); setSelected(new Set()); setLiveEvents([]);
+    setSavedCount(0); setSaveError(undefined); setSelected(new Set()); setQueuedTaskId(null);
   }
 
   // ── Done ────────────────────────────────────────────────────────────────────
@@ -371,13 +327,15 @@ export function ImportClient({ disciplines }: { disciplines: Discipline[] }) {
           </div>
 
           {batchState.error && <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{batchState.error}</p>}
-          {(generating || batchState.trace || liveEvents.length > 0) && (
-            <AITracePanel trace={batchState.trace} liveEvents={liveEvents} isStreaming={generating} />
+          {queuedTaskId && (
+            <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginBottom: "1rem" }}>
+              Tarefa {queuedTaskId} registrada. Use o painel de tarefas para cancelar ou abrir o resultado.
+            </p>
           )}
 
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={generating}>
-              {generating ? "Analisando com IA..." : "Analisar e Gerar Questões"}
+          <div className="form-actions" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
+            <button type="submit" className="btn btn-primary" disabled={queueing}>
+              {queueing ? "Enfileirando..." : "Gerar questões na fila"}
             </button>
           </div>
         </form>

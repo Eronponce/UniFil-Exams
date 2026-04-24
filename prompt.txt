@@ -1,0 +1,446 @@
+Você vai trabalhar no projeto UniFil Exams durante uma sessão longa.
+
+Não me faça perguntas durante a execução.
+
+Tome decisões razoáveis com base nos documentos do projeto e no código atual.
+
+Quando houver dúvida, siga esta ordem de prioridade.
+
+1. Código atual do projeto.
+2. PROJECT_CONTEXT.md.
+3. SESSION_LOG.md.
+4. DECISIONS.md.
+5. ARCHITECTURE.md.
+6. DATA_MODEL.md.
+7. SCREEN_MAP.md.
+8. USER_WORKFLOWS.md.
+9. AI_GENERATION.md.
+10. EXPORTS_EVALBEE.md.
+11. BACKLOG.md.
+12. TODO.md.
+Você está trabalhando no projeto UniFil Exams.
+
+Antes de alterar código
+
+1. Leia os arquivos principais de contexto do projeto
+   PROJECT_CONTEXT.md
+   SYSTEM_OVERVIEW.md
+   ARCHITECTURE.md
+   DATA_MODEL.md
+   SCREEN_MAP.md
+   USER_WORKFLOWS.md
+   AI_GENERATION.md
+   EXPORTS_EVALBEE.md
+   SESSION_LOG.md
+   DECISIONS.md
+   TODO.md
+   BACKLOG.md
+
+2. Considere o código atual como fonte final de verdade quando houver divergência entre documentação antiga e implementação real.
+
+3. Não refatore o projeto inteiro.
+
+4. Implemente somente as tarefas abaixo.
+
+5. Após implementar, rode obrigatoriamente
+   npm run typecheck
+   npm run lint
+   npm test -- --run
+   npm run build
+
+6. Corrija erros encontrados nesses comandos antes de finalizar.
+
+Contexto técnico atual
+
+O projeto é um app local chamado UniFil Exams.
+
+Stack atual
+Next.js 16.2.4
+React 19.2.4
+TypeScript
+SQLite local com better-sqlite3
+Sem login na V1
+Uso local e single-user
+
+O sistema já possui
+CRUD de disciplinas
+CRUD de questões
+Auditoria de questões
+Importação e exportação
+Geração com IA
+Feedback global por toast
+Geração de prova por quantidade de tipo
+Exportação PDF e CSV
+Tipos de questão objetiva, verdadeiro_falso e dissertativa
+
+Objetivo deste pacote
+
+Corrigir o fluxo de justificativas, exportações JSON e CSV, auditoria, geração de PDF, montagem de prova e execução de tarefas longas em fila.
+
+Tarefa 1, adicionar justificativa em questões dissertativas
+
+Problema
+
+A questão dissertativa não possui justificativa completa no fluxo atual.
+
+Comportamento esperado
+
+A questão dissertativa deve ter campo de justificativa em todos os fluxos necessários.
+
+Implementar em
+
+1. Criação manual de questão dissertativa
+2. Edição de questão dissertativa
+3. Criação de prova com questão dissertativa
+4. Auditoria de questão
+5. Exportação JSON
+6. Exportação CSV
+7. Importação, se o projeto já possuir importação desse tipo
+
+Critérios de aceite
+
+1. Ao criar uma questão dissertativa manualmente, deve existir campo de justificativa.
+2. Ao editar uma questão dissertativa, a justificativa deve aparecer preenchida e editável.
+3. Ao salvar uma questão dissertativa, a justificativa deve persistir no SQLite.
+4. Ao auditar uma questão dissertativa, a justificativa deve aparecer na tela.
+5. Ao exportar JSON, a justificativa deve estar presente.
+6. Ao exportar CSV, a justificativa deve estar presente.
+7. Não quebrar questões objetivas nem verdadeiro ou falso.
+8. Se o schema do banco não tiver campo adequado, criar migration idempotente ou alteração segura de schema.
+
+Tarefa 2, mostrar justificativa na auditoria de todas as questões
+
+Problema
+
+Ao auditar uma questão, o usuário quer ver a justificativa na tela.
+
+Comportamento esperado
+
+Na tela de auditoria, exibir justificativa quando existir.
+
+
+Tarefa 3, corrigir modal da auditoria que reinicia a tela
+Na auditoria, ao clicar no modal de ver resposta de IA, a tela reinicia ou perde estado.
+
+Investigar
+
+1. Botões dentro do modal com type submit indevido.
+2. Eventos que disparam reload.
+3. Formulários aninhados.
+4. Server action disparada sem intenção.
+5. Navegação ou redirect indevido.
+6. Estado local reiniciado ao abrir ou fechar modal.
+
+Critérios de aceite
+
+1. Clicar dentro do modal não deve recarregar a página.
+2. Abrir modal não deve limpar filtros ou estado.
+3. Fechar modal não deve limpar filtros ou estado.
+4. Editar dentro do modal não deve reiniciar a tela.
+5. Marcar como auditada deve atualizar apenas o necessário.
+6. Se houver erro, mostrar toast ou mensagem sem perder dados.
+
+Tarefa 4, permitir download de JSON e CSV em Linux
+
+Problema
+
+O JSON e o CSV precisam ser baixáveis corretamente em computadores Linux.
+
+Comportamento esperado
+
+Downloads devem funcionar de forma portável, sem dependência de caminho Windows.
+
+Critérios de aceite
+
+1. Download de JSON deve funcionar no navegador em Linux.
+2. Download de CSV deve funcionar no navegador em Linux.
+3. Nome dos arquivos deve evitar caracteres problemáticos.
+4. Usar nomes em formato seguro, por exemplo prova-set-a.csv ou questoes-export.json.
+5. Usar UTF-8.
+6. CSV deve abrir corretamente em editores e planilhas.
+7. Não usar caminho absoluto local do Windows.
+8. Não usar separador de caminho dependente de sistema operacional no nome do arquivo.
+9. Se usar rota API, definir headers corretos de Content-Type e Content-Disposition.
+
+Tarefa 5, criar campo para copiar sintaxe de JSON e CSV
+
+Problema
+
+O usuário quer copiar rapidamente a estrutura esperada de JSON e CSV.
+
+Comportamento esperado
+
+Na tela de importação, exportação ou documentação interna da tela, adicionar campos com exemplos de sintaxe.
+
+Critérios de aceite
+
+1. Exibir exemplo de JSON aceito pelo sistema.
+2. Exibir exemplo de CSV aceito pelo sistema.
+3. Ter botão Copiar JSON.
+4. Ter botão Copiar CSV.
+5. O conteúdo copiado deve estar pronto para servir como modelo.
+6. O exemplo deve incluir campos necessários para os três tipos de questão.
+7. Incluir justificativa no exemplo.
+8. Não quebrar o layout em telas pequenas.
+
+Tarefa 6, remover campo questões por prova
+
+Problema
+
+O campo genérico questões por prova não deve mais existir.
+
+Regra nova
+
+A quantidade total da prova deve ser calculada somente pela quantidade escolhida por tipo.
+
+Tipos
+
+1. Objetivas
+2. Verdadeiro ou falso
+3. Dissertativas
+
+Critérios de aceite
+
+1. Remover campo questões por prova da interface.
+2. Remover dependência desse campo no backend.
+3. Calcular total pela soma dos tipos.
+4. Validar que pelo menos uma quantidade seja maior que zero.
+5. Respeitar disponibilidade de questões auditadas por tipo.
+6. Se o usuário pedir mais questões do que existem em um tipo, exibir erro claro.
+7. A numeração final deve seguir a ordem objetiva, verdadeiro ou falso, dissertativa.
+
+Exemplo de numeração
+
+5 objetivas geram questões 1 a 5.
+5 verdadeiro ou falso geram questões 6 a 10.
+As dissertativas começam depois disso.
+
+Tarefa 7, corrigir PDF para que todas as provas tenham a mesma quantidade par de frentes
+
+Problema
+
+O sistema gerou um PDF com quantidade irregular de páginas. Isso quebra a lógica de impressão frente e verso e também quebra a lógica única de grampeamento.
+
+O usuário quer mandar uma única regra de grampeamento para o lote inteiro.
+
+Por isso, não basta cada prova ter número par de frentes. Todas as provas do mesmo lote precisam ter exatamente a mesma quantidade de frentes.
+
+Regra nova
+
+Cada prova individual deve ter a mesma quantidade de frentes.
+
+Essa quantidade deve ser calculada assim.
+
+1. Gerar ou simular todas as provas do lote.
+2. Descobrir qual prova ficou com mais páginas.
+3. Se a maior quantidade for ímpar, arredondar para o próximo número par mas lembrando de deixar o gabarito sempre na uyltima pagina.
+4. Usar esse número como tamanho fixo de todas as provas do lote.
+5. Completar as provas menores com páginas totalmente vazias até chegarem ao mesmo tamanho.
+
+Exemplos
+
+Se o Set A tiver 5 páginas, o tamanho padrão do lote vira 6 páginas.
+
+Se o Set B tiver 4 páginas, ele também deve virar 6 páginas.
+
+Se o Set C tiver 6 páginas, ele continua com 6 páginas.
+
+Assim, todas as provas terão 6 frentes, ou seja, 3 folhas frente e verso.
+
+Com isso, o usuário pode mandar uma única regra de grampeamento, a cada 3 folhas.
+
+Outro exemplo
+
+Se as provas tiverem estes tamanhos antes do ajuste.
+
+Set A, 3 páginas.
+Set B, 4 páginas.
+Set C, 7 páginas.
+
+A maior prova tem 7 páginas.
+
+Como 7 é ímpar, o tamanho padrão vira 8 páginas.
+
+Todas as provas devem ficar com 8 páginas.
+
+Set A recebe 5 páginas vazias.
+Set B recebe 4 páginas vazias.
+Set C recebe 1 página vazia.
+
+Comportamento esperado
+
+1. Cada prova individual deve ser tratada como um bloco independente.
+2. Todas as provas do mesmo lote devem ter a mesma quantidade de páginas.
+3. Essa quantidade deve ser sempre par.
+4. O tamanho fixo do lote deve ser baseado na maior prova gerada.
+5. Provas menores devem receber páginas vazias no final.
+6. A página vazia deve ser realmente vazia.
+7. A página vazia não deve ter texto, cabeçalho, rodapé, logo ou numeração visível.
+8. A próxima prova só pode começar depois do bloco fixo da prova anterior terminar.
+9. Uma prova nunca pode começar no verso ou no espaço reservado da prova anterior.
+10. Se houver cópias de sets, cada cópia também deve respeitar o mesmo tamanho fixo do lote.
+
+Exemplo prático
+
+Tenho 8 sets de prova.
+Quero 2 cópias de cada set.
+Isso gera 16 provas individuais.
+
+O sistema deve calcular quantas páginas cada uma das 16 provas teria.
+
+Depois deve encontrar a maior quantidade de páginas.
+
+Se a maior tiver 5 páginas, o tamanho padrão do lote será 6 páginas.
+
+Então todas as 16 provas devem ter 6 páginas.
+
+Mesmo uma prova que originalmente teria 4 páginas deve receber 2 páginas vazias.
+
+Assim, na impressão frente e verso, cada prova terá 3 folhas.
+
+O grampeamento poderá ser feito sempre a cada 3 folhas.
+
+Critérios de aceite
+
+1. Todas as provas do lote devem ter a mesma quantidade de páginas.
+2. Essa quantidade deve ser par.
+3. O tamanho padrão deve ser calculado a partir da maior prova do lote.
+4. Se a maior prova tiver número ímpar de páginas, arredondar para o próximo número par.
+5. Provas menores devem receber páginas vazias até alcançar o tamanho padrão.
+6. As páginas vazias devem ser totalmente vazias.
+7. A regra deve funcionar para múltiplos sets.
+8. A regra deve funcionar para múltiplas cópias de cada set.
+9. A regra deve funcionar no PDF combinado.
+10. Se existir PDF por set, ele também deve respeitar a mesma lógica quando fizer parte de um lote.
+11. A imagem EvalBee e o gabarito devem respeitar essa separação.
+12. O PDF final deve permitir uma única lógica de grampeamento para o lote inteiro.
+13. O sistema deve evitar que provas tenham tamanhos diferentes dentro do mesmo lote.
+Tarefa 8, criar fila para auditoria individual
+
+Problema
+
+Ao clicar várias vezes em auditar, a função pode bugar ou não concluir corretamente.
+
+Comportamento esperado
+
+A auditoria deve entrar em uma fila de tarefas.
+
+Escopo
+
+1. A auditoria é individual.
+2. Não implementar auditoria em lote agora.
+3. Cada tarefa audita uma questão.
+4. A fila precisa continuar enquanto o servidor estiver rodando.
+5. Não precisa sobreviver a reinício do servidor.
+
+Critérios de aceite
+
+1. Clicar em auditar cria uma tarefa na fila.
+2. Cliques repetidos na mesma questão não criam tarefas duplicadas.
+3. A tarefa deve continuar mesmo se o usuário sair da tela.
+4. Ao voltar para a tela, o status deve aparecer atualizado.
+5. Status esperados, aguardando, processando, concluída, erro, cancelada.
+6. A fila deve ficar visível no topo da tela.
+7. A fila pode aparecer como toast fixo, painel superior ou notificação global persistente.
+8. O usuário deve poder cancelar tarefa.
+9. Se a tarefa for cancelada antes de iniciar, ela não deve rodar.
+10. Se a tarefa já estiver processando, marcar como cancelada e ignorar resultado se não for seguro interromper a chamada.
+11. Se houver erro, salvar mensagem de erro e mostrar ao usuário.
+12. Não deixar múltiplos cliques travarem a interface.
+
+Tarefa 9, criar fila para geração de questões com IA
+
+Problema
+
+A geração de questões com IA deve ser mais robusta e não depender da permanência do usuário na tela.
+
+Comportamento esperado
+
+Ao clicar em gerar questões, a solicitação entra na fila.
+
+Escopo
+
+1. A fila precisa continuar enquanto o servidor estiver rodando.
+2. Não precisa sobreviver a reinício do servidor.
+3. Deve funcionar para geração com IA já existente.
+4. Deve preservar os dados preenchidos pelo usuário.
+
+Critérios de aceite
+
+1. Clicar em gerar questões cria tarefa na fila.
+2. Cliques repetidos não devem duplicar a mesma solicitação.
+3. A geração deve continuar mesmo se o usuário sair da tela.
+4. Ao voltar, o status deve estar visível.
+5. Status esperados, aguardando, processando, concluída, erro, cancelada.
+6. A fila deve ficar visível no topo da tela.
+7. O usuário deve poder cancelar geração.
+8. Se a geração for cancelada antes de iniciar, ela não deve rodar.
+9. Se já estiver processando, marcar como cancelada e ignorar resultado se não for seguro abortar a chamada externa.
+10. Se a geração falhar, o usuário deve conseguir tentar novamente.
+11. O tema, disciplina, provedor e quantidades não podem ser apagados em caso de erro.
+12. Questões geradas só devem ser salvas após conclusão válida e revisão humana, mantendo a política já existente do projeto.
+
+Tarefa 10, preservar dados dos formulários após erro
+
+Problema
+
+Quando ocorre erro em geração, auditoria, criação ou envio, os campos preenchidos não devem resetar.
+
+Critérios de aceite
+
+1. Tema digitado deve permanecer após erro.
+2. Disciplina selecionada deve permanecer após erro.
+3. Provedor de IA selecionado deve permanecer após erro.
+4. Quantidade de objetivas deve permanecer após erro.
+5. Quantidade de verdadeiro ou falso deve permanecer após erro.
+6. Quantidade de dissertativas deve permanecer após erro.
+7. Tipo de questão selecionado deve permanecer após erro.
+8. Campos de enunciado, alternativas, resposta e justificativa devem permanecer após erro.
+9. Mensagem de erro deve aparecer sem limpar a tela.
+10. O usuário deve conseguir corrigir e tentar novamente.
+
+Tarefa 11, atualizar documentação do projeto
+
+Após implementar, atualizar os documentos relevantes.
+
+Atualizar quando fizer sentido
+
+PROJECT_CONTEXT.md
+SESSION_LOG.md
+DECISIONS.md
+TODO.md
+BACKLOG.md
+DATA_MODEL.md
+SCREEN_MAP.md
+EXPORTS_EVALBEE.md
+AI_GENERATION.md
+
+Registrar
+
+1. Mudanças feitas.
+2. Decisões técnicas.
+3. Como funciona a fila.
+4. Como funciona o limite de 4 frentes.
+5. Como ficaram JSON e CSV.
+6. Como a justificativa foi integrada.
+7. Resultados dos comandos de validação.
+
+Regras finais
+
+1. Não alterar escopo de correção automática.
+2. Não criar login.
+3. Não criar prova online.
+4. Não integrar com UniFil.
+5. Não automatizar marcação de bolhas EvalBee.
+6. Não fazer grande reescrita visual.
+7. Resolver primeiro os bugs e fluxos listados.
+8. Ao final, entregar resumo objetivo do que foi alterado e quais arquivos principais foram modificados.
+Problema
+
+Critérios de aceite
+
+6. A auditoria não pode perder dados ao abrir ou fechar modal.
+1. Questões objetivas devem mostrar justificativa.
+2. Questões verdadeiro ou falso devem mostrar justificativa.
+5. Se a questão não tiver justificativa, mostrar estado vazio discreto ou texto neutro.
+

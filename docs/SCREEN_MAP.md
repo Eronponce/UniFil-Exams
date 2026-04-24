@@ -45,11 +45,20 @@ Mapa funcional de telas para orientar a implementacao futura.
 - Marcar como auditada.
 
 ## Geracao IA
-- Seletor de disciplina.
-- Seletor de provedor: Qwen local, Claude API, Gemini API.
-- Campo de tema/competencia.
-- Resultado estruturado editavel.
-- Botao salvar no banco apenas apos validacao.
+- Seletor de disciplina, tipo de questão e provedor.
+- Campo de tema/competência.
+- Resultado estruturado editável com justificativa.
+- Botão salvar no banco apenas após validação.
+- Botão "Gerar questões na fila" para geração assíncrona via fila.
+
+## Fila de Tarefas (QueuePanel)
+- Componente fixo canto inferior direito (z-index 9999).
+- Exibe até 50 tarefas recentes (audit + ai-generate + ai-generate-single).
+- Expansível/recolhível.
+- Badges por status: pending (amarelo), processing (azul pulsando), done (verde), error (vermelho), cancelled (cinza).
+- Botão cancelar para pending/processing.
+- Link "Ver" → `/ai/import?task=[id]` para lotes concluídos.
+- Link "Ver" → `/ai?task=[id]` para geração individual concluída.
 
 ## Montagem de Prova
 - Selecionar disciplina.

@@ -235,6 +235,7 @@ const s = StyleSheet.create({
   blankLine: { borderBottom: "0.5pt solid #aaaaaa", height: BLANK_LINE_H, marginBottom: 2 },
   akPage: { padding: PAGE_PADDING, backgroundColor: "#ffffff" },
   akImageWrap: { flex: 1, justifyContent: "flex-end", alignItems: "center", paddingBottom: PAGE_PADDING },
+  blankPage: { backgroundColor: "#ffffff" },
 });
 
 function Header({ title, institution, setLabel, logoBuf }: { title: string; institution: string; setLabel: string; logoBuf: Buffer | null }) {
@@ -331,7 +332,7 @@ function AnswerKeyPage({ gabaritoBuf }: { gabaritoBuf: Buffer | null }) {
   );
 }
 
-function renderSet(set: ExamSet, exam: Exam, logoBuf: Buffer | null, gabaritoBuf: Buffer | null): React.ReactElement[] {
+function prepareSetSections(set: ExamSet): SectionDefinition[] {
   const allProcessed: ProcessedQ[] = set.questions
     .sort((a, b) => a.position - b.position)
     .map((sq) => {
@@ -372,9 +373,23 @@ function renderSet(set: ExamSet, exam: Exam, logoBuf: Buffer | null, gabaritoBuf
       qs: dissertativas,
     });
   }
+  return sections;
+}
 
+function renderSet(
+  set: ExamSet,
+  exam: Exam,
+  logoBuf: Buffer | null,
+  gabaritoBuf: Buffer | null,
+  targetTotalPages: number,
+): React.ReactElement[] {
+  const sections = prepareSetSections(set);
   const questionPages = buildQuestionPages(sections);
-  const elements = questionPages.map((page, pageIndex) => (
+
+  // targetTotalPages = question pages + blank pads + 1 (gabarito, last)
+  const blanksNeeded = Math.max(0, targetTotalPages - 1 - questionPages.length);
+
+  const elements: React.ReactElement[] = questionPages.map((page, pageIndex) => (
     <Page key={`${set.id}-page-${pageIndex}`} size="A4" style={s.page}>
       <Text style={s.setLabel}>{set.label}</Text>
       <Header title={exam.title} institution={exam.institution} setLabel={set.label} logoBuf={logoBuf} />
@@ -395,12 +410,21 @@ function renderSet(set: ExamSet, exam: Exam, logoBuf: Buffer | null, gabaritoBuf
     </Page>
   ));
 
-  if (questionPages.length % 2 === 0) {
-    elements.push(<Page key={`${set.id}-blank`} size="A4" style={s.page}><View /></Page>);
+  // Add blank pages to reach targetTotalPages - 1 (before the gabarito)
+  for (let i = 0; i < blanksNeeded; i++) {
+    elements.push(<Page key={`${set.id}-blank-${i}`} size="A4" style={s.blankPage}><View /></Page>);
   }
 
+  // Gabarito always last
   elements.push(<AnswerKeyPage key={`${set.id}-ak`} gabaritoBuf={gabaritoBuf} />);
   return elements;
+}
+
+export function computeUniformTargetTotalPages(questionPageCounts: number[]): number {
+  const maxQPages = Math.max(...questionPageCounts, 1);
+  let targetTotal = maxQPages + 1;
+  if (targetTotal % 2 !== 0) targetTotal += 1;
+  return targetTotal;
 }
 
 export function ExamPdf({ exam }: { exam: Exam }) {
@@ -408,9 +432,14 @@ export function ExamPdf({ exam }: { exam: Exam }) {
   const gabaritoBuf = getGabaritoBuf(exam.id);
   const sets = [...exam.sets].sort((a, b) => a.label.localeCompare(b.label));
 
+  // Two-pass: compute question page count per set, find max, compute uniform target
+  const sectionsBySet = sets.map((set) => prepareSetSections(set));
+  const questionPageCounts = sectionsBySet.map((sections) => buildQuestionPages(sections).length);
+  const targetTotal = computeUniformTargetTotalPages(questionPageCounts);
+
   return (
     <Document>
-      {sets.flatMap((set) => renderSet(set, exam, logoBuf, gabaritoBuf))}
+      {sets.flatMap((set) => renderSet(set, exam, logoBuf, gabaritoBuf, targetTotal))}
     </Document>
   );
 }
@@ -418,5 +447,28 @@ export function ExamPdf({ exam }: { exam: Exam }) {
 export async function renderExamPdf(exam: Exam): Promise<Buffer> {
   const { renderToBuffer } = await import("@react-pdf/renderer");
   const element = React.createElement(ExamPdf, { exam }) as React.ReactElement<DocumentProps>;
+  return renderToBuffer(element) as Promise<Buffer>;
+}
+
+export function ExamSetPdf({ exam, setId }: { exam: Exam; setId: number }) {
+  const logoBuf = getLogoBuf();
+  const gabaritoBuf = getGabaritoBuf(exam.id);
+  const sets = [...exam.sets].sort((a, b) => a.label.localeCompare(b.label));
+  const targetSet = sets.find((set) => set.id === setId);
+  if (!targetSet) return <Document />;
+
+  const questionPageCounts = sets.map((set) => buildQuestionPages(prepareSetSections(set)).length);
+  const targetTotal = computeUniformTargetTotalPages(questionPageCounts);
+
+  return (
+    <Document>
+      {renderSet(targetSet, exam, logoBuf, gabaritoBuf, targetTotal)}
+    </Document>
+  );
+}
+
+export async function renderExamSetPdf(exam: Exam, setId: number): Promise<Buffer> {
+  const { renderToBuffer } = await import("@react-pdf/renderer");
+  const element = React.createElement(ExamSetPdf, { exam, setId }) as React.ReactElement<DocumentProps>;
   return renderToBuffer(element) as Promise<Buffer>;
 }

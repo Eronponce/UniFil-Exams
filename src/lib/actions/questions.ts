@@ -17,7 +17,14 @@ async function saveImage(file: File): Promise<string> {
   return `/uploads/questions/${filename}`;
 }
 
-export async function createQuestionAction(formData: FormData) {
+export interface QuestionFormState {
+  error?: string;
+}
+
+export async function createQuestionAction(
+  _prev: QuestionFormState | undefined,
+  formData: FormData
+): Promise<QuestionFormState | undefined> {
   const disciplineId = Number(formData.get("disciplineId"));
   const statement = (formData.get("statement") as string | null)?.trim() ?? "";
   const questionType = ((formData.get("questionType") as string | null) ?? "objetiva") as QuestionType;
@@ -27,11 +34,7 @@ export async function createQuestionAction(formData: FormData) {
   const explanation = (formData.get("explanation") as string | null)?.trim() || "";
 
   if (!disciplineId || !statement) {
-    redirectWithToast("/questions/new?error=campos-obrigatorios", {
-      type: "error",
-      title: "Campos obrigatórios",
-      description: "Disciplina e enunciado são obrigatórios.",
-    });
+    return { error: "Disciplina e enunciado são obrigatórios." };
   }
 
   let options: string[];
@@ -41,11 +44,7 @@ export async function createQuestionAction(formData: FormData) {
   if (questionType === "objetiva") {
     options = [0, 1, 2, 3, 4].map((i) => (formData.get(`option${i}`) as string | null)?.trim() ?? "");
     if (options.some((o) => !o)) {
-      redirectWithToast("/questions/new?error=campos-obrigatorios", {
-        type: "error",
-        title: "Alternativas incompletas",
-        description: "Preencha as cinco alternativas da questão objetiva.",
-      });
+      return { error: "Preencha as cinco alternativas da questão objetiva." };
     }
     correctIndex = Number(formData.get("correctIndex"));
   } else if (questionType === "verdadeiro_falso") {
@@ -73,7 +72,10 @@ export async function createQuestionAction(formData: FormData) {
   });
 }
 
-export async function updateQuestionAction(formData: FormData) {
+export async function updateQuestionAction(
+  _prev: QuestionFormState | undefined,
+  formData: FormData
+): Promise<QuestionFormState | undefined> {
   const id = Number(formData.get("id"));
   const statement = (formData.get("statement") as string | null)?.trim();
   const questionType = ((formData.get("questionType") as string | null) ?? "objetiva") as QuestionType;
