@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, Image, StyleSheet, type DocumentProps } from "@react-pdf/renderer";
 import type { Exam, ExamSet, QuestionType } from "@/types";
+import { MarkdownStatement, estimateMarkdownH } from "@/lib/pdf/markdown-pdf";
 import { getQuestion } from "@/lib/db/questions";
 import fs from "fs";
 import path from "path";
@@ -58,7 +59,7 @@ interface NumberedQ extends ProcessedQ {
 
 interface SectionDefinition {
   key: string;
-  title: string;
+  title: string | null;
   layout: "two" | "single";
   qs: ProcessedQ[];
 }
@@ -83,20 +84,17 @@ interface BuiltPage {
 }
 
 function estimateObjetivaH(statement: string, options: string[]): number {
-  const statLines = Math.max(1, Math.ceil(statement.length / CHARS_PER_LINE));
-  const statH = (1 + statLines) * 14;
+  const statH = estimateMarkdownH(statement, CHARS_PER_LINE) + 14;
   const optH = options.reduce((sum, option) => sum + Math.ceil(option.length / CHARS_PER_OPT_LINE) * 13, 0);
   return statH + optH + 14;
 }
 
 function estimateVFH(statement: string): number {
-  const statLines = Math.max(1, Math.ceil(statement.length / CHARS_PER_LINE));
-  return (1 + statLines) * 14 + 2 * 13 + 14;
+  return estimateMarkdownH(statement, CHARS_PER_LINE) + 14 + 2 * 13 + 14;
 }
 
 function estimateDissertativaH(statement: string, answerLines: number): number {
-  const statLines = Math.max(1, Math.ceil(statement.length / (CHARS_PER_LINE * 2)));
-  return (1 + statLines) * 14 + (answerLines || 5) * BLANK_LINE_H + 20;
+  return estimateMarkdownH(statement, CHARS_PER_LINE * 2) + 14 + (answerLines || 5) * BLANK_LINE_H + 20;
 }
 
 function estimateQuestionHeight(q: ProcessedQ): number {
@@ -177,7 +175,7 @@ function buildQuestionPages(sections: SectionDefinition[]): BuiltPage[] {
     let isFirstChunk = true;
 
     while (remainingQs.length > 0) {
-      const titleCost = isFirstChunk ? SECTION_DIVIDER_H : 0;
+      const titleCost = isFirstChunk && section.title ? SECTION_DIVIDER_H : 0;
       const availableHeight = remainingHeight - titleCost;
       if (availableHeight <= 0) {
         pushPage();
@@ -188,13 +186,13 @@ function buildQuestionPages(sections: SectionDefinition[]): BuiltPage[] {
         const packed = packTwoColumnChunk(remainingQs, availableHeight);
         const col1 = packed.col1.map((q) => ({ ...q, displayNumber: ++globalNumber }));
         const col2 = packed.col2.map((q) => ({ ...q, displayNumber: ++globalNumber }));
-        currentPage.segments.push({ kind: "two", title: isFirstChunk ? section.title : undefined, col1, col2 });
+        currentPage.segments.push({ kind: "two", title: isFirstChunk ? (section.title ?? undefined) : undefined, col1, col2 });
         remainingHeight -= titleCost + packed.consumedHeight;
         remainingQs = remainingQs.slice(packed.usedCount);
       } else {
         const packed = packSingleColumnChunk(remainingQs, availableHeight);
         const qs = packed.items.map((q) => ({ ...q, displayNumber: ++globalNumber }));
-        currentPage.segments.push({ kind: "single", title: isFirstChunk ? section.title : undefined, qs });
+        currentPage.segments.push({ kind: "single", title: isFirstChunk ? (section.title ?? undefined) : undefined, qs });
         remainingHeight -= titleCost + packed.consumedHeight;
         remainingQs = remainingQs.slice(packed.usedCount);
       }
@@ -266,7 +264,7 @@ function QuestionView({ q }: { q: NumberedQ }) {
     <View style={s.question}>
       <View style={s.qHeader}>
         <Text style={s.qNum}>{q.displayNumber}.</Text>
-        <Text style={s.statement}>{q.statement}</Text>
+        <MarkdownStatement text={q.statement} />
       </View>
       {/* eslint-disable-next-line jsx-a11y/alt-text */}
       {q.imageBuf && <Image src={q.imageBuf} style={s.qImage} />}
@@ -287,7 +285,7 @@ function VFQuestionView({ q }: { q: NumberedQ }) {
     <View style={s.question}>
       <View style={s.qHeader}>
         <Text style={s.qNum}>{q.displayNumber}.</Text>
-        <Text style={s.statement}>{q.statement}</Text>
+        <MarkdownStatement text={q.statement} />
       </View>
       <View style={s.vfRow}>
         {opts.map((origIdx, pos) => (
@@ -307,7 +305,7 @@ function DissertativaQuestionView({ q }: { q: NumberedQ }) {
     <View style={s.question}>
       <View style={s.qHeader}>
         <Text style={s.qNum}>{q.displayNumber}.</Text>
-        <Text style={s.statement}>{q.statement}</Text>
+        <MarkdownStatement text={q.statement} />
       </View>
       {Array.from({ length: lines }).map((_, index) => (
         <View key={index} style={s.blankLine} />
@@ -359,22 +357,9 @@ function prepareSetSections(set: ExamSet): SectionDefinition[] {
   const dissertativas = allProcessed.filter((q) => q.questionType === "dissertativa");
 
   const sections: SectionDefinition[] = [];
-  if (objetivas.length) sections.push({ key: "obj", title: "I. Questões Objetivas", layout: "two", qs: objetivas });
-  if (vf.length) sections.push({
-    key: "vf",
-    title: `${sections.length === 0 ? "I" : "II"}. Questões de Verdadeiro ou Falso`,
-    layout: "two",
-    qs: vf,
-  });
-  if (dissertativas.length) {
-    const numeral = sections.length === 0 ? "I" : sections.length === 1 ? "II" : "III";
-    sections.push({
-      key: "diss",
-      title: `${numeral}. Questões Dissertativas`,
-      layout: "single",
-      qs: dissertativas,
-    });
-  }
+  const combined = [...objetivas, ...vf];
+  if (combined.length) sections.push({ key: "obj_vf", title: null, layout: "two", qs: combined });
+  if (dissertativas.length) sections.push({ key: "diss", title: "Questões Dissertativas", layout: "single", qs: dissertativas });
   return sections;
 }
 

@@ -6,6 +6,7 @@ import { getQuestion } from "@/lib/db/questions";
 import { getDiscipline } from "@/lib/db/disciplines";
 import { auditQuestionAction, deleteQuestionAction } from "@/lib/actions/questions";
 import { ConfirmButton } from "@/components/confirm-button";
+import { MarkdownText } from "@/components/markdown-text";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -52,7 +53,7 @@ export default async function QuestionPage({ params }: { params: Promise<{ id: s
           </span>
         </div>
 
-        <p className="question-statement">{question.statement}</p>
+        <div className="question-statement"><MarkdownText text={question.statement} /></div>
 
         {question.imageUrl && (
           <div style={{ marginBottom: "1.25rem" }}>

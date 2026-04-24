@@ -6,6 +6,7 @@ import { AuditCardActions } from "./_components/audit-card-actions";
 import { AuditPendingActions } from "./_components/audit-pending-actions";
 
 import type { Question } from "@/types";
+import { MarkdownText } from "@/components/markdown-text";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -83,7 +84,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
               <div key={q.id} className="card">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, marginBottom: "0.75rem", lineHeight: 1.5 }}>{q.statement}</p>
+                    <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}><MarkdownText text={q.statement} /></div>
                     <OptionsDisplay q={q} />
                     <ExplanationDisplay q={q} />
                   </div>
@@ -117,7 +118,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
               <div key={q.id} className="card" style={{ opacity: 0.85 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 500, marginBottom: "0.5rem", lineHeight: 1.5, fontSize: "0.9rem" }}>{q.statement}</p>
+                    <div style={{ fontWeight: 500, marginBottom: "0.5rem", fontSize: "0.9rem" }}><MarkdownText text={q.statement} /></div>
                     <OptionsDisplay q={q} />
                     <ExplanationDisplay q={q} />
                   </div>

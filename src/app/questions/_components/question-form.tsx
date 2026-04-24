@@ -6,6 +6,7 @@ import type { Question, QuestionType } from "@/types";
 import type { QuestionFormState } from "@/lib/actions/questions";
 import { makeQuestionDraft, useWorkspaceStore } from "@/lib/state/workspace-store";
 import type { QuestionDraft } from "@/lib/state/workspace-store";
+import { MarkdownText } from "@/components/markdown-text";
 
 interface Discipline { id: number; name: string }
 
@@ -42,6 +43,7 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
 
   // questionType: from store when draftKey present, else local state
   const [localType, setLocalType] = useState<QuestionType>(question?.questionType ?? "objetiva");
+  const [showMdPreview, setShowMdPreview] = useState(false);
   const questionType = stored ? stored.questionType : localType;
 
   const [state, formAction, isPending] = useActionState(action, undefined);
@@ -106,14 +108,25 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="statement">Enunciado *</label>
-            <textarea
-              id="statement" name="statement" className="form-textarea" rows={4} required
-              {...(stored
-                ? { value: stored.statement, onChange: (e) => upd({ statement: e.target.value }) }
-                : { defaultValue: question?.statement ?? "" }
-              )}
-            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
+              <label className="form-label" htmlFor="statement" style={{ marginBottom: 0 }}>Enunciado *</label>
+              <button type="button" onClick={() => setShowMdPreview((v) => !v)} style={{ fontSize: "0.75rem", opacity: 0.6, background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}>
+                {showMdPreview ? "← editar" : "preview MD"}
+              </button>
+            </div>
+            {showMdPreview ? (
+              <div style={{ minHeight: 96, border: "1px solid var(--border)", borderRadius: 6, padding: "0.5rem 0.75rem", background: "#fafafa" }}>
+                <MarkdownText text={stored?.statement ?? question?.statement ?? ""} />
+              </div>
+            ) : (
+              <textarea
+                id="statement" name="statement" className="form-textarea" rows={4} required
+                {...(stored
+                  ? { value: stored.statement, onChange: (e) => upd({ statement: e.target.value }) }
+                  : { defaultValue: question?.statement ?? "" }
+                )}
+              />
+            )}
           </div>
 
           {questionType === "objetiva" && (

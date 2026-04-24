@@ -111,6 +111,37 @@ Data: 2026-04-22
 
 ---
 
+## US-17 · Mesclar Objetiva + V/F no PDF (sem cabeçalho separado)
+
+**Como** professor, **quero** que questões objetivas e V/F fluam em sequência contínua sem cabeçalho de seção separado,
+**para** economizar espaço no PDF e deixar a prova mais compacta.
+
+**Critérios de aceite:**
+- Objetiva e V/F são empacotadas em uma única seção two-column sem título
+- Dissertativa mantém seu cabeçalho "Questões Dissertativas"
+- Numeração global contínua (1, 2, 3… independente do tipo)
+- PDFs com apenas objetivas ou apenas V/F também funcionam sem nenhum cabeçalho
+
+**Status:** ✅ Implementado (2026-04-24)
+
+---
+
+## US-18 · Markdown nos enunciados das questões
+
+**Como** professor, **quero** escrever enunciados com Markdown (negrito, tabelas, código, listas),
+**para** criar questões ricas com formatação no PDF e na interface web.
+
+**Critérios de aceite:**
+- Campo `statement` aceita Markdown (GFM: tabelas, negrito, itálico, código inline, blocos de código, listas)
+- PDF renderiza Markdown via MDAST → react-pdf (sem depender de DOM)
+- Web (auditoria, visualização de questão) renderiza via `react-markdown` + `remark-gfm`
+- Formulário de questão tem botão "preview MD" para ver o enunciado formatado antes de salvar
+- Estimativa de altura da questão no PDF leva em conta estrutura Markdown (tabelas, listas)
+
+**Status:** ✅ Implementado (2026-04-24)
+
+---
+
 ## Backlog Futuro
 
 | ID | Descrição | Prioridade |
