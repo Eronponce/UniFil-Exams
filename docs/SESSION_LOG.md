@@ -183,3 +183,19 @@
 - `/api/queue/[taskId]` agora tem `GET` para status individual.
 - `QueuePanel` fica sempre visivel no rodape, inicia aberto, faz polling a cada 1 s e chama `router.refresh()` quando tarefa termina.
 - `/ai` e `/ai/import` fazem polling do task ativo e carregam resultado automaticamente quando fica pronto.
+
+## 2026-04-24 — Persistência de estado entre telas
+
+### Plano Obsidian
+- Criada nota [[WORKSPACE_STATE_PLAN]] para documentar objetivo, arquitetura, fases, riscos e critérios de aceite.
+- Decisão registrada em [[DECISIONS]]: o equivalente de Pinia no projeto é Zustand com middleware `persist`.
+
+### Implementação
+- Dependência `zustand` instalada.
+- `src/lib/state/workspace-store.ts` criado com slices para IA individual, importação em lote, montagem de prova e rascunhos futuros de questões.
+- `/ai` preserva disciplina, provedor, tipo, modelo Ollama, tópico e `queuedTaskId`.
+- `/ai/import` preserva disciplina, provedor, tipo, modelo Ollama, texto bruto e `queuedTaskId`.
+- `/exams` usa `ExamDraftFields` client-side para preservar título, instituição, sets e quantidades por tipo.
+
+### Pendente consciente
+- `/questions/new` ainda não foi conectado ao store. O shape existe, mas precisa cuidado para não persistir uploads/imagens.

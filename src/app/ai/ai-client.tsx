@@ -7,6 +7,7 @@ import type { GenerationResult } from "@/lib/ai/generate";
 import { createQuestionAction } from "@/lib/actions/questions";
 import { enqueueSingleAiGenerationAction } from "@/lib/actions/queue-actions";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
+import { makeSingleAiDraft, useWorkspaceStore } from "@/lib/state/workspace-store";
 import { AITracePanel } from "@/components/ai-trace-panel";
 import { useToast } from "@/components/toast-provider";
 
@@ -14,13 +15,12 @@ const LETTERS = ["A", "B", "C", "D", "E"];
 
 export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipline[]; initialTaskId?: string }) {
   const [state, setState] = useState<GenerationState>({});
-  const [topic, setTopic] = useState("");
-  const [disciplineId, setDisciplineId] = useState(String(disciplines[0]?.id ?? ""));
-  const [provider, setProvider] = useState("ollama");
-  const [questionType, setQuestionType] = useState<QuestionType>("objetiva");
-  const [ollamaModel, setOllamaModel] = useState("");
   const [pending, setPending] = useState(false);
-  const [queuedTaskId, setQueuedTaskId] = useState<string | null>(initialTaskId ?? null);
+  const { singleAi, updateSingleAi, resetSingleAi } = useWorkspaceStore();
+  const defaultDisciplineId = String(disciplines[0]?.id ?? "");
+  const draft = singleAi.disciplineId ? singleAi : makeSingleAiDraft(defaultDisciplineId);
+  const { disciplineId, provider, questionType, ollamaModel, topic } = draft;
+  const queuedTaskId = initialTaskId ?? draft.queuedTaskId;
   const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
   const { pushToast, updateToast } = useToast();
 
@@ -37,7 +37,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
           const task = await statusRes.json() as { status: string; errorMessage?: string };
           if (task.status === "error" || task.status === "cancelled") {
             setState((current) => ({ ...current, error: task.errorMessage ?? `Tarefa ${task.status}.` }));
-            setQueuedTaskId(null);
+            updateSingleAi({ queuedTaskId: null });
             return;
           }
           if (task.status === "done") {
@@ -47,10 +47,12 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
               const result = data.result as GenerationResult;
               const payload = data.payload as { disciplineId: number; topic?: string };
               setState({ result: { ...result.question, disciplineId: payload.disciplineId }, trace: result.trace });
-              setDisciplineId(String(payload.disciplineId));
-              setQuestionType(result.question.questionType);
-              if (payload.topic) setTopic(payload.topic);
-              setQueuedTaskId(null);
+              updateSingleAi({
+                disciplineId: String(payload.disciplineId),
+                questionType: result.question.questionType,
+                topic: payload.topic ?? topic,
+                queuedTaskId: null,
+              });
               return;
             }
           }
@@ -66,7 +68,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [queuedTaskId]);
+  }, [queuedTaskId, topic, updateSingleAi]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -93,7 +95,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
         return;
       }
       setState({});
-      setQueuedTaskId(taskId);
+      updateSingleAi({ queuedTaskId: taskId });
       updateToast(toastId, {
         type: "success",
         title: isNew ? "Tarefa criada" : "Tarefa já estava na fila",
@@ -122,7 +124,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
               <select
                 className="form-select"
                 value={disciplineId}
-                onChange={(e) => setDisciplineId(e.target.value)}
+                onChange={(e) => updateSingleAi({ disciplineId: e.target.value })}
                 required
               >
                 <option value="">Selecione…</option>
@@ -134,7 +136,10 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
               <select
                 className="form-select"
                 value={questionType}
-                onChange={(e) => { setQuestionType(e.target.value as QuestionType); setState({}); }}
+                onChange={(e) => {
+                  updateSingleAi({ questionType: e.target.value as QuestionType });
+                  setState({});
+                }}
               >
                 <option value="objetiva">Objetiva (A–E)</option>
                 <option value="verdadeiro_falso">Verdadeiro ou Falso</option>
@@ -145,7 +150,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
 
           <div className="form-group">
             <label className="form-label">Provedor IA</label>
-            <select className="form-select" value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <select className="form-select" value={provider} onChange={(e) => updateSingleAi({ provider: e.target.value })}>
               <option value="ollama">Qwen local (Ollama)</option>
               <option value="claude">Claude API</option>
               <option value="gemini">Gemini API</option>
@@ -158,7 +163,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
               {loadingModels ? (
                 <p style={{ fontSize: "0.82rem", opacity: 0.6 }}>Carregando modelos…</p>
               ) : ollamaModels.length > 0 ? (
-                <select className="form-select" value={ollamaModel} onChange={(e) => setOllamaModel(e.target.value)}>
+                <select className="form-select" value={ollamaModel} onChange={(e) => updateSingleAi({ ollamaModel: e.target.value })}>
                   <option value="">— padrão (.env) —</option>
                   {ollamaModels.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -168,7 +173,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
                     className="form-input"
                     placeholder={`Ex: qwen2.5:14b`}
                     value={ollamaModel}
-                    onChange={(e) => setOllamaModel(e.target.value)}
+                    onChange={(e) => updateSingleAi({ ollamaModel: e.target.value })}
                   />
                   {ollamaError && <p style={{ fontSize: "0.78rem", color: "#dc2626", marginTop: "0.25rem" }}>{ollamaError} — verifique se o Ollama está rodando</p>}
                 </div>
@@ -190,7 +195,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
               }
               required
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              onChange={(e) => updateSingleAi({ topic: e.target.value })}
             />
           </div>
 
@@ -208,6 +213,14 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
               Tarefa {queuedTaskId} registrada. Pode navegar pelo site; quando terminar, o resultado aparece aqui e no painel inferior.
             </p>
           )}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ marginTop: "0.75rem" }}
+            onClick={() => { resetSingleAi(defaultDisciplineId); setState({}); }}
+          >
+            Limpar rascunho
+          </button>
         </form>
       </div>
 

@@ -39,6 +39,7 @@ Use this note with [[SESSION_LOG]] and [[DECISIONS]] to track the latest request
 - [x] Criar notas Obsidian versionaveis: [[PROMPT_T1_T11_STATUS]] e [[OBSIDIAN_GITHUB]].
 
 ## Follow-up (pendente)
+- [ ] Conectar `/questions/new` ao `questionDrafts` do Zustand sem persistir upload/imagem.
 - [ ] Smoke manual no navegador dos fluxos de streaming com Ollama/Claude/Gemini reais.
 - [ ] Validar visualmente PDFs longos com combinações mistas de seção para ajustar densidade.
 - [ ] Testar QueuePanel no navegador com operações reais de auditoria e geração IA.

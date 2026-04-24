@@ -116,3 +116,8 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: store the in-memory task queue in `globalThis.__UNIFIL_EXAMS_TASK_QUEUE__` and register handlers lazily from Server Actions and queue API routes.
 - Reason: in Next.js dev/runtime bundling, Server Actions and Route Handlers can load separate module instances; a plain module-level `const queue = []` can make tasks invisible to `/api/queue`.
 - Impact: audit and AI tasks are visible to the bottom task panel, continue processing while navigating, and pages refresh when task status reaches a terminal state.
+
+## 2026-04-24 - Pinia Equivalent Is Zustand Persist
+- Decision: use Zustand with `persist` as the React/Next equivalent of Pinia for workspace UI state.
+- Reason: the user wants route changes to feel like tab/panel navigation, preserving drafts and active task ids while continuing to use server actions and SQLite as source of truth.
+- Impact: `/ai`, `/ai/import`, and `/exams` now keep draft fields in `localStorage` under `unifil-workspace-state`; manual question draft wiring remains a documented follow-up because file inputs must stay out of persisted state.

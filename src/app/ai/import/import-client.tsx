@@ -9,6 +9,7 @@ import type { QuestionType } from "@/types";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
 import { useToast } from "@/components/toast-provider";
 import { enqueueAiGenerationAction } from "@/lib/actions/queue-actions";
+import { makeBatchAiDraft, useWorkspaceStore } from "@/lib/state/workspace-store";
 
 interface Discipline { id: number; name: string }
 
@@ -30,14 +31,13 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [savedCount, setSavedCount] = useState(0);
   const [saveError, setSaveError] = useState<string>();
-  const [queuedTaskId, setQueuedTaskId] = useState<string | null>(initialTaskId ?? null);
+  const { batchAi, updateBatchAi, resetBatchAi } = useWorkspaceStore();
+  const defaultDisciplineId = String(disciplines[0]?.id ?? "");
+  const draft = batchAi.disciplineId ? batchAi : makeBatchAiDraft(defaultDisciplineId);
+  const { disciplineId, provider, questionType, rawText, ollamaModel } = draft;
+  const queuedTaskId = initialTaskId ?? draft.queuedTaskId;
 
   // Controlled inputs — preserved on error
-  const [disciplineId, setDisciplineId] = useState(String(disciplines[0]?.id ?? ""));
-  const [provider, setProvider] = useState("ollama");
-  const [questionType, setQuestionType] = useState<QuestionType>("objetiva");
-  const [rawText, setRawText] = useState("");
-  const [ollamaModel, setOllamaModel] = useState("");
   const [queueing, setQueueing] = useState(false);
   const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
   const { pushToast, updateToast } = useToast();
@@ -57,7 +57,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
           const task = await statusRes.json() as { status: string; errorMessage?: string };
           if (task.status === "error" || task.status === "cancelled") {
             setBatchState((current) => ({ ...current, error: task.errorMessage ?? `Tarefa ${task.status}.` }));
-            setQueuedTaskId(null);
+            updateBatchAi({ queuedTaskId: null });
             return;
           }
           if (task.status === "done") {
@@ -75,12 +75,14 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
               setBatchState({ disciplineId: payload.disciplineId, results: result.questions, trace: result.trace });
               setQuestions(result.questions);
               setSelected(new Set(result.questions.map((_, i) => i)));
-              setDisciplineId(String(payload.disciplineId));
-              if (payload.rawText) setRawText(payload.rawText);
-              if (payload.provider) setProvider(payload.provider);
-              if (payload.questionType) setQuestionType(payload.questionType);
-              if (payload.ollamaModel) setOllamaModel(payload.ollamaModel);
-              setQueuedTaskId(null);
+              updateBatchAi({
+                disciplineId: String(payload.disciplineId),
+                rawText: payload.rawText ?? rawText,
+                provider: payload.provider ?? provider,
+                questionType: payload.questionType ?? questionType,
+                ollamaModel: payload.ollamaModel ?? ollamaModel,
+                queuedTaskId: null,
+              });
               setStep("preview");
               return;
             }
@@ -97,7 +99,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [queuedTaskId]);
+  }, [ollamaModel, provider, questionType, queuedTaskId, rawText, updateBatchAi]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -123,7 +125,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
         updateToast(toastId, { type: "error", title: "Falha ao enfileirar", description: error });
         return;
       }
-      setQueuedTaskId(taskId);
+      updateBatchAi({ queuedTaskId: taskId });
       setBatchState((current) => ({ ...current, error: undefined, disciplineId: Number(disciplineId) }));
       updateToast(toastId, {
         type: "success",
@@ -195,7 +197,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
 
   function resetToInput() {
     setBatchState({}); setQuestions([]); setStep("input");
-    setSavedCount(0); setSaveError(undefined); setSelected(new Set()); setQueuedTaskId(null);
+    setSavedCount(0); setSaveError(undefined); setSelected(new Set()); resetBatchAi(defaultDisciplineId);
   }
 
   // ── Done ────────────────────────────────────────────────────────────────────
@@ -304,13 +306,13 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Disciplina *</label>
-              <select className="form-select" value={disciplineId} onChange={(e) => setDisciplineId(e.target.value)} required>
+              <select className="form-select" value={disciplineId} onChange={(e) => updateBatchAi({ disciplineId: e.target.value })} required>
                 {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
             <div className="form-group">
               <label className="form-label">Tipo de questão</label>
-              <select className="form-select" value={questionType} onChange={(e) => setQuestionType(e.target.value as QuestionType)}>
+              <select className="form-select" value={questionType} onChange={(e) => updateBatchAi({ questionType: e.target.value as QuestionType })}>
                 <option value="objetiva">Objetiva (A–E)</option>
                 <option value="verdadeiro_falso">Verdadeiro ou Falso</option>
                 <option value="dissertativa">Dissertativa</option>
@@ -320,7 +322,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
 
           <div className="form-group">
             <label className="form-label">Provedor IA</label>
-            <select className="form-select" value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <select className="form-select" value={provider} onChange={(e) => updateBatchAi({ provider: e.target.value })}>
               <option value="ollama">Ollama (local)</option>
               <option value="claude">Claude</option>
               <option value="gemini">Gemini</option>
@@ -333,7 +335,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
               {loadingModels ? (
                 <p style={{ fontSize: "0.82rem", opacity: 0.6 }}>Carregando modelos…</p>
               ) : ollamaModels.length > 0 ? (
-                <select className="form-select" value={ollamaModel} onChange={(e) => setOllamaModel(e.target.value)}>
+                <select className="form-select" value={ollamaModel} onChange={(e) => updateBatchAi({ ollamaModel: e.target.value })}>
                   <option value="">— padrão (.env) —</option>
                   {ollamaModels.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -343,7 +345,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
                     className="form-input"
                     placeholder="Ex: qwen2.5:14b"
                     value={ollamaModel}
-                    onChange={(e) => setOllamaModel(e.target.value)}
+                    onChange={(e) => updateBatchAi({ ollamaModel: e.target.value })}
                   />
                   {ollamaError && <p style={{ fontSize: "0.78rem", color: "#dc2626", marginTop: "0.25rem" }}>{ollamaError} — verifique se o Ollama está rodando</p>}
                 </div>
@@ -359,7 +361,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
               required
               placeholder={TYPE_PLACEHOLDER[questionType]}
               value={rawText}
-              onChange={(e) => setRawText(e.target.value)}
+              onChange={(e) => updateBatchAi({ rawText: e.target.value })}
             />
           </div>
 

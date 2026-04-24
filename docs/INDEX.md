@@ -33,3 +33,4 @@ Start here for project knowledge.
 - [[TODO|Active Todo]]
 - [[PROMPT_T1_T11_STATUS|Prompt T1-T11 Status]]
 - [[OBSIDIAN_GITHUB|Obsidian and GitHub Workflow]]
+- [[WORKSPACE_STATE_PLAN|Workspace State Persistence Plan]]
