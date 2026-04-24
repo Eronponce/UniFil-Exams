@@ -34,6 +34,7 @@ function getGabaritoBuf(examId: number): Buffer | null {
 
 const PAGE_PADDING = 42.52;
 const PAGE_H = 841.89;
+const PAGE_W = 595.28;
 const HEADER_H = 52;
 const SECTION_DIVIDER_H = 28;
 const AVAILABLE_COL_H = PAGE_H - PAGE_PADDING * 2 - HEADER_H;
@@ -322,11 +323,12 @@ function renderQuestion(q: NumberedQ) {
 }
 
 function AnswerKeyPage({ gabaritoBuf }: { gabaritoBuf: Buffer | null }) {
+  const answerKeyWidth = PAGE_W / 2;
   return (
     <Page size="A4" style={s.akPage}>
       <View style={s.akImageWrap}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        {gabaritoBuf && <Image src={gabaritoBuf} style={{ width: 149 }} />}
+        {gabaritoBuf && <Image src={gabaritoBuf} style={{ width: answerKeyWidth }} />}
       </View>
     </Page>
   );
