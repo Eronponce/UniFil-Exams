@@ -11,6 +11,7 @@ export default function NewQuestionPage() {
       action={createQuestionAction}
       cancelHref="/questions"
       title="Nova Questão"
+      draftKey="new"
     />
   );
 }

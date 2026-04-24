@@ -9,7 +9,7 @@ import type { QuestionType } from "@/types";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
 import { useToast } from "@/components/toast-provider";
 import { enqueueAiGenerationAction } from "@/lib/actions/queue-actions";
-import { makeBatchAiDraft, useWorkspaceStore } from "@/lib/state/workspace-store";
+import { useWorkspaceStore } from "@/lib/state/workspace-store";
 
 interface Discipline { id: number; name: string }
 
@@ -33,9 +33,16 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
   const [saveError, setSaveError] = useState<string>();
   const { batchAi, updateBatchAi, resetBatchAi } = useWorkspaceStore();
   const defaultDisciplineId = String(disciplines[0]?.id ?? "");
-  const draft = batchAi.disciplineId ? batchAi : makeBatchAiDraft(defaultDisciplineId);
-  const { disciplineId, provider, questionType, rawText, ollamaModel } = draft;
-  const queuedTaskId = initialTaskId ?? draft.queuedTaskId;
+
+  useEffect(() => {
+    if (!batchAi.disciplineId && defaultDisciplineId) {
+      updateBatchAi({ disciplineId: defaultDisciplineId });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { disciplineId, provider, questionType, rawText, ollamaModel, queuedTaskId: storedTaskId } = batchAi;
+  const queuedTaskId = initialTaskId ?? storedTaskId;
 
   // Controlled inputs — preserved on error
   const [queueing, setQueueing] = useState(false);

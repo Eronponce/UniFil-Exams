@@ -7,7 +7,7 @@ import type { GenerationResult } from "@/lib/ai/generate";
 import { createQuestionAction } from "@/lib/actions/questions";
 import { enqueueSingleAiGenerationAction } from "@/lib/actions/queue-actions";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
-import { makeSingleAiDraft, useWorkspaceStore } from "@/lib/state/workspace-store";
+import { useWorkspaceStore } from "@/lib/state/workspace-store";
 import { AITracePanel } from "@/components/ai-trace-panel";
 import { useToast } from "@/components/toast-provider";
 
@@ -18,9 +18,16 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
   const [pending, setPending] = useState(false);
   const { singleAi, updateSingleAi, resetSingleAi } = useWorkspaceStore();
   const defaultDisciplineId = String(disciplines[0]?.id ?? "");
-  const draft = singleAi.disciplineId ? singleAi : makeSingleAiDraft(defaultDisciplineId);
-  const { disciplineId, provider, questionType, ollamaModel, topic } = draft;
-  const queuedTaskId = initialTaskId ?? draft.queuedTaskId;
+
+  useEffect(() => {
+    if (!singleAi.disciplineId && defaultDisciplineId) {
+      updateSingleAi({ disciplineId: defaultDisciplineId });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { disciplineId, provider, questionType, ollamaModel, topic, queuedTaskId: storedTaskId } = singleAi;
+  const queuedTaskId = initialTaskId ?? storedTaskId;
   const { models: ollamaModels, loading: loadingModels, error: ollamaError } = useOllamaModels(provider === "ollama");
   const { pushToast, updateToast } = useToast();
 

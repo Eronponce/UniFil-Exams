@@ -38,11 +38,11 @@ export function ExamDraftFields({
   return (
     <>
       <div className="form-group">
-        <label className="form-label">TÃ­tulo *</label>
+        <label className="form-label">Título *</label>
         <input
           name="title"
           className="form-input"
-          placeholder="Ex: Prova 1 â€” POO 2026"
+          placeholder="Ex: Prova 1 — POO 2026"
           value={draft.title}
           onChange={(e) => updateExam({ title: e.target.value })}
           required
@@ -50,7 +50,7 @@ export function ExamDraftFields({
       </div>
 
       <div className="form-group">
-        <label className="form-label">InstituiÃ§Ã£o</label>
+        <label className="form-label">Instituição</label>
         <input
           name="institution"
           className="form-input"
@@ -78,13 +78,13 @@ export function ExamDraftFields({
           <div>
             <p style={{ fontWeight: 600, marginBottom: "0.2rem" }}>Quantidade por tipo</p>
             <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
-              Preencha para montar a prova com composiÃ§Ã£o fixa por categoria. Campo vazio = 0 quando qualquer tipo for usado.
+              Preencha para montar a prova com composição fixa por categoria. Campo vazio = 0 quando qualquer tipo for usado.
             </p>
           </div>
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-            <span className="badge" style={{ background: "#dbeafe" }}>Objetivas disponÃ­veis: {typeCounts.objetiva}</span>
-            <span className="badge" style={{ background: "#fef9c3" }}>V/F disponÃ­veis: {typeCounts.verdadeiro_falso}</span>
-            <span className="badge" style={{ background: "#f3e8ff" }}>Dissertativas disponÃ­veis: {typeCounts.dissertativa}</span>
+            <span className="badge" style={{ background: "#dbeafe" }}>Objetivas disponíveis: {typeCounts.objetiva}</span>
+            <span className="badge" style={{ background: "#fef9c3" }}>V/F disponíveis: {typeCounts.verdadeiro_falso}</span>
+            <span className="badge" style={{ background: "#f3e8ff" }}>Dissertativas disponíveis: {typeCounts.dissertativa}</span>
           </div>
         </div>
 

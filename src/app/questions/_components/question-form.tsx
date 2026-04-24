@@ -4,6 +4,8 @@ import { useState, useActionState } from "react";
 import Image from "next/image";
 import type { Question, QuestionType } from "@/types";
 import type { QuestionFormState } from "@/lib/actions/questions";
+import { makeQuestionDraft, useWorkspaceStore } from "@/lib/state/workspace-store";
+import type { QuestionDraft } from "@/lib/state/workspace-store";
 
 interface Discipline { id: number; name: string }
 
@@ -26,10 +28,22 @@ interface Props {
   cancelHref: string;
   title: string;
   submitLabel?: string;
+  /** When set, form state is persisted to the workspace store under this key. */
+  draftKey?: string;
 }
 
-export function QuestionForm({ disciplines, action, question, cancelHref, title, submitLabel = "Salvar Questão" }: Props) {
-  const [questionType, setQuestionType] = useState<QuestionType>(question?.questionType ?? "objetiva");
+export function QuestionForm({ disciplines, action, question, cancelHref, title, submitLabel = "Salvar Questão", draftKey }: Props) {
+  const { questionDrafts, updateQuestionDraft, resetQuestionDraft } = useWorkspaceStore();
+  const stored = draftKey ? (questionDrafts[draftKey] ?? makeQuestionDraft()) : null;
+
+  function upd(patch: Partial<QuestionDraft>) {
+    if (draftKey) updateQuestionDraft(draftKey, patch);
+  }
+
+  // questionType: from store when draftKey present, else local state
+  const [localType, setLocalType] = useState<QuestionType>(question?.questionType ?? "objetiva");
+  const questionType = stored ? stored.questionType : localType;
+
   const [state, formAction, isPending] = useActionState(action, undefined);
 
   return (
@@ -52,14 +66,26 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
           <div className="form-row">
             <div className="form-group">
               <label className="form-label" htmlFor="disciplineId">Disciplina *</label>
-              <select id="disciplineId" name="disciplineId" className="form-select" defaultValue={question?.disciplineId ?? ""} required>
+              <select
+                id="disciplineId" name="disciplineId" className="form-select" required
+                {...(stored
+                  ? { value: stored.disciplineId, onChange: (e) => upd({ disciplineId: e.target.value }) }
+                  : { defaultValue: question?.disciplineId ?? "" }
+                )}
+              >
                 <option value="">Selecione…</option>
                 {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="difficulty">Dificuldade</label>
-              <select id="difficulty" name="difficulty" className="form-select" defaultValue={question?.difficulty ?? "medium"}>
+              <select
+                id="difficulty" name="difficulty" className="form-select"
+                {...(stored
+                  ? { value: stored.difficulty, onChange: (e) => upd({ difficulty: e.target.value as QuestionDraft["difficulty"] }) }
+                  : { defaultValue: question?.difficulty ?? "medium" }
+                )}
+              >
                 {DIFFICULTIES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
             </div>
@@ -68,11 +94,12 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
           <div className="form-group">
             <label className="form-label" htmlFor="questionType">Tipo de Questão</label>
             <select
-              id="questionType"
-              name="questionType"
-              className="form-select"
+              id="questionType" name="questionType" className="form-select"
               value={questionType}
-              onChange={(e) => setQuestionType(e.target.value as QuestionType)}
+              onChange={(e) => {
+                const t = e.target.value as QuestionType;
+                if (stored) upd({ questionType: t }); else setLocalType(t);
+              }}
             >
               {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
@@ -80,7 +107,13 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
 
           <div className="form-group">
             <label className="form-label" htmlFor="statement">Enunciado *</label>
-            <textarea id="statement" name="statement" className="form-textarea" rows={4} defaultValue={question?.statement ?? ""} required />
+            <textarea
+              id="statement" name="statement" className="form-textarea" rows={4} required
+              {...(stored
+                ? { value: stored.statement, onChange: (e) => upd({ statement: e.target.value }) }
+                : { defaultValue: question?.statement ?? "" }
+              )}
+            />
           </div>
 
           {questionType === "objetiva" && (
@@ -91,14 +124,32 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
                   <div key={i} className="option-row">
                     <div className="option-letter">{LETTERS[i]}</div>
                     <input
-                      name={`option${i}`}
-                      className="form-input"
+                      name={`option${i}`} className="form-input"
                       placeholder={`Alternativa ${LETTERS[i]}`}
-                      defaultValue={question?.options[i]?.text ?? ""}
                       required
+                      {...(stored
+                        ? {
+                            value: stored.options[i] ?? "",
+                            onChange: (e) => {
+                              const opts = [...stored.options];
+                              opts[i] = e.target.value;
+                              upd({ options: opts });
+                            },
+                          }
+                        : { defaultValue: question?.options[i]?.text ?? "" }
+                      )}
                     />
                     <label style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>
-                      <input type="radio" name="correctIndex" value={i} defaultChecked={i === (question?.correctIndex ?? 0)} required />
+                      {stored ? (
+                        <input
+                          type="radio" name="correctIndex" value={i}
+                          checked={stored.correctIndex === String(i)}
+                          onChange={() => upd({ correctIndex: String(i) })}
+                          required
+                        />
+                      ) : (
+                        <input type="radio" name="correctIndex" value={i} defaultChecked={i === (question?.correctIndex ?? 0)} required />
+                      )}
                       Correta
                     </label>
                   </div>
@@ -111,14 +162,21 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
             <div className="form-group">
               <label className="form-label">Resposta Correta</label>
               <div style={{ display: "flex", gap: "1.5rem" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
-                  <input type="radio" name="correctIndex" value={0} defaultChecked={(question?.correctIndex ?? 0) === 0} required />
-                  <span style={{ fontWeight: 600, color: "#16a34a" }}>Verdadeiro</span>
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
-                  <input type="radio" name="correctIndex" value={1} defaultChecked={question?.correctIndex === 1} required />
-                  <span style={{ fontWeight: 600, color: "#dc2626" }}>Falso</span>
-                </label>
+                {[{ label: "Verdadeiro", value: "0", color: "#16a34a" }, { label: "Falso", value: "1", color: "#dc2626" }].map(({ label, value, color }) => (
+                  <label key={value} style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                    {stored ? (
+                      <input
+                        type="radio" name="correctIndex" value={value}
+                        checked={stored.correctIndex === value}
+                        onChange={() => upd({ correctIndex: value })}
+                        required
+                      />
+                    ) : (
+                      <input type="radio" name="correctIndex" value={value} defaultChecked={(question?.correctIndex ?? 0) === Number(value)} required />
+                    )}
+                    <span style={{ fontWeight: 600, color }}>{label}</span>
+                  </label>
+                ))}
               </div>
             </div>
           )}
@@ -127,26 +185,38 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
             <div className="form-group">
               <label className="form-label" htmlFor="answerLines">Linhas em branco no PDF para resposta</label>
               <input
-                id="answerLines"
-                name="answerLines"
-                type="number"
-                className="form-input"
-                style={{ maxWidth: 120 }}
-                min={0}
-                max={30}
-                defaultValue={question?.answerLines ?? 5}
+                id="answerLines" name="answerLines" type="number"
+                className="form-input" style={{ maxWidth: 120 }} min={0} max={30}
+                {...(stored
+                  ? { value: stored.answerLines, onChange: (e) => upd({ answerLines: e.target.value }) }
+                  : { defaultValue: question?.answerLines ?? 5 }
+                )}
               />
             </div>
           )}
 
           <div className="form-group">
             <label className="form-label" htmlFor="thematicArea">Área Temática</label>
-            <input id="thematicArea" name="thematicArea" className="form-input" defaultValue={question?.thematicArea ?? ""} placeholder="Ex: Herança, Polimorfismo, Normalização…" />
+            <input
+              id="thematicArea" name="thematicArea" className="form-input"
+              placeholder="Ex: Herança, Polimorfismo, Normalização…"
+              {...(stored
+                ? { value: stored.thematicArea, onChange: (e) => upd({ thematicArea: e.target.value }) }
+                : { defaultValue: question?.thematicArea ?? "" }
+              )}
+            />
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="explanation">Justificativa da resposta{questionType === "dissertativa" ? " / gabarito esperado" : ""}</label>
-            <textarea id="explanation" name="explanation" className="form-textarea" rows={3} defaultValue={question?.explanation ?? ""} placeholder={questionType === "dissertativa" ? "Descreva o que se espera como resposta correta…" : "Explique por que a alternativa correta é a correta…"} />
+            <textarea
+              id="explanation" name="explanation" className="form-textarea" rows={3}
+              placeholder={questionType === "dissertativa" ? "Descreva o que se espera como resposta correta…" : "Explique por que a alternativa correta é a correta…"}
+              {...(stored
+                ? { value: stored.explanation, onChange: (e) => upd({ explanation: e.target.value }) }
+                : { defaultValue: question?.explanation ?? "" }
+              )}
+            />
           </div>
 
           <div className="form-group">
@@ -162,6 +232,11 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={isPending}>{isPending ? "Salvando…" : submitLabel}</button>
             <a href={cancelHref} className="btn btn-ghost">Cancelar</a>
+            {stored && (
+              <button type="button" className="btn btn-ghost" onClick={() => draftKey && resetQuestionDraft(draftKey)} style={{ marginLeft: "auto", fontSize: "0.8rem", opacity: 0.65 }}>
+                Limpar rascunho
+              </button>
+            )}
           </div>
         </form>
       </div>

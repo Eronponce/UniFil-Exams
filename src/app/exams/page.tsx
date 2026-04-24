@@ -8,7 +8,7 @@ import { listExams } from "@/lib/db/exams";
 import { createExamAction } from "@/lib/actions/exams";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
-const DIFF_LABEL: Record<string, string> = { easy: "FÃ¡cil", medium: "MÃ©dio", hard: "DifÃ­cil" };
+const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
 
 export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string }> }) {
@@ -69,25 +69,25 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
 
             {!selectedDisciplineId ? (
               <div style={{ background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6, padding: "0.75rem", marginBottom: "1rem", fontSize: "0.875rem" }}>
-                Selecione uma disciplina acima para ver as questÃµes auditadas disponÃ­veis.
+                Selecione uma disciplina acima para ver as questões auditadas disponíveis.
               </div>
             ) : auditedQuestions.length === 0 ? (
               <div style={{ background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6, padding: "0.75rem", marginBottom: "1rem", fontSize: "0.875rem" }}>
-                Nenhuma questÃ£o auditada{selectedArea ? ` na Ã¡rea "${selectedArea}"` : ""}.{" "}
-                <Link href="/audit">Auditar questÃµes</Link> ou{" "}
-                <Link href="/questions/new">criar questÃµes</Link>.
+                Nenhuma questão auditada{selectedArea ? ` na área "${selectedArea}"` : ""}.{" "}
+                <Link href="/audit">Auditar questões</Link> ou{" "}
+                <Link href="/questions/new">criar questões</Link>.
               </div>
             ) : (
               <div className="form-group">
                 <label className="form-label">
-                  QuestÃµes auditadas â€” {auditedQuestions.length} disponÃ­veis{selectedArea ? ` (Ã¡rea: ${selectedArea})` : ""}
+                  Questões auditadas — {auditedQuestions.length} disponíveis{selectedArea ? ` (área: ${selectedArea})` : ""}
                 </label>
                 <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6, padding: "0.5rem" }}>
                   {auditedQuestions.map((q) => (
                     <label key={q.id} style={{ display: "flex", gap: "0.5rem", padding: "0.4rem 0.25rem", fontSize: "0.875rem", cursor: "pointer", alignItems: "flex-start", borderBottom: "1px solid #f3f4f6" }}>
                       <input type="checkbox" name="questionIds" value={q.id} defaultChecked style={{ marginTop: "0.15rem", flexShrink: 0 }} />
                       <span style={{ flex: 1 }}>
-                        {q.statement.slice(0, 90)}{q.statement.length > 90 ? "â€¦" : ""}
+                        {q.statement.slice(0, 90)}{q.statement.length > 90 ? "…" : ""}
                         <span style={{ display: "flex", gap: "0.3rem", marginTop: "0.2rem", flexWrap: "wrap" }}>
                           <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: q.questionType === "objetiva" ? "#dbeafe" : q.questionType === "verdadeiro_falso" ? "#fef9c3" : "#f3e8ff" }}>
                             {q.questionType === "objetiva" ? "Objetiva" : q.questionType === "verdadeiro_falso" ? "V/F" : "Dissertativa"}
@@ -117,7 +117,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
 
             <div className="form-actions">
               <button type="submit" className="btn btn-primary" disabled={!selectedDisciplineId || auditedQuestions.length === 0}>
-                Gerar Prova com RandomizaÃ§Ã£o
+                Gerar Prova com Randomização
               </button>
             </div>
           </form>
@@ -132,9 +132,9 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               <div key={exam.id} className="card" style={{ marginBottom: "0.75rem" }}>
                 <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>{exam.title}</div>
                 <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
-                  {exam.sets.length} set(s) Â· {exam.sets[0]?.questions.length ?? 0} questÃµes por set
+                  {exam.sets.length} set(s) · {exam.sets[0]?.questions.length ?? 0} questões por set
                 </div>
-                <Link href={`/exports?exam=${exam.id}`} className="btn btn-sm btn-ghost">Exportar â†’</Link>
+                <Link href={`/exports?exam=${exam.id}`} className="btn btn-sm btn-ghost">Exportar →</Link>
               </div>
             ))
           )}
