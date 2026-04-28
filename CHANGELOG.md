@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.3.0] - 2026-04-28
+
+### Features
+
+- Replace the old `react-pdf` exam flow with HTML A4 print pages under `/print/*`, including browser preview and direct PDF generation from the same rendered document
+- Treat question statements as sanitized HTML across the app, enabling richer formatting such as emphasis, lists, marks, and tables in previews and exports
+- Add per-exam answer key width controls with persisted configuration and proportional preview in the exports UI
+
+### Bug Fixes
+
+- Fix exam pagination order and last-page answer key placement in the new HTML export flow
+- Fix direct PDF generation to keep header and question body together and avoid trailing blank pages
+- Fix `Gabarito Completo` in `/exports` to render only the selected exam and preserve rich statement formatting plus question images
+
+### Chores
+
+- Restructure the App Router into `(app)` and `(print)` route groups to isolate the print shell from the main application shell
+
+---
+
 ## [2.2.0] - 2026-04-24
 
 ### Features

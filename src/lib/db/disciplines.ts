@@ -27,6 +27,11 @@ export function getDiscipline(id: number): Discipline | undefined {
   return row ? toModel(row) : undefined;
 }
 
+export function getDisciplineByCode(code: string): Discipline | undefined {
+  const row = getDb().prepare("SELECT * FROM disciplines WHERE code = ? AND active = 1").get(code.toUpperCase()) as DisciplineRow | undefined;
+  return row ? toModel(row) : undefined;
+}
+
 export function createDiscipline(data: { name: string; code: string }): Discipline {
   const db = getDb();
   const result = db.prepare("INSERT INTO disciplines (name, code) VALUES (?, ?)").run(data.name, data.code.toUpperCase());

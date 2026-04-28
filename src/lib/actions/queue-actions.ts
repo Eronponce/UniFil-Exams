@@ -5,6 +5,7 @@ import { enqueueTask, cancelTask } from "@/lib/task-queue";
 import { registerDefaultTaskHandlers } from "@/lib/task-handlers";
 import { getQuestion } from "@/lib/db/questions";
 import type { QuestionType } from "@/types";
+import { truncateRichTextPlain } from "@/lib/html/rich-text";
 
 export async function enqueueAuditAction(questionId: number, value: boolean): Promise<{ taskId: string; isNew: boolean; error?: string }> {
   registerDefaultTaskHandlers();
@@ -13,7 +14,7 @@ export async function enqueueAuditAction(questionId: number, value: boolean): Pr
 
   const { task, isNew } = enqueueTask({
     type: "audit",
-    label: `Auditoria: ${q.statement.slice(0, 60)}`,
+    label: `Auditoria: ${truncateRichTextPlain(q.statement, 60)}`,
     dedupKey: `audit-${questionId}`,
     payload: { questionId, value },
   });

@@ -1,4 +1,5 @@
 import type { Exam, ExamSet } from "@/types";
+import { clampAnswerKeyWidth, ANSWER_KEY_DEFAULT_WIDTH_PT } from "@/lib/pdf/answer-key-layout";
 import { getDb } from "./client";
 
 interface ExamRow {
@@ -6,6 +7,7 @@ interface ExamRow {
   discipline_id: number;
   title: string;
   institution: string;
+  answer_key_width_pt: number | null;
   created_at: string;
 }
 
@@ -47,7 +49,15 @@ function setToModel(row: ExamSetRow, sqRows: ExamSetQuestionRow[]): ExamSet {
 const DEFAULT_INSTITUTION = "UniFil - Centro Universitário Filadélfia";
 
 function examToModel(er: ExamRow, sets: ExamSet[]): Exam {
-  return { id: er.id, disciplineId: er.discipline_id, title: er.title, institution: er.institution ?? DEFAULT_INSTITUTION, sets, createdAt: er.created_at };
+  return {
+    id: er.id,
+    disciplineId: er.discipline_id,
+    title: er.title,
+    institution: er.institution ?? DEFAULT_INSTITUTION,
+    answerKeyWidthPt: clampAnswerKeyWidth(er.answer_key_width_pt ?? ANSWER_KEY_DEFAULT_WIDTH_PT),
+    sets,
+    createdAt: er.created_at,
+  };
 }
 
 export function listExams(): Exam[] {
@@ -83,12 +93,18 @@ export function listAllExamQuestionIds(): number[] {
 export function createExam(data: { disciplineId: number; title: string; institution?: string; questionIds: number[] }): Exam {
   const db = getDb();
   const result = db
-    .prepare("INSERT INTO exams (discipline_id, title, institution) VALUES (?, ?, ?)")
-    .run(data.disciplineId, data.title, data.institution ?? DEFAULT_INSTITUTION);
+    .prepare("INSERT INTO exams (discipline_id, title, institution, answer_key_width_pt) VALUES (?, ?, ?, ?)")
+    .run(data.disciplineId, data.title, data.institution ?? DEFAULT_INSTITUTION, ANSWER_KEY_DEFAULT_WIDTH_PT);
   const examId = result.lastInsertRowid as number;
   const insertQ = db.prepare("INSERT INTO exam_questions (exam_id, question_id, position) VALUES (?, ?, ?)");
   data.questionIds.forEach((qid, pos) => insertQ.run(examId, qid, pos));
   return getExam(examId)!;
+}
+
+export function updateExamAnswerKeyWidth(examId: number, widthPt: number): number {
+  const normalizedWidth = clampAnswerKeyWidth(widthPt);
+  getDb().prepare("UPDATE exams SET answer_key_width_pt = ? WHERE id = ?").run(normalizedWidth, examId);
+  return normalizedWidth;
 }
 
 export interface ExamSetInput {

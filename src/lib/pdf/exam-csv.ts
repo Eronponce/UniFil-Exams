@@ -1,5 +1,6 @@
 import type { ExamSet } from "@/types";
 import { getQuestion } from "@/lib/db/questions";
+import { truncateRichTextPlain } from "@/lib/html/rich-text";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -21,7 +22,7 @@ export function buildAnswerKeyCsv(examTitle: string, set: ExamSet): string {
   sorted.forEach((sq, idx) => {
     const q = getQuestion(sq.questionId);
     const answer = q ? resolveAnswer(sq, q.questionType) : "?";
-    const stmt = q ? `"${q.statement.slice(0, 60).replace(/"/g, '""')}…"` : `"Q${sq.questionId}"`;
+    const stmt = q ? `"${truncateRichTextPlain(q.statement, 60).replace(/"/g, '""')}"` : `"Q${sq.questionId}"`;
     rows.push(`${idx + 1},${answer},${stmt}`);
   });
 

@@ -11,6 +11,7 @@ interface QuestionRow {
   difficulty: "easy" | "medium" | "hard";
   source: "manual" | "ai";
   audited: number;
+  rejected: number;
   thematic_area: string | null;
   explanation: string;
   question_type: QuestionType;
@@ -30,6 +31,7 @@ function toModel(row: QuestionRow): Question {
     difficulty: row.difficulty,
     source: row.source,
     audited: row.audited === 1,
+    rejected: row.rejected === 1,
     thematicArea: row.thematic_area ?? null,
     explanation: row.explanation ?? "",
     questionType: (row.question_type ?? "objetiva") as QuestionType,
@@ -41,6 +43,7 @@ function toModel(row: QuestionRow): Question {
 export interface QuestionFilters {
   disciplineId?: number;
   audited?: boolean;
+  rejected?: boolean;
   search?: string;
   thematicArea?: string;
   questionType?: QuestionType;
@@ -58,6 +61,10 @@ export function listQuestionsFiltered(filters: QuestionFilters = {}): Question[]
   if (filters.audited !== undefined) {
     conditions.push("q.audited = ?");
     params.push(filters.audited ? 1 : 0);
+  }
+  if (filters.rejected !== undefined) {
+    conditions.push("q.rejected = ?");
+    params.push(filters.rejected ? 1 : 0);
   }
   if (filters.search) {
     conditions.push("q.statement LIKE ?");

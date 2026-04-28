@@ -19,6 +19,7 @@ export interface Question {
   difficulty: "easy" | "medium" | "hard";
   source: "manual" | "ai";
   audited: boolean;
+  rejected: boolean;
   thematicArea: string | null;
   explanation: string;
   questionType: QuestionType;
@@ -52,6 +53,7 @@ export interface Exam {
   title: string;
   disciplineId: ID;
   institution: string;
+  answerKeyWidthPt: number;
   sets: ExamSet[];
   createdAt: string;
 }

@@ -121,3 +121,13 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: use Zustand with `persist` as the React/Next equivalent of Pinia for workspace UI state.
 - Reason: the user wants route changes to feel like tab/panel navigation, preserving drafts and active task ids while continuing to use server actions and SQLite as source of truth.
 - Impact: `/ai`, `/ai/import`, and `/exams` now keep draft fields in `localStorage` under `unifil-workspace-state`; manual question draft wiring remains a documented follow-up because file inputs must stay out of persisted state.
+
+## 2026-04-27 - HTML Print Becomes The Official Exam Export
+- Decision: replace `react-pdf` exam rendering with standalone HTML A4 print pages under `/print/*`, opened in a new tab and exported through the browser print dialog.
+- Reason: the old two-column PDF renderer relied on estimated heights and produced unstable ordering, spacing, and last-page gabarito behavior.
+- Impact: `/api/pdf/*` now redirect to `/print/*`; question pagination is measured in the real DOM; the gabarito stays pinned to the bottom of the last page; the official export path is browser print/save as PDF.
+
+## 2026-04-27 - Question Statement Uses Sanitized HTML
+- Decision: treat `questions.statement` as sanitized HTML instead of markdown.
+- Reason: the print pipeline needs faithful DOM measurement, richer formatting, and future support for complex layouts such as tables without markdown conversion artifacts.
+- Impact: authoring stays as raw textarea input; previews, detail views, audit, exports, and print render sanitized HTML; compact lists and CSV snippets strip tags back to plain text.

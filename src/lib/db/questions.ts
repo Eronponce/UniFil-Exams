@@ -11,6 +11,7 @@ interface QuestionRow {
   difficulty: "easy" | "medium" | "hard";
   source: "manual" | "ai";
   audited: number;
+  rejected: number;
   thematic_area: string | null;
   explanation: string;
   question_type: QuestionType;
@@ -30,6 +31,7 @@ function toModel(row: QuestionRow): Question {
     difficulty: row.difficulty,
     source: row.source,
     audited: row.audited === 1,
+    rejected: row.rejected === 1,
     thematicArea: row.thematic_area ?? null,
     explanation: row.explanation ?? "",
     questionType: (row.question_type ?? "objetiva") as QuestionType,
@@ -93,6 +95,10 @@ export function auditQuestion(id: number, audited: boolean): void {
   getDb().prepare("UPDATE questions SET audited = ? WHERE id = ?").run(audited ? 1 : 0, id);
 }
 
+export function rejectQuestion(id: number, rejected: boolean): void {
+  getDb().prepare("UPDATE questions SET rejected = ?, audited = 0 WHERE id = ?").run(rejected ? 1 : 0, id);
+}
+
 export function updateQuestion(id: number, data: Partial<Omit<CreateQuestionInput, "disciplineId">>): Question | undefined {
   const db = getDb();
   if (data.statement !== undefined) db.prepare("UPDATE questions SET statement = ? WHERE id = ?").run(data.statement, id);
@@ -115,4 +121,16 @@ export function deleteQuestion(id: number): void {
     db.prepare("DELETE FROM questions WHERE id = ?").run(questionId);
   });
   tx(id);
+}
+
+export function deleteQuestions(ids: number[]): void {
+  if (ids.length === 0) return;
+  const db = getDb();
+  const ph = ids.map(() => "?").join(",");
+  const tx = db.transaction((questionIds: number[]) => {
+    db.prepare(`DELETE FROM exam_set_questions WHERE question_id IN (${ph})`).run(...questionIds);
+    db.prepare(`DELETE FROM exam_questions WHERE question_id IN (${ph})`).run(...questionIds);
+    db.prepare(`DELETE FROM questions WHERE id IN (${ph})`).run(...questionIds);
+  });
+  tx(ids);
 }

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS exams (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   discipline_id INTEGER NOT NULL REFERENCES disciplines(id),
   title         TEXT    NOT NULL,
+  answer_key_width_pt INTEGER NOT NULL DEFAULT 350,
   created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -65,6 +66,8 @@ export function migrate(): void {
   if (!qCols.includes("explanation")) db.exec("ALTER TABLE questions ADD COLUMN explanation TEXT NOT NULL DEFAULT ''");
   if (!qCols.includes("question_type")) db.exec("ALTER TABLE questions ADD COLUMN question_type TEXT NOT NULL DEFAULT 'objetiva'");
   if (!qCols.includes("answer_lines")) db.exec("ALTER TABLE questions ADD COLUMN answer_lines INTEGER NOT NULL DEFAULT 0");
+  if (!qCols.includes("rejected")) db.exec("ALTER TABLE questions ADD COLUMN rejected INTEGER NOT NULL DEFAULT 0");
   const eCols = (db.prepare("PRAGMA table_info(exams)").all() as { name: string }[]).map((c) => c.name);
   if (!eCols.includes("institution")) db.exec("ALTER TABLE exams ADD COLUMN institution TEXT NOT NULL DEFAULT 'UniFil - Centro Universitário Filadélfia'");
+  if (!eCols.includes("answer_key_width_pt")) db.exec("ALTER TABLE exams ADD COLUMN answer_key_width_pt INTEGER NOT NULL DEFAULT 350");
 }

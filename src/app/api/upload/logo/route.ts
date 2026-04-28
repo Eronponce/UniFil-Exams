@@ -9,7 +9,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Arquivo inválido" }, { status: 400 });
   }
   const ext = (file.name.split(".").pop() ?? "png").toLowerCase();
-  const dest = path.join(process.cwd(), "public", `unifil-logo.${ext}`);
+  const publicDir = path.join(process.cwd(), "public");
+  // Remove any previous logo regardless of extension before saving the new one
+  for (const oldExt of ["png", "jpg", "jpeg"]) {
+    try { fs.unlinkSync(path.join(publicDir, `unifil-logo.${oldExt}`)); } catch { /* not found */ }
+  }
+  const dest = path.join(publicDir, `unifil-logo.${ext}`);
   fs.writeFileSync(dest, Buffer.from(await file.arrayBuffer()));
   return NextResponse.json({ ok: true });
 }

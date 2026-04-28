@@ -19,6 +19,7 @@ const SAMPLE_QUESTION: Question = {
   difficulty: "easy",
   source: "manual",
   audited: true,
+  rejected: false,
   thematicArea: "Geografia",
   explanation: "Brasília é a capital federal.",
   questionType: "objetiva",

@@ -24,6 +24,7 @@ function makeQuestion(overrides: Partial<Question> = {}): Question {
     difficulty: "medium",
     source: "manual",
     audited: true,
+    rejected: false,
     thematicArea: null,
     explanation: "",
     questionType: "objetiva",

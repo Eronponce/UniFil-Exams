@@ -395,17 +395,368 @@ a:hover {
   padding: 0.1rem;
 }
 
-/* Markdown content rendering */
-.md-content { line-height: 1.5; font-size: inherit; }
-.md-content p { margin: 0 0 0.25rem; }
-.md-content p:last-child { margin-bottom: 0; }
-.md-content strong { font-weight: 600; }
-.md-content em { font-style: italic; }
-.md-content code { background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.85em; font-family: monospace; }
-.md-content pre { background: #f3f4f6; padding: 0.75rem; border-radius: 4px; overflow-x: auto; margin: 0.25rem 0; }
-.md-content pre code { background: none; padding: 0; font-size: 0.85em; }
-.md-content ul, .md-content ol { padding-left: 1.5rem; margin: 0.25rem 0; }
-.md-content li { margin-bottom: 0.1rem; }
-.md-content table { border-collapse: collapse; width: 100%; margin: 0.4rem 0; font-size: 0.9rem; }
-.md-content th, .md-content td { border: 1px solid #d1d5db; padding: 0.25rem 0.5rem; text-align: left; }
-.md-content th { background: #f3f4f6; font-weight: 600; }
+/* Rich text rendering */
+.md-content,
+.rich-content {
+  line-height: 1.5;
+  font-size: inherit;
+}
+
+.md-content p,
+.rich-content p,
+.md-content div,
+.rich-content div {
+  margin: 0 0 0.25rem;
+}
+
+.md-content p:last-child,
+.rich-content p:last-child,
+.md-content div:last-child,
+.rich-content div:last-child {
+  margin-bottom: 0;
+}
+
+.md-content strong,
+.rich-content strong {
+  font-weight: 600;
+}
+
+.md-content em,
+.rich-content em {
+  font-style: italic;
+}
+
+.md-content u,
+.rich-content u {
+  text-decoration: underline;
+}
+
+.md-content s,
+.rich-content s {
+  text-decoration: line-through;
+}
+
+.md-content mark,
+.rich-content mark {
+  background: #fef08a;
+  padding: 0 0.1rem;
+}
+
+.md-content ul,
+.rich-content ul,
+.md-content ol,
+.rich-content ol {
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
+}
+
+.md-content li,
+.rich-content li {
+  margin-bottom: 0.1rem;
+}
+
+.md-content table,
+.rich-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.4rem 0;
+  font-size: 0.9rem;
+}
+
+.md-content th,
+.rich-content th,
+.md-content td,
+.rich-content td {
+  border: 1px solid #d1d5db;
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-content th,
+.rich-content th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+/* Print preview */
+.exam-print-shell {
+  min-height: 100vh;
+  background: #e5e7eb;
+}
+
+.exam-print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(249, 250, 251, 0.96);
+  border-bottom: 1px solid #d1d5db;
+  backdrop-filter: blur(8px);
+}
+
+.exam-print-toolbar-copy {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+.exam-print-preview {
+  padding: 1.5rem 0;
+}
+
+.exam-print-page {
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto 1.5rem;
+  background: #fff;
+  color: #111827;
+  padding: 15mm;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  break-after: page;
+  break-inside: avoid-page;
+  page-break-after: always;
+  page-break-inside: avoid;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.exam-print-preview > .exam-print-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.exam-print-page--blank {
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+}
+
+.exam-print-set-label {
+  position: absolute;
+  top: 15mm;
+  right: 15mm;
+  font-size: 22pt;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.exam-print-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #d1d5db;
+}
+
+.exam-print-logo,
+.exam-print-logo-placeholder {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.exam-print-header-text {
+  min-width: 0;
+}
+
+.exam-print-institution {
+  font-size: 8pt;
+  color: #6b7280;
+  margin-bottom: 1px;
+}
+
+.exam-print-title {
+  font-size: 13pt;
+  font-weight: 700;
+  margin-bottom: 1px;
+}
+
+.exam-print-subtitle {
+  font-size: 9pt;
+  color: #4b5563;
+}
+
+.exam-print-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.exam-print-column-probe {
+  position: absolute;
+  top: 0;
+  width: calc((100% - 16px) / 2);
+  height: 0;
+}
+
+.exam-print-column-probe:first-child {
+  left: 0;
+}
+
+.exam-print-column-probe:last-child {
+  right: 0;
+}
+
+.exam-print-placed {
+  position: absolute;
+}
+
+.exam-print-question {
+  font-size: 10pt;
+  padding-bottom: 12px;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
+}
+
+.exam-print-question-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.exam-print-question-number {
+  width: 16px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.exam-print-question-statement {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.exam-print-question-statement .rich-content {
+  font-size: 10pt;
+}
+
+.exam-print-question-image {
+  display: block;
+  max-width: calc(100% - 20px);
+  max-height: 180px;
+  object-fit: contain;
+  margin: 0 0 4px 20px;
+}
+
+.exam-print-options {
+  display: grid;
+  gap: 2px;
+}
+
+.exam-print-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding-left: 18px;
+  font-size: 9.5pt;
+  line-height: 1.35;
+}
+
+.exam-print-option-letter {
+  width: 14px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.exam-print-vf-row {
+  display: flex;
+  gap: 16px;
+  padding-left: 18px;
+  margin-top: 2px;
+}
+
+.exam-print-vf-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5pt;
+}
+
+.exam-print-vf-box {
+  width: 10px;
+  height: 10px;
+  border: 1px solid #555;
+  display: inline-block;
+}
+
+.exam-print-essay-lines {
+  display: grid;
+  gap: 2px;
+}
+
+.exam-print-essay-line {
+  height: 18px;
+  border-bottom: 0.5pt solid #aaa;
+}
+
+.exam-print-answer-key {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+}
+
+.exam-print-answer-key img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.exam-print-measurements {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.exam-print-measure-box {
+  position: relative;
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  .exam-print-shell {
+    background: #fff;
+  }
+
+  .exam-print-toolbar {
+    display: none;
+  }
+
+  .exam-print-preview {
+    padding: 0;
+  }
+
+  .exam-print-measurements {
+    display: none !important;
+  }
+
+  .exam-print-page,
+  .exam-print-page--blank {
+    margin: 0;
+    box-shadow: none;
+  }
+}

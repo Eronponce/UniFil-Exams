@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getExam } from "@/lib/db/exams";
+import { getExam, updateExamAnswerKeyWidth } from "@/lib/db/exams";
 import fs from "fs";
 import path from "path";
+
+const GABARITO_EXTENSIONS = ["png", "jpg", "jpeg"] as const;
+
+function getGabaritoDir() {
+  return path.join(process.cwd(), "public", "gabaritos");
+}
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ examId: string }> }) {
   const { examId } = await params;
@@ -14,9 +20,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ exa
     return NextResponse.json({ error: "Arquivo inválido" }, { status: 400 });
   }
 
-  const dir = path.join(process.cwd(), "public", "gabaritos");
+  const dir = getGabaritoDir();
   fs.mkdirSync(dir, { recursive: true });
   const ext = (file.name.split(".").pop() ?? "png").toLowerCase();
+  if (!GABARITO_EXTENSIONS.includes(ext as (typeof GABARITO_EXTENSIONS)[number])) {
+    return NextResponse.json({ error: "Formato inválido. Use PNG ou JPG." }, { status: 400 });
+  }
+
+  for (const knownExt of GABARITO_EXTENSIONS) {
+    const previousPath = path.join(dir, `${exam.id}.${knownExt}`);
+    if (fs.existsSync(previousPath)) fs.unlinkSync(previousPath);
+  }
+
   fs.writeFileSync(path.join(dir, `${exam.id}.${ext}`), Buffer.from(await file.arrayBuffer()));
 
   return NextResponse.json({ ok: true });
@@ -24,11 +39,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ exa
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ examId: string }> }) {
   const { examId } = await params;
-  const dir = path.join(process.cwd(), "public", "gabaritos");
-  for (const ext of ["png", "jpg", "jpeg"]) {
+  const exam = getExam(Number(examId));
+  if (!exam) return NextResponse.json({ error: "Prova não encontrada" }, { status: 404 });
+
+  const dir = getGabaritoDir();
+  for (const ext of GABARITO_EXTENSIONS) {
     if (fs.existsSync(path.join(dir, `${examId}.${ext}`))) {
-      return NextResponse.json({ exists: true, url: `/gabaritos/${examId}.${ext}` });
+      return NextResponse.json({ exists: true, url: `/gabaritos/${examId}.${ext}`, widthPt: exam.answerKeyWidthPt });
     }
   }
-  return NextResponse.json({ exists: false });
+  return NextResponse.json({ exists: false, widthPt: exam.answerKeyWidthPt });
+}
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ examId: string }> }) {
+  const { examId } = await params;
+  const exam = getExam(Number(examId));
+  if (!exam) return NextResponse.json({ error: "Prova não encontrada" }, { status: 404 });
+
+  const body = (await req.json().catch(() => null)) as { widthPt?: number } | null;
+  const widthPt = updateExamAnswerKeyWidth(exam.id, Number(body?.widthPt));
+  return NextResponse.json({ ok: true, widthPt });
 }

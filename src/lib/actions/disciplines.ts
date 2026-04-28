@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createDiscipline, updateDiscipline, deleteDiscipline } from "@/lib/db/disciplines";
+import { createDiscipline, updateDiscipline, deleteDiscipline, getDisciplineByCode } from "@/lib/db/disciplines";
 import { redirectWithToast } from "@/lib/toast";
 
 export async function createDisciplineAction(formData: FormData) {
@@ -12,6 +12,13 @@ export async function createDisciplineAction(formData: FormData) {
       type: "error",
       title: "Campos obrigatórios",
       description: "Informe nome e código da disciplina.",
+    });
+  }
+  if (getDisciplineByCode(code)) {
+    redirectWithToast("/disciplines/new?error=codigo-duplicado", {
+      type: "error",
+      title: "Código já cadastrado",
+      description: `Já existe uma disciplina com o código ${code.toUpperCase()}.`,
     });
   }
   createDiscipline({ name, code });
@@ -33,6 +40,14 @@ export async function updateDisciplineAction(formData: FormData) {
       type: "error",
       title: "Campos obrigatórios",
       description: "Revise os dados antes de salvar a disciplina.",
+    });
+  }
+  const existing = getDisciplineByCode(code);
+  if (existing && existing.id !== id) {
+    redirectWithToast(`/disciplines/${id}/edit?error=codigo-duplicado`, {
+      type: "error",
+      title: "Código já cadastrado",
+      description: `Já existe uma disciplina com o código ${code.toUpperCase()}.`,
     });
   }
   updateDiscipline(id, { name, code });

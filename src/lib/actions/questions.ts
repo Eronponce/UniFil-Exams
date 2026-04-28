@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import type { QuestionType } from "@/types";
-import { createQuestion, updateQuestion, auditQuestion, deleteQuestion } from "@/lib/db/questions";
+import { createQuestion, updateQuestion, auditQuestion, rejectQuestion, deleteQuestion, deleteQuestions } from "@/lib/db/questions";
+import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { redirectWithToast } from "@/lib/toast";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "questions");
@@ -142,6 +143,44 @@ export async function deleteQuestionAction(formData: FormData) {
     type: "success",
     title: "Questão excluída",
     description: "A questão foi removida do sistema.",
+  });
+}
+
+export async function rejectQuestionAction(formData: FormData) {
+  const id = Number(formData.get("id"));
+  const value = formData.get("value") !== "0";
+  rejectQuestion(id, value);
+  revalidatePath("/audit");
+  revalidatePath("/questions");
+  revalidatePath("/");
+}
+
+export async function deleteAllRejectedAction(formData: FormData) {
+  const disciplineId = formData.get("disciplineId") ? Number(formData.get("disciplineId")) : undefined;
+  const rejected = listQuestionsFiltered({ rejected: true, disciplineId });
+  const ids = rejected.map((q) => q.id);
+  if (ids.length) deleteQuestions(ids);
+  revalidatePath("/audit");
+  revalidatePath("/questions");
+  revalidatePath("/");
+  redirectWithToast("/audit", {
+    type: "success",
+    title: "Recusadas excluídas",
+    description: `${ids.length} questão(ões) removida(s).`,
+  });
+}
+
+export async function deleteManyQuestionsAction(formData: FormData) {
+  const ids = formData.getAll("ids").map(Number).filter(Boolean);
+  if (ids.length === 0) return;
+  deleteQuestions(ids);
+  revalidatePath("/questions");
+  revalidatePath("/audit");
+  revalidatePath("/");
+  redirectWithToast("/questions", {
+    type: "success",
+    title: "Questões excluídas",
+    description: `${ids.length} questão(ões) removida(s).`,
   });
 }
 

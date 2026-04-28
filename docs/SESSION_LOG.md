@@ -199,3 +199,59 @@
 
 ### Pendente consciente
 - `/questions/new` ainda não foi conectado ao store. O shape existe, mas precisa cuidado para não persistir uploads/imagens.
+- 
+## 2026-04-27 â€” Ajuste visual do gabarito e distribuicao vertical do PDF
+
+### PDF / exportacao
+- `exams.answer_key_width_pt` adicionado ao schema com migracao e default `350`.
+- `Exam.answerKeyWidthPt` agora e persistido no model e usado pelo renderer do PDF.
+- Gabarito deixou de usar largura fixa total; largura e configuravel por prova.
+- Paginas de questoes em 2 colunas agora aplicam `justifyContent: space-between` apenas no ultimo bloco da pagina quando nao ha gabarito inline, reduzindo o vazio no rodape sem roubar espaco do gabarito embutido.
+
+### Interface
+- `GabaritoUpload` ganhou slider de tamanho em `pt`, persistencia automatica e previa proporcional a pagina A4.
+- `GET /api/upload/gabarito/[examId]` passou a retornar `widthPt` junto do status/URL do arquivo.
+- `PUT /api/upload/gabarito/[examId]` salva o tamanho do gabarito.
+- Upload do gabarito agora remove extensoes antigas (`png/jpg/jpeg`) antes de salvar a nova imagem.
+
+### Validacao
+- `npm run typecheck`: passou.
+- `npm test -- --run`: passou, 53 testes.
+- `npm run build`: passou.
+- `npm run lint`: sem erros; ficaram 2 warnings preexistentes fora deste escopo (`questions-table.tsx` e `pdf-balance.test.ts`).
+
+## 2026-04-27 - Migracao da exportacao para HTML paginado A4
+
+### Arquitetura
+- `react-pdf` saiu do fluxo oficial de exportacao; provas agora abrem em paginas HTML standalone de impressao em `/print/exam/[examId]` e `/print/set/[setId]`.
+- O App Router foi dividido em dois grupos: `(app)` com shell normal e `(print)` com layout minimo para impressao.
+- `/api/pdf/[setId]` e `/api/pdf/exam/[examId]` agora respondem com redirect `307` para as novas rotas `/print/*`.
+
+### Renderizacao e paginacao
+- `src/lib/print/pagination.ts` implementa paginacao sequencial real: coluna esquerda, coluna direita, proxima pagina; sem balanceamento artificial.
+- `src/components/print/exam-print-client.tsx` mede blocos reais no DOM apos `document.fonts.ready` e apos carga das imagens.
+- Questoes com tabela ou bloco largo sobem para `full-width`; dissertativas ficam em largura total com linhas HTML.
+- O gabarito continua usando `answerKeyWidthPt`, mas agora fica preso ao rodape da ultima pagina e a pagina final reserva essa area antes da distribuicao das ultimas questoes.
+- Sets menores continuam sendo preenchidos com paginas em branco antes da ultima pagina para manter contagem uniforme e arredondada para par.
+
+### HTML sanitizado
+- `questions.statement` passou a ser tratado como HTML sanitizado no app inteiro.
+- `src/lib/html/rich-text.ts` centraliza sanitizacao, extracao de texto puro e deteccao de tabelas.
+- `MarkdownText` virou wrapper de HTML sanitizado para preservar chamadas existentes sem markdown.
+
+### Validacao
+- `npm test -- --run`: passou, 52 testes.
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+- `npm run build`: passou.
+
+## 2026-04-28 - Ajustes finais de exportacao e preparo do release v2.3.0
+
+### Exportacoes
+- `Gabarito Completo` em `/exports` passou a focar apenas a prova selecionada em vez de agregar questoes de todas as provas.
+- O enunciado nessa secao agora usa HTML sanitizado rico, preservando `strong`, listas, marcas e tabelas.
+- Imagens das questoes foram expostas tambem no `Gabarito Completo`, alinhadas ao card de resposta correta e justificativa.
+
+### Release
+- `package.json` e `package-lock.json` foram preparados para `v2.3.0`.
+- `CHANGELOG.md` recebeu entrada nova para a release `2.3.0`.
