@@ -127,7 +127,22 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Reason: the old two-column PDF renderer relied on estimated heights and produced unstable ordering, spacing, and last-page gabarito behavior.
 - Impact: `/api/pdf/*` now redirect to `/print/*`; question pagination is measured in the real DOM; the gabarito stays pinned to the bottom of the last page; the official export path is browser print/save as PDF.
 
+## 2026-04-28 - Inline Answer Key When The Batch Target Allows It
+- Decision: if the gabarito fits in the remaining height of the last question page without changing the final batch page target, render it inline on that last page instead of forcing a dedicated gabarito-only page.
+- Reason: teachers expect the renderer to reuse the free space at the bottom of the final page when possible.
+- Impact: the print layout now measures the gabarito height, reserves that space on the last page during pagination, and only falls back to a separate final gabarito page when inline placement would break the batch-uniform page target.
+
 ## 2026-04-27 - Question Statement Uses Sanitized HTML
 - Decision: treat `questions.statement` as sanitized HTML instead of markdown.
 - Reason: the print pipeline needs faithful DOM measurement, richer formatting, and future support for complex layouts such as tables without markdown conversion artifacts.
 - Impact: authoring stays as raw textarea input; previews, detail views, audit, exports, and print render sanitized HTML; compact lists and CSV snippets strip tags back to plain text.
+
+## 2026-04-28 - AI Prompts Share The Same HTML-Capable Contract
+- Decision: centralize AI prompt templates so single generation, batch generation, and copied import prompts all describe the same HTML-capable `statement` contract.
+- Reason: the import prompt had the clearest guidance, but the runtime AI builders still used older prompt variants without the same HTML and field rules.
+- Impact: all AI flows now instruct models to emit the same core fields, allow sanitized HTML in `statement`, and expose the active prompt back to the user in the UI.
+
+## 2026-04-28 - Local Issue Chat Sends Directly To GitHub
+- Decision: add a floating issue chat in the app shell that opens a prefilled GitHub issue draft in the browser, letting GitHub handle login at submit time.
+- Reason: the user wants a zero-config flow without local tokens or extra setup, while still capturing bugs and ideas from inside the app.
+- Impact: `/api/github/issues` is now only a lightweight config endpoint that exposes the target repo/labels; the chat opens `github.com/<repo>/issues/new?...` with title/body prefilled, and the app favicon uses the UniFil logo from `public/unifil-logo.jpg`.

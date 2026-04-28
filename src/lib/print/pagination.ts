@@ -19,9 +19,28 @@ export interface PrintQuestionPageLayout {
   placed: PlacedPrintQuestion[];
 }
 
+export interface UniformAnswerKeyCandidate {
+  inlineTotalPages: number | null;
+  separateTotalPages: number;
+}
+
 export function computeUniformTargetTotalPages(totals: number[]): number {
   const max = Math.max(...totals, 1);
   return max % 2 === 0 ? max : max + 1;
+}
+
+export function planUniformAnswerKeyPlacement(candidates: UniformAnswerKeyCandidate[]): {
+  targetTotalPages: number;
+  placeAnswerKeyInline: boolean[];
+} {
+  const targetTotalPages = computeUniformTargetTotalPages(
+    candidates.map((candidate) => candidate.inlineTotalPages ?? candidate.separateTotalPages),
+  );
+
+  return {
+    targetTotalPages,
+    placeAnswerKeyInline: candidates.map((candidate) => candidate.inlineTotalPages === targetTotalPages),
+  };
 }
 
 function placeOversizeQuestion(

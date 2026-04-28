@@ -11,6 +11,12 @@ import { useToast } from "@/components/toast-provider";
 import { MarkdownText } from "@/components/markdown-text";
 import { enqueueAiGenerationAction } from "@/lib/actions/queue-actions";
 import { useWorkspaceStore } from "@/lib/state/workspace-store";
+import { buildBatchQuestionPrompt } from "@/lib/ai/prompt-templates";
+import {
+  RICH_TEXT_ALLOWED_STYLE_LABEL,
+  RICH_TEXT_ALLOWED_TAGS_LABEL,
+  RICH_TEXT_BLOCKED_FEATURES_LABEL,
+} from "@/lib/html/rich-text";
 
 interface Discipline { id: number; name: string }
 
@@ -32,6 +38,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [savedCount, setSavedCount] = useState(0);
   const [saveError, setSaveError] = useState<string>();
+  const [promptCopied, setPromptCopied] = useState(false);
   const { batchAi, updateBatchAi, resetBatchAi } = useWorkspaceStore();
   const defaultDisciplineId = String(disciplines[0]?.id ?? "");
 
@@ -208,6 +215,24 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
     setSavedCount(0); setSaveError(undefined); setSelected(new Set()); resetBatchAi(defaultDisciplineId);
   }
 
+  const selectedDisciplineName = disciplines.find((d) => String(d.id) === disciplineId)?.name ?? "<DISCIPLINA>";
+  const promptPreview = buildBatchQuestionPrompt(
+    selectedDisciplineName,
+    rawText.trim() || "<COLE AQUI O TEXTO OU OS TOPICOS>",
+    questionType,
+    "full",
+  );
+
+  async function handlePromptCopy() {
+    try {
+      await navigator.clipboard.writeText(promptPreview);
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 2500);
+    } catch {
+      // noop
+    }
+  }
+
   // ── Done ────────────────────────────────────────────────────────────────────
   if (step === "done") {
     return (
@@ -374,6 +399,46 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
               value={rawText}
               onChange={(e) => updateBatchAi({ rawText: e.target.value })}
             />
+            <p style={{ marginTop: "0.35rem", fontSize: "0.78rem", color: "var(--muted)" }}>
+              O enunciado gerado pode usar HTML sanitizado. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}.
+            </p>
+          </div>
+
+          <div
+            style={{
+              marginBottom: "1rem",
+              border: "1px solid #bfdbfe",
+              borderRadius: 8,
+              background: "#eff6ff",
+              padding: "0.9rem",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+              <strong style={{ fontSize: "0.88rem", color: "#1d4ed8" }}>Prompt padrao usado na geracao em lote</strong>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handlePromptCopy}>
+                {promptCopied ? "Copiado" : "Copiar prompt"}
+              </button>
+            </div>
+            <p style={{ margin: "0 0 0.6rem", fontSize: "0.78rem", color: "#1e3a8a", lineHeight: 1.5 }}>
+              Este e o prompt-base da fila de IA. O statement aceita HTML sanitizado. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}. {RICH_TEXT_BLOCKED_FEATURES_LABEL}.
+            </p>
+            <pre
+              style={{
+                margin: 0,
+                maxHeight: 240,
+                overflow: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontSize: "0.75rem",
+                lineHeight: 1.55,
+                background: "#fff",
+                border: "1px solid #dbeafe",
+                borderRadius: 6,
+                padding: "0.8rem",
+              }}
+            >
+              {promptPreview}
+            </pre>
           </div>
 
           {batchState.error && <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{batchState.error}</p>}

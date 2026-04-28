@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.4.0] - 2026-04-28
+
+### Features
+
+- Keep the answer key inline on the last page when it fits, while still preserving the uniform page target across all sets in the same batch
+- Unify AI prompt templates across single generation, batch generation, and copied import prompts, with explicit support for sanitized HTML in `statement`
+- Add a floating GitHub issue chat that opens a prefilled issue draft in the project repo and lets GitHub handle login at submit time
+- Use the UniFil logo as the application favicon
+
+### Bug Fixes
+
+- Make individual set exports honor the same batch-wide target page count used by the full exam export
+- Remove the previous token-only GitHub issue flow in favor of a zero-config browser compose flow
+
+### Chores
+
+- Document the new AI prompt contract, issue chat flow, favicon setup, and updated PDF answer-key behavior
+
+---
+
 ## [2.3.0] - 2026-04-28
 
 ### Features

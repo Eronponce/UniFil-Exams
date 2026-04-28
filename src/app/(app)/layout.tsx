@@ -1,6 +1,7 @@
 import { Nav } from "@/components/nav";
 import { ToastProvider } from "@/components/toast-provider";
 import { QueuePanel } from "@/components/queue-panel";
+import { IssueChatPanel } from "@/components/issue-chat-panel";
 import styles from "../layout.module.css";
 
 export default function AppLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -10,7 +11,27 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
         <Nav />
         <main className={styles.main}>{children}</main>
       </div>
-      <QueuePanel />
+      <div
+        style={{
+          position: "fixed",
+          right: "1rem",
+          bottom: "1rem",
+          zIndex: 9999,
+          width: "min(460px, calc(100vw - 2rem))",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: "0.75rem",
+          pointerEvents: "none",
+        }}
+      >
+        <div style={{ pointerEvents: "auto" }}>
+          <IssueChatPanel />
+        </div>
+        <div style={{ pointerEvents: "auto" }}>
+          <QueuePanel />
+        </div>
+      </div>
     </ToastProvider>
   );
 }

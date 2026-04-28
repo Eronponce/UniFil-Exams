@@ -4,10 +4,10 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { AIProvider } from "./generate";
+import { buildBatchQuestionPrompt } from "./prompt-templates";
 import type { QuestionType } from "@/types";
 import type { AITrace, TraceRound } from "./trace";
 
-// ── Result type ────────────────────────────────────────────────────────────────
 export interface BatchGenerationResult {
   questions: BatchGeneratedQuestion[];
   trace: AITrace;
@@ -20,7 +20,6 @@ export interface BatchGenerationProgress {
   message: string;
 }
 
-// ── Types ──────────────────────────────────────────────────────────────────────
 export type BatchGeneratedQuestion = {
   statement: string;
   questionType: QuestionType;
@@ -32,7 +31,6 @@ export type BatchGeneratedQuestion = {
   answerLines?: number;
 };
 
-// ── Zod schemas ────────────────────────────────────────────────────────────────
 const optionText = z.string().transform((s) => s.replace(/^[A-Ea-e1-5][\)\.\-]\s*/, "").trim());
 
 const ObjetivaSchema = z.object({
@@ -43,8 +41,10 @@ const ObjetivaSchema = z.object({
       correctIndex: z.number().int().min(0).max(4),
       explanation: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      thematicArea: z.string().optional(),
       thematic_area: z.string().optional(),
-    })
+      answerLines: z.number().int().optional(),
+    }),
   ).min(1),
 });
 
@@ -52,11 +52,14 @@ const VFSchema = z.object({
   questions: z.array(
     z.object({
       statement: z.string().min(5),
-      isTrue: z.boolean(),
+      correctIndex: z.number().int().min(0).max(1).optional(),
+      isTrue: z.boolean().optional(),
       explanation: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      thematicArea: z.string().optional(),
       thematic_area: z.string().optional(),
-    })
+      answerLines: z.number().int().optional(),
+    }),
   ).min(1),
 });
 
@@ -67,110 +70,48 @@ const DissertativaSchema = z.object({
       answerLines: z.number().int().min(1).max(20).default(6),
       explanation: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      thematicArea: z.string().optional(),
       thematic_area: z.string().optional(),
-    })
+    }),
   ).min(1),
 });
 
-// ── Objetiva prompts ───────────────────────────────────────────────────────────
 function promptObjetivaFull(discipline: string, rawText: string): string {
-  return `Você é um especialista na disciplina "${discipline}" criando questões de prova objetivas universitárias.
-
-Analise o texto abaixo. Para CADA questão ou tópico identificado:
-1. Extraia ou formule o ENUNCIADO (ignore qualquer alternativa já existente no texto)
-2. Crie 5 alternativas NOVAS: 1 correta + 4 distratores baseados em erros conceituais reais de estudantes
-3. Coloque a correta em um índice variado (não sempre 0)
-4. Escreva justificativa explicando por que a correta está certa e os distratores estão errados
-
-Regras: IGNORE alternativas existentes; sem prefixos A), B) nas alternativas; difficulty: easy|medium|hard.
-
-Texto:
-${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "objetiva", "full");
 }
 
 function promptObjetivaSimple(discipline: string, rawText: string): string {
-  return `Disciplina: ${discipline}
-
-Para cada tópico/questão do texto abaixo, gere uma questão de múltipla escolha com 5 alternativas.
-Retorne JSON com array "questions". Cada item: statement, options (array de 5 strings sem letra prefixo), correctIndex (0-4), explanation, difficulty (easy/medium/hard), thematic_area.
-
-Texto:
-${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "objetiva", "simple");
 }
 
 function promptObjetivaMinimal(discipline: string, rawText: string): string {
-  return `Gere questões de múltipla escolha sobre "${discipline}" baseadas no texto abaixo.
-JSON: {"questions":[{"statement":"...","options":["op1","op2","op3","op4","op5"],"correctIndex":0,"explanation":"...","difficulty":"medium","thematic_area":"..."}]}
-
-Texto: ${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "objetiva", "minimal");
 }
 
-// ── V/F prompts ────────────────────────────────────────────────────────────────
 function promptVFFull(discipline: string, rawText: string): string {
-  return `Você é um especialista na disciplina "${discipline}" criando questões de prova universitárias.
-
-Analise o texto abaixo. Para CADA proposição ou tópico identificado, crie UMA proposição de Verdadeiro ou Falso.
-Misture proposições verdadeiras e falsas (não coloque todas iguais).
-
-Regras:
-- statement deve ser uma afirmação completa, não uma pergunta
-- isTrue: true se a afirmação é correta, false se é incorreta
-- difficulty: easy|medium|hard
-
-Texto:
-${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "verdadeiro_falso", "full");
 }
 
 function promptVFSimple(discipline: string, rawText: string): string {
-  return `Disciplina: ${discipline}
-
-Para cada item do texto, gere uma proposição V/F. Misture verdadeiras e falsas.
-Retorne JSON com array "questions". Cada item: statement (afirmação, não pergunta), isTrue (bool), explanation, difficulty (easy/medium/hard), thematic_area.
-
-Texto:
-${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "verdadeiro_falso", "simple");
 }
 
 function promptVFMinimal(discipline: string, rawText: string): string {
-  return `Gere proposições V/F sobre "${discipline}". Misture verdadeiras e falsas.
-JSON: {"questions":[{"statement":"...","isTrue":true,"explanation":"...","difficulty":"medium","thematic_area":"..."}]}
-
-Texto: ${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "verdadeiro_falso", "minimal");
 }
 
-// ── Dissertativa prompts ───────────────────────────────────────────────────────
 function promptDissertativaFull(discipline: string, rawText: string): string {
-  return `Você é um especialista na disciplina "${discipline}" criando questões de prova universitárias.
-
-Analise o texto abaixo. Para CADA tópico identificado, crie UMA questão dissertativa que estimule resposta elaborada.
-
-Regras:
-- statement deve ser questão aberta (use 'Explique', 'Descreva', 'Compare', 'Justifique')
-- answerLines: linhas em branco necessárias para resposta (inteiro 4–20)
-- difficulty: easy|medium|hard
-
-Texto:
-${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "dissertativa", "full");
 }
 
 function promptDissertativaSimple(discipline: string, rawText: string): string {
-  return `Disciplina: ${discipline}
-
-Para cada tópico do texto, gere uma questão dissertativa aberta.
-Retorne JSON com array "questions". Cada item: statement (questão aberta), answerLines (int 4-20), explanation, difficulty (easy/medium/hard), thematic_area.
-
-Texto:
-${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "dissertativa", "simple");
 }
 
 function promptDissertativaMinimal(discipline: string, rawText: string): string {
-  return `Gere questões dissertativas sobre "${discipline}".
-JSON: {"questions":[{"statement":"...","answerLines":8,"explanation":"...","difficulty":"medium","thematic_area":"..."}]}
-
-Texto: ${rawText}`;
+  return buildBatchQuestionPrompt(discipline, rawText, "dissertativa", "minimal");
 }
 
-// ── Model factory ──────────────────────────────────────────────────────────────
 function getModel(provider: AIProvider, ollamaModel?: string) {
   switch (provider) {
     case "ollama": {
@@ -185,7 +126,10 @@ function getModel(provider: AIProvider, ollamaModel?: string) {
   }
 }
 
-// ── Attempt helpers ────────────────────────────────────────────────────────────
+function getThematicArea(question: { thematicArea?: string; thematic_area?: string }): string | undefined {
+  return question.thematicArea ?? question.thematic_area ?? undefined;
+}
+
 async function attemptObjetiva(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
   const { object } = await generateObject({ model, schema: ObjetivaSchema, prompt, maxRetries: 0 });
   return object.questions.map((q) => ({
@@ -195,23 +139,26 @@ async function attemptObjetiva(model: ReturnType<typeof getModel>, prompt: strin
     correctIndex: q.correctIndex,
     explanation: q.explanation,
     difficulty: q.difficulty,
-    thematicArea: q.thematic_area ?? undefined,
+    thematicArea: getThematicArea(q),
     answerLines: 0,
   }));
 }
 
 async function attemptVF(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
   const { object } = await generateObject({ model, schema: VFSchema, prompt, maxRetries: 0 });
-  return object.questions.map((q) => ({
-    statement: q.statement,
-    questionType: "verdadeiro_falso" as const,
-    options: ["Verdadeiro", "Falso"],
-    correctIndex: q.isTrue ? 0 : 1,
-    explanation: q.explanation,
-    difficulty: q.difficulty,
-    thematicArea: q.thematic_area ?? undefined,
-    answerLines: 0,
-  }));
+  return object.questions.map((q) => {
+    const isTrue = typeof q.correctIndex === "number" ? q.correctIndex === 0 : q.isTrue ?? true;
+    return {
+      statement: q.statement,
+      questionType: "verdadeiro_falso" as const,
+      options: ["Verdadeiro", "Falso"],
+      correctIndex: isTrue ? 0 : 1,
+      explanation: q.explanation,
+      difficulty: q.difficulty,
+      thematicArea: getThematicArea(q),
+      answerLines: 0,
+    };
+  });
 }
 
 async function attemptDissertativa(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
@@ -223,12 +170,11 @@ async function attemptDissertativa(model: ReturnType<typeof getModel>, prompt: s
     correctIndex: 0,
     explanation: q.explanation,
     difficulty: q.difficulty,
-    thematicArea: q.thematic_area ?? undefined,
+    thematicArea: getThematicArea(q),
     answerLines: q.answerLines,
   }));
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────────
 export async function generateBatchQuestions(
   discipline: string,
   rawText: string,
@@ -239,7 +185,10 @@ export async function generateBatchQuestions(
 ): Promise<BatchGenerationResult> {
   const model = getModel(provider, ollamaModel);
 
-  const [prompts, attemptFn]: [((d: string, t: string) => string)[], (m: ReturnType<typeof getModel>, p: string) => Promise<BatchGeneratedQuestion[]>] =
+  const [prompts, attemptFn]: [
+    ((d: string, t: string) => string)[],
+    (m: ReturnType<typeof getModel>, p: string) => Promise<BatchGeneratedQuestion[]>,
+  ] =
     questionType === "verdadeiro_falso"
       ? [[promptVFFull, promptVFSimple, promptVFMinimal], attemptVF]
       : questionType === "dissertativa"
@@ -271,12 +220,12 @@ export async function generateBatchQuestions(
     let result: BatchGeneratedQuestion[] | null = null;
     let roundError: string | undefined;
 
-    await Promise.any([
-      attemptFn(model, prompt),
-      attemptFn(model, prompt),
-    ]).then((r) => { result = r; })
+    await Promise.any([attemptFn(model, prompt), attemptFn(model, prompt)])
+      .then((r) => {
+        result = r;
+      })
       .catch((agg: AggregateError) => {
-        roundError = agg.errors.map((e: unknown) => e instanceof Error ? e.message : String(e)).join(" | ");
+        roundError = agg.errors.map((e: unknown) => (e instanceof Error ? e.message : String(e))).join(" | ");
       });
 
     traceRounds[round] = {
@@ -289,7 +238,7 @@ export async function generateBatchQuestions(
     onProgress?.({
       phase: result ? "round-success" : "round-failure",
       round: round + 1,
-      message: result ? `Rodada ${round + 1} concluída com sucesso` : `Rodada ${round + 1} falhou`,
+      message: result ? `Rodada ${round + 1} concluida com sucesso` : `Rodada ${round + 1} falhou`,
       trace: {
         provider,
         model: provider === "ollama" ? (ollamaModel ?? process.env.OLLAMA_MODEL ?? "qwen2.5:latest") : undefined,
@@ -320,8 +269,7 @@ export async function generateBatchQuestions(
     rounds: traceRounds,
     succeededRound: null,
   };
-  throw Object.assign(
-    new Error(`Não foi possível gerar questões válidas após 3 rodadas (6 tentativas).`),
-    { trace: errorTrace },
-  );
+  throw Object.assign(new Error("Nao foi possivel gerar questoes validas apos 3 rodadas (6 tentativas)."), {
+    trace: errorTrace,
+  });
 }

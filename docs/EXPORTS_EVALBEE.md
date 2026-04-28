@@ -20,12 +20,14 @@ O sistema gera prova para impressao e gabarito separado. A correcao acontece for
 - Alternativas exibidas conforme ordem randomizada.
 - Imagens de questao dimensionadas para caber na coluna.
 - Gabarito/imagem EvalBee fica sempre na ultima pagina do bloco do set.
+- Se houver altura livre suficiente e isso nao quebrar o alvo uniforme do lote, o gabarito pode compartilhar essa ultima pagina com as ultimas questoes.
 
 ## Regra de paginas pares por lote
 - O gerador calcula as paginas de questoes de todos os sets antes de renderizar.
-- `targetTotalPages = max(paginasDeQuestoes) + 1 pagina de gabarito`.
+- Primeiro tenta o menor total viavel por set: ultima pagina com gabarito inline quando couber; senao pagina final separada para o gabarito.
+- `targetTotalPages` e o maior desses totais, arredondado para par.
 - Se `targetTotalPages` for impar, soma 1 para ficar par.
-- Sets menores recebem paginas totalmente vazias antes do gabarito.
+- Sets menores recebem paginas totalmente vazias antes da pagina final do gabarito quando precisam de padding.
 - Resultado: todos os sets do lote possuem a mesma quantidade par de frentes.
 
 ## Imagem EvalBee por Set

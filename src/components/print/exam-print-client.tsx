@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   computeUniformTargetTotalPages,
+  planUniformAnswerKeyPlacement,
   paginateQuestionsWithReservedLastPage,
   type PrintQuestionLayoutInput,
   type PrintQuestionPageLayout,
@@ -40,6 +41,7 @@ interface PageMetrics {
 interface RenderedPage {
   kind: "content" | "blank" | "answer-key";
   page: PrintQuestionPageLayout | null;
+  showAnswerKey?: boolean;
 }
 
 interface RenderedSet {
@@ -245,6 +247,13 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
       const answerKeyWidth = payload.answerKeyUrl
         ? Math.min(configuredAnswerKeyWidth, maxAnswerKeyWidthFromHeight)
         : 0;
+      const hasAnswerKey = !!payload.answerKeyUrl && answerKeyWidth > 0;
+      const answerKeyHeight = hasAnswerKey
+        ? answerKeySize
+          ? Math.min(pageMetrics.fullHeight, Math.ceil(answerKeyWidth * (answerKeySize.height / answerKeySize.width)))
+          : pageMetrics.fullHeight
+        : 0;
+      const reservedLastPageQuestionAreaHeight = Math.max(0, pageMetrics.fullHeight - answerKeyHeight);
 
       const measuredSets = displaySets.map((set) => {
         const layoutInputs: PrintQuestionLayoutInput[] = set.questions.map((question) => {
@@ -270,28 +279,62 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           pageMetrics.fullHeight,
           pageMetrics.fullHeight,
         );
+        const inlineQuestionPages = hasAnswerKey
+          ? paginateQuestionsWithReservedLastPage(
+              layoutInputs,
+              pageMetrics.fullHeight,
+              reservedLastPageQuestionAreaHeight,
+            )
+          : null;
+        const inlineTotalPages =
+          inlineQuestionPages && inlineQuestionPages.length === questionPages.length ? inlineQuestionPages.length : null;
+        const separateTotalPages = questionPages.length + (hasAnswerKey ? 1 : 0);
 
-        return { set, questionPages };
+        return {
+          set,
+          questionPages,
+          inlineQuestionPages,
+          inlineTotalPages,
+          separateTotalPages,
+        };
       });
 
-      const targetTotalPages = computeUniformTargetTotalPages(
-        measuredSets.map((entry) => entry.questionPages.length + (payload.answerKeyUrl ? 1 : 0)),
-      );
+      const { targetTotalPages, placeAnswerKeyInline } = hasAnswerKey
+        ? planUniformAnswerKeyPlacement(
+            measuredSets.map((entry) => ({
+              inlineTotalPages: entry.inlineTotalPages,
+              separateTotalPages: entry.separateTotalPages,
+            })),
+          )
+        : {
+            targetTotalPages: computeUniformTargetTotalPages(measuredSets.map((entry) => entry.separateTotalPages)),
+            placeAnswerKeyInline: measuredSets.map(() => false),
+          };
 
       const renderedSets = measuredSets
-        .filter((entry) => mode === "exam" || entry.set.id === setId)
-        .map((entry) => {
-          const currentTotal = entry.questionPages.length + (payload.answerKeyUrl ? 1 : 0);
-          const blanksNeeded = Math.max(0, targetTotalPages - currentTotal);
-          const pages: RenderedPage[] = entry.questionPages.map((page) => ({ kind: "content", page }));
-          for (let blankIndex = 0; blankIndex < blanksNeeded; blankIndex++) {
-            pages.push({ kind: "blank", page: null });
-          }
-          if (payload.answerKeyUrl && answerKeyWidth > 0) {
-            pages.push({ kind: "answer-key", page: null });
-          }
-          return { set: entry.set, pages };
-        });
+        .map((entry, entryIndex) => {
+        const shouldInlineAnswerKey =
+          hasAnswerKey && placeAnswerKeyInline[entryIndex] && !!entry.inlineQuestionPages && entry.inlineTotalPages !== null;
+        const contentPages = shouldInlineAnswerKey ? (entry.inlineQuestionPages ?? entry.questionPages) : entry.questionPages;
+        const currentTotal = shouldInlineAnswerKey ? (entry.inlineTotalPages ?? entry.separateTotalPages) : entry.separateTotalPages;
+        const blanksNeeded = Math.max(0, targetTotalPages - currentTotal);
+        const pages: RenderedPage[] = contentPages.map((page, pageIndex) => ({
+          kind: "content",
+          page,
+          showAnswerKey: shouldInlineAnswerKey && pageIndex === contentPages.length - 1,
+        }));
+
+        for (let blankIndex = 0; blankIndex < blanksNeeded; blankIndex++) {
+          pages.push({ kind: "blank", page: null });
+        }
+
+        if (hasAnswerKey && !shouldInlineAnswerKey) {
+          pages.push({ kind: "answer-key", page: null });
+        }
+
+        return { set: entry.set, pages };
+      })
+        .filter((entry) => mode === "exam" || entry.set.id === setId);
 
       setRenderState({
         renderedSets,
@@ -372,7 +415,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                     );
                   })}
 
-                  {page.kind === "answer-key" && payload.answerKeyUrl && renderState.answerKeyWidth > 0 && (
+                  {(page.kind === "answer-key" || page.showAnswerKey) && payload.answerKeyUrl && renderState.answerKeyWidth > 0 && (
                     <div className="exam-print-answer-key" style={{ width: `${renderState.answerKeyWidth}px` }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={payload.answerKeyUrl} alt="Gabarito" />

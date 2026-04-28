@@ -10,12 +10,19 @@ import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
 import { useWorkspaceStore } from "@/lib/state/workspace-store";
 import { AITracePanel } from "@/components/ai-trace-panel";
 import { useToast } from "@/components/toast-provider";
+import { buildSingleQuestionPrompt } from "@/lib/ai/prompt-templates";
+import {
+  RICH_TEXT_ALLOWED_STYLE_LABEL,
+  RICH_TEXT_ALLOWED_TAGS_LABEL,
+  RICH_TEXT_BLOCKED_FEATURES_LABEL,
+} from "@/lib/html/rich-text";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
 export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipline[]; initialTaskId?: string }) {
   const [state, setState] = useState<GenerationState>({});
   const [pending, setPending] = useState(false);
+  const [promptCopied, setPromptCopied] = useState(false);
   const { singleAi, updateSingleAi, resetSingleAi } = useWorkspaceStore();
   const defaultDisciplineId = String(disciplines[0]?.id ?? "");
 
@@ -118,6 +125,22 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
   }
 
   const result = state.result;
+  const selectedDisciplineName = disciplines.find((d) => String(d.id) === disciplineId)?.name ?? "<DISCIPLINA>";
+  const promptPreview = buildSingleQuestionPrompt(
+    selectedDisciplineName,
+    topic.trim() || "<TEMA OU COMPETENCIA>",
+    questionType,
+  );
+
+  async function handlePromptCopy() {
+    try {
+      await navigator.clipboard.writeText(promptPreview);
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 2500);
+    } catch {
+      // noop
+    }
+  }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: result ? "1fr 1fr" : "1fr", gap: "1.5rem", alignItems: "start" }}>
@@ -206,6 +229,43 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
             />
           </div>
 
+          <div
+            style={{
+              marginBottom: "1rem",
+              border: "1px solid #bfdbfe",
+              borderRadius: 8,
+              background: "#eff6ff",
+              padding: "0.9rem",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+              <strong style={{ fontSize: "0.88rem", color: "#1d4ed8" }}>Prompt padrao usado na geracao</strong>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handlePromptCopy}>
+                {promptCopied ? "Copiado" : "Copiar prompt"}
+              </button>
+            </div>
+            <p style={{ margin: "0 0 0.6rem", fontSize: "0.78rem", color: "#1e3a8a", lineHeight: 1.5 }}>
+              O backend usa este prompt como base e aceita HTML sanitizado no <code>statement</code>. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}. {RICH_TEXT_BLOCKED_FEATURES_LABEL}.
+            </p>
+            <pre
+              style={{
+                margin: 0,
+                maxHeight: 220,
+                overflow: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontSize: "0.75rem",
+                lineHeight: 1.55,
+                background: "#fff",
+                border: "1px solid #dbeafe",
+                borderRadius: 6,
+                padding: "0.8rem",
+              }}
+            >
+              {promptPreview}
+            </pre>
+          </div>
+
           {state.error && (
             <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 6, padding: "0.75rem", marginBottom: "1rem", fontSize: "0.875rem", color: "#991b1b" }}>
               {state.error}
@@ -252,6 +312,9 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
             <div className="form-group">
               <label className="form-label">Enunciado</label>
               <textarea name="statement" className="form-textarea" rows={4} defaultValue={result.statement} required />
+              <p style={{ marginTop: "0.35rem", fontSize: "0.78rem", color: "var(--muted)" }}>
+                Este campo aceita HTML sanitizado. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}.
+              </p>
             </div>
 
             {/* Objetiva */}
@@ -322,7 +385,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
 
             <div className="form-group">
               <label className="form-label">Dificuldade</label>
-              <select name="difficulty" className="form-select" defaultValue="medium">
+              <select name="difficulty" className="form-select" defaultValue={result.difficulty ?? "medium"}>
                 <option value="easy">Fácil</option>
                 <option value="medium">Médio</option>
                 <option value="hard">Difícil</option>

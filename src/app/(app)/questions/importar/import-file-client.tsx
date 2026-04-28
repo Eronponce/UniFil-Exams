@@ -12,6 +12,7 @@ import {
   RICH_TEXT_ALLOWED_TAGS_LABEL,
   RICH_TEXT_BLOCKED_FEATURES_LABEL,
 } from "@/lib/html/rich-text";
+import { buildImportPrompt } from "@/lib/ai/prompt-templates";
 
 interface Discipline { id: number; name: string }
 
@@ -124,6 +125,8 @@ QUESTÕES DISSERTATIVAS (questionType: "dissertativa")
 • explanation deve conter o gabarito esperado de forma resumida (máximo 3 frases curtas).
 • answerLines: número de linhas em branco no PDF — use entre 4 e 12, proporcional à complexidade da resposta esperada.`;
 
+const IMPORT_AI_PROMPT = buildImportPrompt() || AI_PROMPT;
+
 function downloadTemplate(format: "json" | "csv") {
   const content = format === "json" ? TEMPLATE_JSON : TEMPLATE_CSV;
   const mimeType = format === "json" ? "application/json" : "text/csv;charset=utf-8";
@@ -163,7 +166,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
 
   async function handlePromptCopy() {
     try {
-      await navigator.clipboard.writeText(AI_PROMPT);
+      await navigator.clipboard.writeText(IMPORT_AI_PROMPT);
       setPromptCopied(true);
       setTimeout(() => setPromptCopied(false), 2500);
     } catch { /* ignore */ }
@@ -480,7 +483,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
           padding: "1rem",
           userSelect: "all",
         }}>
-          {AI_PROMPT}
+          {IMPORT_AI_PROMPT}
         </pre>
       </div>
 

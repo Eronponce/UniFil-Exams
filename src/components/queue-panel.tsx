@@ -78,17 +78,11 @@ export function QueuePanel() {
   return (
     <div
       style={{
-        position: "fixed",
-        bottom: 0,
-        right: "1rem",
-        zIndex: 9999,
-        maxWidth: 460,
-        width: "calc(100vw - 2rem)",
+        width: "100%",
         background: "#fff",
         border: "1px solid #e5e7eb",
-        borderBottom: "none",
-        borderRadius: "8px 8px 0 0",
-        boxShadow: "0 -4px 18px rgba(0,0,0,0.14)",
+        borderRadius: 8,
+        boxShadow: "0 12px 28px rgba(15, 23, 42, 0.18)",
         fontSize: "0.8rem",
       }}
     >

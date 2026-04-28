@@ -7,7 +7,12 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "UniFil Exams",
-  description: "Banco de questões objetivas para provas UniFil",
+  description: "Banco de questoes objetivas para provas UniFil",
+  icons: {
+    icon: "/unifil-logo.jpg",
+    shortcut: "/unifil-logo.jpg",
+    apple: "/unifil-logo.jpg",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

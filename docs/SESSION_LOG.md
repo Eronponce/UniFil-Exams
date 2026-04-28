@@ -255,3 +255,32 @@
 ### Release
 - `package.json` e `package-lock.json` foram preparados para `v2.3.0`.
 - `CHANGELOG.md` recebeu entrada nova para a release `2.3.0`.
+
+## 2026-04-28 - Prompts de IA unificados + chat de issue para GitHub
+
+### IA / rich text
+- `src/lib/ai/prompt-templates.ts` passou a centralizar os prompts-base de importacao, geracao unitara e geracao em lote.
+- Todos os fluxos de IA agora documentam o mesmo contrato de campos e o mesmo suporte a HTML sanitizado em `statement`.
+- `/ai` e `/ai/import` ganharam bloco visual com o prompt padrao efetivo e botao para copiar.
+- A revisao manual em `/ai` agora deixa explicito que o enunciado aceita HTML sanitizado e respeita a dificuldade retornada pela IA.
+- `/audit` ganhou lembrete visual sobre o suporte a HTML sanitizado nos enunciados.
+
+### GitHub issues
+- `src/lib/github/issues.ts` descobre o repo por `GITHUB_ISSUES_REPO`, `GITHUB_REPOSITORY` ou `git origin`.
+- `src/components/issue-chat-panel.tsx` agora abre um rascunho de issue no GitHub com titulo/corpo preenchidos; se o usuario nao estiver logado, o proprio GitHub pede login antes do envio final.
+- O painel de fila foi encaixado no mesmo dock flutuante do chat.
+
+### Configuracao e validacao
+- `.env.local.example` ficou sem token obrigatorio; mantem apenas `GITHUB_ISSUES_REPO` e `GITHUB_ISSUES_LABELS` como overrides opcionais.
+- `src/app/layout.tsx` passou a usar `public/unifil-logo.jpg` como favicon/app icon.
+- Validado com `npm run typecheck`, `npm run lint`, `npm test -- --run src/tests/ai-prompt.test.ts src/tests/github-issues.test.ts` e `npm run build`.
+
+## 2026-04-28 - Gabarito inline no fim da ultima pagina quando couber
+
+### Renderizacao
+- `ExamPrintClient` agora mede a altura real do gabarito e tenta reservar essa area no rodape da ultima pagina de questoes.
+- Quando o set consegue manter a mesma contagem de paginas dentro do alvo uniforme do lote, o gabarito fica inline nessa ultima pagina.
+- Se o inline quebrar o alvo uniforme, o renderer mantem o fallback antigo: paginas em branco antes de uma pagina final exclusiva do gabarito.
+
+### Validacao
+- Testes unitarios da regra de total de paginas ganharam cobertura para inline vs. pagina separada por lote.

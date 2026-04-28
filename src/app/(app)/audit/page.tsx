@@ -7,7 +7,11 @@ import { AuditPendingActions } from "./_components/audit-pending-actions";
 
 import type { Question } from "@/types";
 import { MarkdownText } from "@/components/markdown-text";
-import { truncateRichTextPlain } from "@/lib/html/rich-text";
+import {
+  RICH_TEXT_ALLOWED_STYLE_LABEL,
+  RICH_TEXT_ALLOWED_TAGS_LABEL,
+  truncateRichTextPlain,
+} from "@/lib/html/rich-text";
 import { deleteAllRejectedAction, rejectQuestionAction } from "@/lib/actions/questions";
 import { ConfirmButton } from "@/components/confirm-button";
 
@@ -72,6 +76,9 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
       </div>
 
       <AuditFilters disciplines={disciplines} />
+      <div className="card" style={{ marginBottom: "1rem", fontSize: "0.82rem", color: "var(--muted)" }}>
+        Enunciados aceitam HTML sanitizado. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}.
+      </div>
 
       {/* Seção pendentes */}
       <div style={{ marginBottom: "2rem" }}>
