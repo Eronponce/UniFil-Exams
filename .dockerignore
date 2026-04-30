@@ -1,0 +1,16 @@
+node_modules
+.next
+coverage
+dist
+build
+out
+.git
+.claude
+.agents
+.obsidian
+data/*.db
+data/*.db-shm
+data/*.db-wal
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*

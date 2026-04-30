@@ -1,24 +1,25 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import Link from "next/link";
 import { deleteQuestionAction, rejectQuestionAction } from "@/lib/actions/questions";
 import { enqueueAuditAction } from "@/lib/actions/queue-actions";
 import { ConfirmButton } from "@/components/confirm-button";
+import { useAuditQueueTask } from "./use-audit-queue-task";
 
 interface Props {
   questionId: number;
 }
 
 export function AuditPendingActions({ questionId }: Props) {
-  const [queued, setQueued] = useState(false);
   const [isPendingAudit, startAudit] = useTransition();
   const [isPendingReject, startReject] = useTransition();
+  const { observedTaskId, watchTask } = useAuditQueueTask();
 
   function handleAudit() {
     startAudit(async () => {
-      const { isNew } = await enqueueAuditAction(questionId, true);
-      if (isNew) setQueued(true);
+      const result = await enqueueAuditAction(questionId, true);
+      if (result.taskId) watchTask(result.taskId);
     });
   }
 
@@ -36,19 +37,19 @@ export function AuditPendingActions({ questionId }: Props) {
       <button
         type="button"
         className="btn btn-success btn-sm"
-        disabled={isPendingAudit || isPendingReject || queued}
+        disabled={isPendingAudit || isPendingReject || Boolean(observedTaskId)}
         onClick={handleAudit}
       >
-        {queued ? "Na fila…" : isPendingAudit ? "…" : "✓ Auditar"}
+        {observedTaskId ? "Na fila..." : isPendingAudit ? "..." : "✓ Auditar"}
       </button>
       <button
         type="button"
         className="btn btn-sm"
         style={{ background: "#f97316", color: "#fff", border: "none" }}
-        disabled={isPendingAudit || isPendingReject || queued}
+        disabled={isPendingAudit || isPendingReject || Boolean(observedTaskId)}
         onClick={handleReject}
       >
-        {isPendingReject ? "…" : "✕ Recusar"}
+        {isPendingReject ? "..." : "✕ Recusar"}
       </button>
       <Link href={`/questions/${questionId}/edit`} className="btn btn-ghost btn-sm">Editar</Link>
       <form action={deleteQuestionAction}>

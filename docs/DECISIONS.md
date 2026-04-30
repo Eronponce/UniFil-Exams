@@ -146,3 +146,8 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: add a floating issue chat in the app shell that opens a prefilled GitHub issue draft in the browser, letting GitHub handle login at submit time.
 - Reason: the user wants a zero-config flow without local tokens or extra setup, while still capturing bugs and ideas from inside the app.
 - Impact: `/api/github/issues` is now only a lightweight config endpoint that exposes the target repo/labels; the chat opens `github.com/<repo>/issues/new?...` with title/body prefilled, and the app favicon uses the UniFil logo from `public/unifil-logo.jpg`.
+
+## 2026-04-29 - Local Release Runs In Docker Compose
+- Decision: provide a root `Dockerfile` plus `compose.yml` for the current production release flow, using `next build` + `next start`.
+- Reason: the project needed a repeatable local release startup path and an easy way to reset the SQLite database while keeping user assets mounted.
+- Impact: Docker runs the app on port `3000`, persists `data/`, `public/uploads/`, and `public/gabaritos/` via bind mounts, and defaults container-to-host Ollama access to `host.docker.internal`.

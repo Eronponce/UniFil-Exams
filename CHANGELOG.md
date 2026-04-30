@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.1] - 2026-04-29
+
+### Bug Fixes
+
+- Fix audit queue actions getting visually stuck in `Na fila...` by making the audit buttons watch their own task status and refresh the page as soon as the queued audit finishes
+- Improve the global queue panel so fast tasks that finish between polls still trigger a page refresh
+
+### Chores
+
+- Add Docker production runtime files (`Dockerfile`, `compose.yml`, `.dockerignore`) and document the local release flow
+
+---
+
 ## [2.4.0] - 2026-04-28
 
 ### Features

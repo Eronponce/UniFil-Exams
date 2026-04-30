@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: unifil-exams-release
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_APP_NAME: UniFil Exams
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:latest}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GITHUB_ISSUES_REPO: ${GITHUB_ISSUES_REPO:-}
+      GITHUB_ISSUES_LABELS: ${GITHUB_ISSUES_LABELS:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data
+      - ./public/uploads:/app/public/uploads
+      - ./public/gabaritos:/app/public/gabaritos

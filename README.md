@@ -51,6 +51,27 @@ npm run dev
 
 Acesse em: [http://localhost:3000](http://localhost:3000)
 
+## Release Docker
+
+Suba a release local em modo produção com Docker Compose:
+
+```bash
+docker compose up --build -d
+```
+
+Pare a stack:
+
+```bash
+docker compose down
+```
+
+Notas:
+
+- A aplicação expõe `http://localhost:3000`.
+- O banco SQLite continua persistido em `data/unifil-exams.db`.
+- Uploads continuam persistidos em `public/uploads/` e `public/gabaritos/`.
+- Dentro do container, `OLLAMA_BASE_URL` aponta por padrão para `http://host.docker.internal:11434`.
+
 ## Funcionalidades
 
 ### Banco e IA

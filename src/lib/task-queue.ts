@@ -14,7 +14,6 @@ export interface TaskRecord {
   createdAt: number;
   startedAt?: number;
   finishedAt?: number;
-  /** Unique key for deduplication per question/request */
   dedupKey: string;
 }
 
@@ -44,7 +43,7 @@ export function registerHandler(type: TaskType, handler: TaskHandler) {
 
 export function enqueueTask(params: Omit<TaskRecord, "id" | "status" | "createdAt">): { task: TaskRecord; isNew: boolean } {
   const existing = state.queue.find(
-    (t) => t.dedupKey === params.dedupKey && (t.status === "pending" || t.status === "processing"),
+    (task) => task.dedupKey === params.dedupKey && (task.status === "pending" || task.status === "processing"),
   );
   if (existing) return { task: existing, isNew: false };
 
@@ -54,23 +53,27 @@ export function enqueueTask(params: Omit<TaskRecord, "id" | "status" | "createdA
     status: "pending",
     createdAt: Date.now(),
   };
+
   state.queue.push(task);
   scheduleProcessing();
   return { task, isNew: true };
 }
 
 export function cancelTask(id: string): boolean {
-  const task = state.queue.find((t) => t.id === id);
+  const task = state.queue.find((entry) => entry.id === id);
   if (!task) return false;
+
   if (task.status === "pending") {
     task.status = "cancelled";
     task.finishedAt = Date.now();
     return true;
   }
+
   if (task.status === "processing") {
     task.status = "cancelled";
     return true;
   }
+
   return false;
 }
 
@@ -81,7 +84,7 @@ export function getQueue(): TaskRecord[] {
 
 export function getTask(id: string): TaskRecord | undefined {
   scheduleProcessing();
-  return state.queue.find((t) => t.id === id);
+  return state.queue.find((task) => task.id === id);
 }
 
 function scheduleProcessing() {
@@ -91,8 +94,12 @@ function scheduleProcessing() {
 
 async function processNext() {
   if (state.processing) return;
-  const task = state.queue.find((t) => t.status === "pending");
-  if (!task) { state.processing = false; return; }
+
+  const task = state.queue.find((entry) => entry.status === "pending");
+  if (!task) {
+    state.processing = false;
+    return;
+  }
 
   state.processing = true;
   task.status = "processing";
@@ -101,6 +108,7 @@ async function processNext() {
   try {
     const handler = state.handlers.get(task.type);
     if (!handler) throw new Error(`No handler for task type: ${task.type}`);
+
     const result = await handler(task);
     if (task.status === "processing") {
       task.status = "done";
@@ -115,7 +123,8 @@ async function processNext() {
     }
   } finally {
     state.processing = false;
-    const hasMore = state.queue.some((t) => t.status === "pending");
-    if (hasMore) setTimeout(processNext, 0);
+    if (state.queue.some((entry) => entry.status === "pending")) {
+      setTimeout(processNext, 0);
+    }
   }
 }

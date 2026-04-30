@@ -284,3 +284,33 @@
 
 ### Validacao
 - Testes unitarios da regra de total de paginas ganharam cobertura para inline vs. pagina separada por lote.
+
+## 2026-04-29 - Release v2.4.0 em Docker com base limpa
+
+### Docker / runtime
+- Confirmado que `HEAD` local coincide exatamente com a tag `v2.4.0`.
+- Adicionados `.dockerignore`, `Dockerfile` e `compose.yml` na raiz para build/producao local com `next build` + `next start`.
+- Volumes bind configurados para `data/`, `public/uploads/` e `public/gabaritos/`.
+- `OLLAMA_BASE_URL` no container ficou padronizado para `http://host.docker.internal:11434`.
+
+### Limpeza e validacao
+- `docker compose down` executado antes da limpeza.
+- Banco SQLite removido em `data/unifil-exams.db*` e recriado automaticamente no boot da app.
+- `docker compose up --build -d` validado com sucesso.
+- Container `unifil-exams-release` subiu em `0.0.0.0:3000`.
+- `docker compose logs` mostrou `next start` pronto; smoke HTTP em `http://localhost:3000` retornou `200`.
+
+## 2026-04-29 - Patch release v2.4.1 para fila de auditoria
+
+### Causa raiz
+- A auditoria em fila concluia rapido demais para o refresh depender apenas do `QueuePanel`.
+- O botao de auditoria ficava preso no estado client-side `Na fila...`, mesmo quando a task ja tinha encerrado.
+
+### Correcao
+- `src/app/(app)/audit/_components/use-audit-queue-task.ts` adicionado para observar o `taskId` da propria auditoria e chamar `router.refresh()` quando a task chega a estado terminal.
+- `audit-pending-actions.tsx` e `audit-card-actions.tsx` agora usam esse polling local em vez de depender apenas do painel global.
+- `src/components/queue-panel.tsx` manteve o ajuste para refresh de tasks rapidas vistas pela primeira vez ja em estado terminal.
+
+### Release
+- `package.json` e `package-lock.json` atualizados para `v2.4.1`.
+- `CHANGELOG.md` ganhou entrada `2.4.1`.

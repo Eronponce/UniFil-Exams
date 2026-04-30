@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { deleteQuestionAction } from "@/lib/actions/questions";
 import { enqueueAuditAction } from "@/lib/actions/queue-actions";
+import { useAuditQueueTask } from "./use-audit-queue-task";
 
 interface Props {
   questionId: number;
@@ -11,19 +12,23 @@ interface Props {
 
 export function AuditCardActions({ questionId }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [queued, setQueued] = useState(false);
   const [isPendingAudit, startAudit] = useTransition();
   const [isPendingDelete, startDelete] = useTransition();
+  const { observedTaskId, watchTask } = useAuditQueueTask();
 
   function handleDesaudit() {
     startAudit(async () => {
-      const { isNew } = await enqueueAuditAction(questionId, false);
-      if (isNew) setQueued(true);
+      const result = await enqueueAuditAction(questionId, false);
+      if (result.taskId) watchTask(result.taskId);
     });
   }
 
   function handleDelete() {
-    if (!confirmDelete) { setConfirmDelete(true); return; }
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+
     const fd = new FormData();
     fd.set("id", String(questionId));
     fd.set("back", "/audit");
@@ -35,10 +40,10 @@ export function AuditCardActions({ questionId }: Props) {
       <button
         type="button"
         className="btn btn-ghost btn-sm"
-        disabled={isPendingAudit || queued}
+        disabled={isPendingAudit || Boolean(observedTaskId)}
         onClick={handleDesaudit}
       >
-        {queued ? "Na fila…" : isPendingAudit ? "…" : "Des-auditar"}
+        {observedTaskId ? "Na fila..." : isPendingAudit ? "..." : "Des-auditar"}
       </button>
       <Link href={`/questions/${questionId}/edit`} className="btn btn-ghost btn-sm">Editar</Link>
       <button

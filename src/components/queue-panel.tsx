@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { TaskRecord, TaskStatus } from "@/lib/task-queue";
 import { cancelTaskAction } from "@/lib/actions/queue-actions";
+import { shouldRefreshForTask } from "@/components/queue-panel-utils";
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   pending: "Aguardando",
@@ -35,9 +36,11 @@ export function QueuePanel() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const knownStatuses = useRef<Map<string, TaskStatus>>(new Map());
+  const mountedAt = useRef<number | null>(null);
 
   useEffect(() => {
     let active = true;
+    mountedAt.current = Date.now();
 
     async function poll() {
       if (!active) return;
@@ -47,7 +50,7 @@ export function QueuePanel() {
           const data: TaskRecord[] = await res.json();
           const shouldRefresh = data.some((task) => {
             const previous = knownStatuses.current.get(task.id);
-            return previous && previous !== task.status && ["done", "error", "cancelled"].includes(task.status);
+            return shouldRefreshForTask(task, previous, mountedAt.current ?? 0);
           });
           knownStatuses.current = new Map(data.map((task) => [task.id, task.status]));
           setTasks(data);
