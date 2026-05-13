@@ -44,8 +44,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ exa
 
   const dir = getGabaritoDir();
   for (const ext of GABARITO_EXTENSIONS) {
-    if (fs.existsSync(path.join(dir, `${examId}.${ext}`))) {
-      return NextResponse.json({ exists: true, url: `/gabaritos/${examId}.${ext}`, widthPt: exam.answerKeyWidthPt });
+    const filePath = path.join(dir, `${examId}.${ext}`);
+    if (fs.existsSync(filePath)) {
+      const version = Math.trunc(fs.statSync(filePath).mtimeMs);
+      return NextResponse.json({
+        exists: true,
+        url: `/api/upload/gabarito/${examId}/file?v=${version}`,
+        widthPt: exam.answerKeyWidthPt,
+      });
     }
   }
   return NextResponse.json({ exists: false, widthPt: exam.answerKeyWidthPt });

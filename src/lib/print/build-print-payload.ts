@@ -40,7 +40,9 @@ function existingPublicAsset(fileNames: string[]): string | null {
 }
 
 function getLogoUrl(): string | null {
-  return existingPublicAsset(["unifil-logo.jpg", "unifil-logo.jpeg", "unifil-logo.png"]);
+  return existingPublicAsset(["unifil-logo.jpg", "unifil-logo.jpeg", "unifil-logo.png"])
+    ? "/api/upload/logo/file"
+    : null;
 }
 
 function getAnswerKeyUrl(examId: number): string | null {
@@ -48,7 +50,9 @@ function getAnswerKeyUrl(examId: number): string | null {
     `gabaritos/${examId}.png`,
     `gabaritos/${examId}.jpg`,
     `gabaritos/${examId}.jpeg`,
-  ]);
+  ])
+    ? `/api/upload/gabarito/${examId}/file`
+    : null;
 }
 
 function buildPrintSet(set: ExamSet): PrintSetPayload {

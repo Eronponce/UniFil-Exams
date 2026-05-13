@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: "UniFil Exams",
   description: "Banco de questoes objetivas para provas UniFil",
   icons: {
-    icon: "/unifil-logo.jpg",
-    shortcut: "/unifil-logo.jpg",
-    apple: "/unifil-logo.jpg",
+    icon: "/favicon-unifil.png",
+    shortcut: "/favicon-unifil.png",
+    apple: "/favicon-unifil.png",
   },
 };
 

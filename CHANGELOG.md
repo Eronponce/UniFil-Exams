@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.4.3] - 2026-05-13
+
+### Features
+
+- Set a new application favicon (`public/favicon-unifil.png`) from the provided brand mark
+
+### Bug Fixes
+
+- Fix exports/print preview assets in Docker by serving logo and answer-key images through API file routes
+- Add cache-busting to answer-key preview URLs to avoid stale image references after uploads
+
+### Chores
+
+- Validate production container rebuild and runtime (`docker compose up --build -d`)
+
+---
+
 ## [2.4.2] - 2026-05-13
 
 ### Features

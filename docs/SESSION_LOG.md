@@ -344,6 +344,34 @@
 - `npm run typecheck`: passou.
 - `npm run lint`: passou.
 
+## 2026-05-13 - Preview de gabarito/logo no Docker via rotas de arquivo
+
+### Causa raiz
+- Em runtime Docker (Next.js 16 + Turbopack production), caminhos estaticos em `public` (`/gabaritos/...` e `/unifil-logo.*`) estavam inconsistentes para preview/logo, gerando `404/500` no browser.
+- O upload de logo pode trocar extensao (`.jpg`, `.jpeg`, `.png`), enquanto a metadata estava fixa em `/unifil-logo.jpg`.
+
+### Correcao
+- Nova rota de arquivo do gabarito: `src/app/api/upload/gabarito/[examId]/file/route.ts`.
+- Nova rota de arquivo da logo: `src/app/api/upload/logo/file/route.ts`.
+- `src/app/api/upload/gabarito/[examId]/route.ts` agora retorna URL da rota de arquivo com cache-busting por `mtime`.
+- `src/lib/print/build-print-payload.ts` passou a usar rotas API para `logoUrl` e `answerKeyUrl`.
+- `src/app/layout.tsx` metadata de icones agora aponta para `/api/upload/logo/file`.
+
+### Validacao
+- Rebuild Docker: `docker compose up --build -d`.
+- `GET /api/upload/gabarito/3/file`: `200 image/jpeg`.
+- `GET /api/upload/logo/file`: `200 image/jpeg`.
+- `GET /api/upload/gabarito/3`: URL de preview retornada corretamente com `?v=...`.
+
+## 2026-05-13 - Favicon atualizado para marca enviada
+
+### UI / branding
+- Novo favicon da app salvo em `public/favicon-unifil.png` (origem: `10983643.png`).
+- `src/app/layout.tsx` passou a usar esse arquivo em `metadata.icons` (`icon`, `shortcut`, `apple`).
+
+### Validacao
+- `GET /favicon-unifil.png`: `200 image/png` no container Docker.
+
 ## 2026-05-12 - UI otimista na auditoria
 
 ### UX
