@@ -640,6 +640,22 @@ a:hover {
   font-size: 10pt;
 }
 
+.exam-print-question--adaptive-table {
+  --essay-table-scale: 1;
+}
+
+.exam-print-question--adaptive-table .rich-content table {
+  width: 100%;
+  margin: 0.35rem 0;
+}
+
+.exam-print-question--adaptive-table .rich-content th,
+.exam-print-question--adaptive-table .rich-content td {
+  font-size: calc(0.9em * var(--essay-table-scale));
+  line-height: 1.25;
+  padding: calc(0.25rem * var(--essay-table-scale)) calc(0.5rem * var(--essay-table-scale));
+}
+
 .exam-print-question-image {
   display: block;
   max-width: calc(100% - 20px);
@@ -725,6 +741,11 @@ a:hover {
 
 .exam-print-measure-box {
   position: relative;
+}
+
+.exam-print-measure-box--column .exam-print-question--adaptive-table .rich-content table {
+  width: max-content;
+  max-width: none;
 }
 
 @page {

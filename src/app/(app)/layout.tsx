@@ -20,15 +20,15 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
           width: "min(460px, calc(100vw - 2rem))",
           display: "flex",
           flexDirection: "column",
-          alignItems: "stretch",
-          gap: "0.75rem",
+          alignItems: "flex-end",
+          gap: "0.45rem",
           pointerEvents: "none",
         }}
       >
         <div style={{ pointerEvents: "auto" }}>
           <IssueChatPanel />
         </div>
-        <div style={{ pointerEvents: "auto" }}>
+        <div style={{ width: "100%", pointerEvents: "auto" }}>
           <QueuePanel />
         </div>
       </div>

@@ -132,6 +132,16 @@ export async function auditQuestionAction(formData: FormData) {
   });
 }
 
+export async function setQuestionAuditedAction(id: number, audited: boolean): Promise<{ ok: boolean; error?: string }> {
+  if (!id) return { ok: false, error: "Questão inválida." };
+  auditQuestion(id, audited);
+  revalidatePath("/questions");
+  revalidatePath(`/questions/${id}`);
+  revalidatePath("/audit");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export async function deleteQuestionAction(formData: FormData) {
   const id = Number(formData.get("id"));
   const back = (formData.get("back") as string | null) ?? "/questions";

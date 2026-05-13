@@ -86,12 +86,12 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                 <div className="card" style={{ marginBottom: "1.25rem" }}>
                   <h3 style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Prova em HTML A4</h3>
                   <p style={{ fontSize: "0.875rem", color: "var(--muted)", marginBottom: "1rem" }}>
-                    Todos os sets ({selectedExam.sets.map((s) => `Set ${s.label}`).join(", ")}) em página fake A4, com preview em nova aba e PDF direto gerado do mesmo HTML.
+                    Todos os sets ({selectedExam.sets.map((s) => `Set ${s.label}`).join(", ")}) em página fake A4, com preview na mesma aba e PDF direto gerado do mesmo HTML.
                   </p>
                   <div className="actions-row">
-                    <a href={`/print/exam/${selectedExam.id}`} className="btn btn-primary" target="_blank" rel="noreferrer">
+                    <Link href={`/print/exam/${selectedExam.id}`} className="btn btn-primary">
                       ⬇ Abrir Preview
-                    </a>
+                    </Link>
                     <a href={`/api/pdf/exam/${selectedExam.id}`} className="btn btn-ghost">
                       PDF direto
                     </a>

@@ -1,25 +1,39 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { deleteQuestionAction } from "@/lib/actions/questions";
-import { enqueueAuditAction } from "@/lib/actions/queue-actions";
-import { useAuditQueueTask } from "./use-audit-queue-task";
+import { deleteQuestionAction, setQuestionAuditedAction } from "@/lib/actions/questions";
+import { useAuditOptimistic } from "./audit-optimistic-context";
 
 interface Props {
   questionId: number;
 }
 
 export function AuditCardActions({ questionId }: Props) {
+  const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPendingAudit, startAudit] = useTransition();
   const [isPendingDelete, startDelete] = useTransition();
-  const { observedTaskId, watchTask } = useAuditQueueTask();
+  const { hideQuestion, showQuestion } = useAuditOptimistic();
 
   function handleDesaudit() {
+    hideQuestion(questionId);
     startAudit(async () => {
-      const result = await enqueueAuditAction(questionId, false);
-      if (result.taskId) watchTask(result.taskId);
+      let success = false;
+      try {
+        const result = await setQuestionAuditedAction(questionId, false);
+        if (result.ok) {
+          success = true;
+          router.refresh();
+        }
+      } catch {
+        success = false;
+      }
+
+      if (!success) {
+        showQuestion(questionId);
+      }
     });
   }
 
@@ -40,10 +54,10 @@ export function AuditCardActions({ questionId }: Props) {
       <button
         type="button"
         className="btn btn-ghost btn-sm"
-        disabled={isPendingAudit || Boolean(observedTaskId)}
+        disabled={isPendingAudit}
         onClick={handleDesaudit}
       >
-        {observedTaskId ? "Na fila..." : isPendingAudit ? "..." : "Des-auditar"}
+        {isPendingAudit ? "..." : "Des-auditar"}
       </button>
       <Link href={`/questions/${questionId}/edit`} className="btn btn-ghost btn-sm">Editar</Link>
       <button

@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.4.2] - 2026-05-13
+
+### Features
+
+- Add optimistic audit UX so cards disappear immediately on `✓ Auditar` / `Des-auditar`, with rollback on server failure
+- Improve print layout for statement tables with adaptive scale logic, prioritizing half-width placement and falling back to full width only when needed
+
+### Bug Fixes
+
+- Prevent hydration mismatch noise caused by browser extensions injecting attributes on `<body>` before React hydration
+- Improve exports preview navigation to open in the same tab and avoid duplicate history entries on return from print preview
+- Reduce floating issue CTA obstruction by converting it to a compact bottom-right GitHub FAB positioned above the task panel
+
+### Chores
+
+- Update audit and print behavior notes in `docs/SESSION_LOG.md`
+- Validate release build and runtime via Docker Compose (`docker compose up --build -d`)
+
+---
+
 ## [2.4.1] - 2026-04-29
 
 ### Bug Fixes

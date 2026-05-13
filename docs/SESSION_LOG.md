@@ -314,3 +314,90 @@
 ### Release
 - `package.json` e `package-lock.json` atualizados para `v2.4.1`.
 - `CHANGELOG.md` ganhou entrada `2.4.1`.
+
+## 2026-05-12 - Tabelas em dissertativas: meia largura com fallback legivel
+
+### Renderizacao / paginacao
+- `src/components/print/exam-print-client.tsx` agora mede tabela de enunciado dissertativo em largura intrinseca e decide layout por escala minima legivel.
+- Nova regra: tenta manter a questao em coluna (meia pagina) reduzindo tabela; quando a escala exigida ficaria abaixo do limite, volta para `full-width`.
+- A preferencia de render por questao (escala + modo adaptativo) passou a ser carregada no estado de render para manter medicao e render final alinhados.
+
+### CSS de impressao
+- `src/app/globals.css` ganhou regras `exam-print-question--adaptive-table` com `--essay-table-scale` para reduzir fonte/padding da tabela sem afetar o resto da prova.
+- O modo de medicao da coluna (`exam-print-measure-box--column`) usa largura intrinseca da tabela (`max-content`) so para calcular necessidade real de escala.
+
+### Validacao
+- Novo teste unitario: `src/tests/table-layout.test.ts`.
+- Validado com `npm test -- --run`, `npm run typecheck` e `npm run lint`.
+
+## 2026-05-12 - Ajuste de hidratacao + fluxo de preview
+
+### Correcao de hidratacao
+- `src/app/layout.tsx` agora aplica `suppressHydrationWarning` tambem no `<body>`.
+- Objetivo: ignorar divergencias de atributos injetados por extensoes de navegador antes da hidratacao (ex.: Grammarly).
+
+### Fluxo de preview
+- `src/app/(app)/exports/page.tsx`: `Abrir Preview` deixou de usar `target="_blank"`; agora abre na mesma aba.
+- `src/components/print/exam-print-client.tsx`: link `Voltar` para `/exports` passou a usar `replace` para evitar poluicao do historico/navegacao com copias.
+
+### Validacao
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+
+## 2026-05-12 - UI otimista na auditoria
+
+### UX
+- Ao clicar em `✓ Auditar` ou `Des-auditar`, o card agora some instantaneamente (otimista), antes do refresh do servidor.
+- Em caso de falha da action, o card reaparece (rollback).
+
+### Implementacao
+- Novo contexto cliente: `src/app/(app)/audit/_components/audit-optimistic-context.tsx`.
+- `src/app/(app)/audit/page.tsx` passou a envolver a tela com `AuditOptimisticProvider` e usar `AuditOptimisticCard` em cards pendentes/auditados.
+- `src/app/(app)/audit/_components/audit-pending-actions.tsx` e `audit-card-actions.tsx` agora chamam `hideQuestion/showQuestion` no fluxo otimista.
+
+### Validacao
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+
+## 2026-05-12 - Auditoria direta sem fila para reduzir latencia
+
+### Causa percebida
+- A auditoria usava fila global + polling + `router.refresh()` ao concluir task.
+- Em maquinas locais, o fluxo parecia lento mesmo com `UPDATE` rapido no banco.
+
+### Correcao
+- `src/lib/actions/questions.ts` ganhou `setQuestionAuditedAction(id, audited)` para atualizar auditoria de forma direta.
+- `src/app/(app)/audit/_components/audit-pending-actions.tsx` trocou `enqueueAuditAction` por `setQuestionAuditedAction`.
+- `src/app/(app)/audit/_components/audit-card-actions.tsx` trocou `enqueueAuditAction` por `setQuestionAuditedAction`.
+- O estado `Na fila...` saiu dos botoes de auditoria/des-auditoria; agora a acao executa direta e faz refresh ao concluir.
+
+### Validacao
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+
+## 2026-05-12 - Tabelas adaptativas para qualquer tipo de questao
+
+### Causa raiz
+- As questoes com `<table>` no banco atual estavam em `question_type = objetiva`.
+- A regra adaptativa anterior rodava so para dissertativa com tabela, mantendo objetivas com tabela em `full-width`.
+
+### Correcao
+- `src/components/print/exam-print-client.tsx` agora aplica a decisao adaptativa (coluna vs full) para qualquer questao com tabela.
+- A deteccao de `full-width` deixou de forcar tabela por tipo; agora usa decisao por escala minima e overflow real.
+- `src/lib/print/table-layout.ts` reduziu escala minima de legibilidade de `0.72` para `0.58` para priorizar meia largura antes do fallback.
+
+### Validacao
+- `npm test -- --run src/tests/table-layout.test.ts src/tests/pdf-balance.test.ts src/tests/pdf-pages.test.ts`: passou.
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+
+## 2026-05-12 - Botao de issue reduzido e reposicionado no dock
+
+### UI
+- `src/components/issue-chat-panel.tsx` agora usa FAB circular pequeno (`GH`) em vez de botao largo.
+- O chat de issue abre como popover absoluto acima do FAB, sem empurrar/ocupar area do painel de tarefas.
+- `src/app/(app)/layout.tsx` ajustou o dock fixo para alinhar elementos a direita e manter o painel de tarefas em largura total.
+
+### Validacao
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.

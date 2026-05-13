@@ -111,16 +111,20 @@ export function IssueChatPanel() {
   }
 
   return (
-    <div style={{ marginLeft: "auto", width: expanded ? "100%" : "auto" }}>
-      {expanded ? (
+    <div style={{ position: "relative", display: "flex", justifyContent: "flex-end" }}>
+      {expanded && (
         <div
           style={{
-            width: "100%",
+            position: "absolute",
+            right: 0,
+            bottom: "calc(100% + 0.55rem)",
+            width: "min(420px, calc(100vw - 2rem))",
             background: "#fff",
             border: "1px solid #e5e7eb",
             borderRadius: 8,
             boxShadow: "0 12px 28px rgba(15, 23, 42, 0.18)",
             overflow: "hidden",
+            zIndex: 3,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 0.9rem", borderBottom: "1px solid #f3f4f6" }}>
@@ -185,16 +189,38 @@ export function IssueChatPanel() {
             </div>
           </form>
         </div>
-      ) : (
-        <button
-          type="button"
-          className="btn btn-primary"
-          style={{ boxShadow: "0 10px 24px rgba(15, 23, 42, 0.22)" }}
-          onClick={() => setExpanded(true)}
-        >
-          GitHub issue
-        </button>
       )}
+
+      <button
+        type="button"
+        aria-label="Abrir chat de issue"
+        title="Chat de issue"
+        className="btn btn-primary"
+        style={{
+          width: 36,
+          height: 36,
+          minWidth: 36,
+          padding: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "9999px",
+          boxShadow: "0 8px 20px rgba(15, 23, 42, 0.22)",
+          lineHeight: 0,
+        }}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          width="18"
+          height="18"
+          style={{ display: "block" }}
+          fill="currentColor"
+        >
+          <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.34c-2.23.49-2.69-1.08-2.69-1.08-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.89.87 2.35.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.58.82-2.14-.08-.2-.36-1.02.08-2.12 0 0 .67-.22 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.14 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+        </svg>
+      </button>
     </div>
   );
 }

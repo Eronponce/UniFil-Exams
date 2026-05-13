@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   computeUniformTargetTotalPages,
@@ -12,6 +12,7 @@ import {
 import type { PrintExamPayload, PrintQuestionPayload, PrintSetPayload } from "@/lib/print/build-print-payload";
 import { getAnswerKeyWidthRatio } from "@/lib/pdf/answer-key-layout";
 import { richTextHasTable } from "@/lib/html/rich-text";
+import { decideEssayTableLayout } from "@/lib/print/table-layout";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -53,6 +54,12 @@ interface RenderState {
   renderedSets: RenderedSet[];
   targetTotalPages: number;
   answerKeyWidth: number;
+  questionRenderPrefs: Record<string, QuestionRenderPrefs>;
+}
+
+interface QuestionRenderPrefs {
+  tableScale: number;
+  adaptiveTable: boolean;
 }
 
 function buildDisplaySets(sets: PrintSetPayload[]): DisplaySet[] {
@@ -102,9 +109,24 @@ function StatementHtml({ html }: { html: string }) {
   return <div className="rich-content" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-function QuestionBlock({ question }: { question: DisplayQuestion }) {
+function QuestionBlock({
+  question,
+  tableScale = 1,
+  adaptiveTable = false,
+}: {
+  question: DisplayQuestion;
+  tableScale?: number;
+  adaptiveTable?: boolean;
+}) {
+  const className = `exam-print-question${adaptiveTable ? " exam-print-question--adaptive-table" : ""}`;
+  const style = adaptiveTable
+    ? ({
+        "--essay-table-scale": `${tableScale}`,
+      } as CSSProperties)
+    : undefined;
+
   return (
-    <div className="exam-print-question">
+    <div className={className} style={style}>
       <div className="exam-print-question-header">
         <div className="exam-print-question-number">{question.displayNumber}.</div>
         <div className="exam-print-question-statement">
@@ -255,15 +277,50 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
         : 0;
       const reservedLastPageQuestionAreaHeight = Math.max(0, pageMetrics.fullHeight - answerKeyHeight);
 
+      const questionRenderPrefs: Record<string, QuestionRenderPrefs> = {};
+
       const measuredSets = displaySets.map((set) => {
         const layoutInputs: PrintQuestionLayoutInput[] = set.questions.map((question) => {
           const columnNode = columnMeasureRefs.current[question.measureKey];
           const fullNode = fullMeasureRefs.current[question.measureKey];
+          const hasTable = getStatementIsFullWidth(question.statementHtml);
+          const isTableQuestion = hasTable;
+
+          if (isTableQuestion && columnNode && fullNode) {
+            const measureTable = columnNode.querySelector("table");
+            const naturalTableWidth = Math.ceil(
+              measureTable?.getBoundingClientRect().width ?? measureTable?.scrollWidth ?? 0,
+            );
+            const decision = decideEssayTableLayout({
+              tableNaturalWidth: naturalTableWidth,
+              columnWidth: pageMetrics.columnWidth,
+              fullWidth: pageMetrics.fullWidth,
+            });
+
+            columnNode.style.setProperty("--essay-table-scale", `${decision.tableScale}`);
+            fullNode.style.setProperty("--essay-table-scale", `${decision.tableScale}`);
+
+            const layout: "column" | "full" = decision.layout;
+            questionRenderPrefs[question.measureKey] = {
+              tableScale: decision.tableScale,
+              adaptiveTable: true,
+            };
+
+            return {
+              id: question.id,
+              displayNumber: question.displayNumber,
+              layout,
+              columnHeight: Math.ceil(columnNode.offsetHeight),
+              fullHeight: Math.ceil(fullNode.offsetHeight),
+            };
+          }
 
           const forceFullWidth =
-            question.questionType === "dissertativa" ||
-            getStatementIsFullWidth(question.statementHtml) ||
-            !!(columnNode && columnNode.scrollWidth > columnNode.clientWidth + 1);
+            question.questionType === "dissertativa" || !!(columnNode && columnNode.scrollWidth > columnNode.clientWidth + 1);
+          questionRenderPrefs[question.measureKey] = {
+            tableScale: 1,
+            adaptiveTable: isTableQuestion,
+          };
 
           return {
             id: question.id,
@@ -340,6 +397,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
         renderedSets,
         targetTotalPages,
         answerKeyWidth,
+        questionRenderPrefs,
       });
     }
 
@@ -360,7 +418,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           </div>
         </div>
         <div className="actions-row">
-          <Link href={`/exports?exam=${payload.examId}`} className="btn btn-ghost">
+          <Link href={`/exports?exam=${payload.examId}`} className="btn btn-ghost" replace>
             Voltar
           </Link>
           <a href={mode === "exam" ? `/api/pdf/exam/${payload.examId}` : `/api/pdf/${setId}`} className="btn btn-ghost">
@@ -407,10 +465,15 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                             left: `${placed.column === "left" ? metrics.leftColumnLeft : metrics.rightColumnLeft}px`,
                             width: `${metrics.columnWidth}px`,
                           };
+                    const renderPrefs = renderState.questionRenderPrefs[question.measureKey];
 
                     return (
                       <div key={`${placed.id}-${placed.displayNumber}`} className="exam-print-placed" style={style}>
-                        <QuestionBlock question={question} />
+                        <QuestionBlock
+                          question={question}
+                          tableScale={renderPrefs?.tableScale ?? 1}
+                          adaptiveTable={renderPrefs?.adaptiveTable ?? false}
+                        />
                       </div>
                     );
                   })}
@@ -447,17 +510,18 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
             {displaySets.map((set) =>
               set.questions.map((question) => (
                 <div key={question.measureKey}>
-                  {question.questionType !== "dissertativa" && (
-                    <div
-                      ref={(node) => {
-                        columnMeasureRefs.current[question.measureKey] = node;
-                      }}
-                      className="exam-print-measure-box"
-                      style={{ width: `${metrics.columnWidth}px` }}
-                    >
-                      <QuestionBlock question={question} />
-                    </div>
-                  )}
+                  <div
+                    ref={(node) => {
+                      columnMeasureRefs.current[question.measureKey] = node;
+                    }}
+                    className="exam-print-measure-box exam-print-measure-box--column"
+                    style={{ width: `${metrics.columnWidth}px` }}
+                  >
+                    <QuestionBlock
+                      question={question}
+                      adaptiveTable={getStatementIsFullWidth(question.statementHtml)}
+                    />
+                  </div>
                   <div
                     ref={(node) => {
                       fullMeasureRefs.current[question.measureKey] = node;
@@ -465,7 +529,10 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                     className="exam-print-measure-box"
                     style={{ width: `${metrics.fullWidth}px` }}
                   >
-                    <QuestionBlock question={question} />
+                    <QuestionBlock
+                      question={question}
+                      adaptiveTable={getStatementIsFullWidth(question.statementHtml)}
+                    />
                   </div>
                 </div>
               )),
