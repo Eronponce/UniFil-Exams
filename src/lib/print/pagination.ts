@@ -67,12 +67,14 @@ function attemptLayout(
   let pageIndex = 0;
   let leftY = 0;
   let rightY = 0;
+  let fillingRight = false;
 
   function nextPage(): boolean {
     pageIndex += 1;
     if (pageIndex >= capacities.length) return false;
     leftY = 0;
     rightY = 0;
+    fillingRight = false;
     return true;
   }
 
@@ -94,6 +96,7 @@ function attemptLayout(
           });
           leftY = alignedTop + question.fullHeight;
           rightY = leftY;
+          fillingRight = false;
           break;
         }
 
@@ -108,7 +111,7 @@ function attemptLayout(
         continue;
       }
 
-      if (leftY + question.columnHeight <= capacity) {
+      if (!fillingRight && leftY + question.columnHeight <= capacity) {
         page.placed.push({
           id: question.id,
           displayNumber: question.displayNumber,
@@ -131,6 +134,7 @@ function attemptLayout(
           height: question.columnHeight,
         });
         rightY += question.columnHeight;
+        fillingRight = true;
         break;
       }
 

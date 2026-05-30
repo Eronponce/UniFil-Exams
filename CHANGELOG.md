@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.4.4] - 2026-05-30
+
+### Bug Fixes
+
+- Fix non-linear question numbering in print preview by enforcing sequential column filling (once a question overflows to the right column, subsequent questions follow in that column rather than filling gaps in the left)
+
+---
+
 ## [2.4.3] - 2026-05-13
 
 ### Features

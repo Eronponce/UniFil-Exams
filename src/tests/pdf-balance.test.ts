@@ -69,4 +69,30 @@ describe("paginateQuestionsWithReservedLastPage", () => {
     expect(pages[0].placed.map((item) => item.displayNumber)).toEqual([1, 2, 3]);
     expect(pages[1].placed).toEqual([]);
   });
+
+  it("maintains sequential order even if a later question could fit in a gap in the left column", () => {
+    // Capacity 350.
+    // Q1, Q2, Q3 (100 each) = 300 on left. 50 left.
+    // Q4 (100) -> doesn't fit left, goes to right.
+    // Q5 (50) -> could fit in left (50 left), but SHOULD go to right to maintain order.
+    const pages = paginateQuestionsWithReservedLastPage(
+      [
+        { id: 1, displayNumber: 1, layout: "column", columnHeight: 100, fullHeight: 100 },
+        { id: 2, displayNumber: 2, layout: "column", columnHeight: 100, fullHeight: 100 },
+        { id: 3, displayNumber: 3, layout: "column", columnHeight: 100, fullHeight: 100 },
+        { id: 4, displayNumber: 4, layout: "column", columnHeight: 100, fullHeight: 100 },
+        { id: 5, displayNumber: 5, layout: "column", columnHeight: 50, fullHeight: 50 },
+      ],
+      350,
+      350,
+    );
+
+    expect(pages[0].placed.map((item) => `${item.displayNumber}-${item.column}`)).toEqual([
+      "1-left",
+      "2-left",
+      "3-left",
+      "4-right",
+      "5-right",
+    ]);
+  });
 });
