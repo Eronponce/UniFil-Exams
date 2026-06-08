@@ -429,3 +429,40 @@
 ### Validacao
 - `npm run typecheck`: passou.
 - `npm run lint`: passou.
+
+## 2026-06-08 - Questao V/F impressa sem linha Verdadeiro/Falso
+
+### Ajuste
+- `src/components/print/exam-print-client.tsx` deixou de renderizar a linha com caixas e labels `Verdadeiro`/`Falso` nas questoes `verdadeiro_falso`.
+- A prova impressa/preview agora mostra apenas o enunciado da afirmacao, mantendo banco, randomizacao e gabarito inalterados.
+
+### Validacao
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+- `npm test -- --run src/tests/pdf-pages.test.ts src/tests/pdf-balance.test.ts`: passou.
+- Smoke visual em `http://localhost:3000/print/exam/4`: abriu; `document.querySelector('.exam-print-vf-row') === null`; preview sem ocorrencias de `Verdadeiro`/`Falso`.
+
+## 2026-06-08 - Gabarito de dissertativa usa `-`
+
+### Ajuste
+- `src/lib/pdf/exam-csv.ts` trocou o placeholder de resposta de questoes `dissertativa` de `Dissertativa` para `-` no CSV.
+- `src/app/(app)/exports/page.tsx` trocou o resumo rapido por set de `D` para `-` para manter consistencia visual com o CSV.
+
+### Validacao
+- `npm test -- --run src/tests/csv.test.ts`: passou.
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+
+## 2026-06-08 - Release v2.4.5
+
+### Empacotamento
+- `package.json` atualizado para `2.4.5`.
+- `package-lock.json` sincronizado para `2.4.5` (estava atrasado em `2.4.3`).
+- `CHANGELOG.md` ganhou entrada `2.4.5`.
+
+### Validacao
+- `npm test`: passou (`12` arquivos, `70` testes).
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+- `docker compose down`: passou.
+- `docker compose up --build -d`: bloqueado por rede do ambiente Docker; `npm ci` no container falhou com multiplos `ECONNRESET` ao baixar tarballs de `registry.npmjs.org`, impedindo a validacao local da release em Compose.

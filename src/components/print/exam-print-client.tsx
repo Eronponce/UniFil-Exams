@@ -150,17 +150,6 @@ function QuestionBlock({
         </div>
       )}
 
-      {question.questionType === "verdadeiro_falso" && (
-        <div className="exam-print-vf-row">
-          {(question.shuffledOptions.length === 2 ? question.shuffledOptions : [0, 1]).map((originalIndex, position) => (
-            <div key={position} className="exam-print-vf-option">
-              <span className="exam-print-vf-box" />
-              <span>{originalIndex === 0 ? "Verdadeiro" : "Falso"}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {question.questionType === "dissertativa" && (
         <div className="exam-print-essay-lines">
           {Array.from({ length: question.answerLines > 0 ? question.answerLines : 5 }).map((_, index) => (

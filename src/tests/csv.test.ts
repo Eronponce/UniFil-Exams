@@ -75,7 +75,7 @@ describe("buildAnswerKeyCsv — V/F and dissertativa", () => {
     expect(csv).toContain("2,F");
   });
 
-  it("dissertativa outputs 'Dissertativa'", async () => {
+  it("dissertativa outputs '-'", async () => {
     const { buildAnswerKeyCsv } = await import("@/lib/pdf/exam-csv");
     mockGetQuestion.mockReturnValue(makeQuestion({ questionType: "dissertativa", options: [], answerLines: 5 }));
 
@@ -85,6 +85,6 @@ describe("buildAnswerKeyCsv — V/F and dissertativa", () => {
     };
 
     const csv = buildAnswerKeyCsv("Prova Diss", set);
-    expect(csv).toContain("1,Dissertativa");
+    expect(csv).toContain("1,-");
   });
 });

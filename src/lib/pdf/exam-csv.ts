@@ -5,7 +5,7 @@ import { truncateRichTextPlain } from "@/lib/html/rich-text";
 const LETTERS = ["A", "B", "C", "D", "E"];
 
 function resolveAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, questionType: string): string {
-  if (questionType === "dissertativa") return "Dissertativa";
+  if (questionType === "dissertativa") return "-";
   if (questionType === "verdadeiro_falso") {
     // shuffledOptions[correctShuffledIndex] gives the original index: 0=Verdadeiro, 1=Falso
     const origIdx = sq.shuffledOptions[sq.correctShuffledIndex];

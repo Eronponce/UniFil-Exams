@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.4.5] - 2026-06-08
+
+### Bug Fixes
+
+- Remove the `Verdadeiro` / `Falso` row from printed V/F questions so the statement is rendered alone in the exam preview/PDF flow
+- Use `-` as the default answer-key placeholder for dissertative questions in CSV exports and the fast per-set answer summary
+- Sync package metadata so `package-lock.json` matches the application version again
+
+---
+
 ## [2.4.4] - 2026-05-30
 
 ### Bug Fixes

@@ -14,7 +14,7 @@ const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a",
 
 function quickAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, q: Question | undefined): string {
   if (!q) return "?";
-  if (q.questionType === "dissertativa") return "D";
+  if (q.questionType === "dissertativa") return "-";
   if (q.questionType === "verdadeiro_falso") return (sq.shuffledOptions[sq.correctShuffledIndex] === 0) ? "V" : "F";
   return LETTERS[sq.correctShuffledIndex] ?? "?";
 }
