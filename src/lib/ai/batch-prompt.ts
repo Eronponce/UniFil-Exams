@@ -29,6 +29,7 @@ export type BatchGeneratedQuestion = {
   difficulty?: "easy" | "medium" | "hard";
   thematicArea?: string;
   answerLines?: number;
+  correctAnswer?: string;
 };
 
 const optionText = z.string().transform((s) => s.replace(/^[A-Ea-e1-5][\)\.\-]\s*/, "").trim());
@@ -76,6 +77,19 @@ const DissertativaSchema = z.object({
   ).min(1),
 });
 
+const NumericaSchema = z.object({
+  questions: z.array(
+    z.object({
+      statement: z.string().min(5),
+      correctAnswer: z.string().regex(/^[\d\s,]*$/),
+      explanation: z.string(),
+      difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      thematicArea: z.string().optional(),
+      thematic_area: z.string().optional(),
+    }),
+  ).min(1),
+});
+
 function promptObjetivaFull(discipline: string, rawText: string): string {
   return buildBatchQuestionPrompt(discipline, rawText, "objetiva", "full");
 }
@@ -110,6 +124,18 @@ function promptDissertativaSimple(discipline: string, rawText: string): string {
 
 function promptDissertativaMinimal(discipline: string, rawText: string): string {
   return buildBatchQuestionPrompt(discipline, rawText, "dissertativa", "minimal");
+}
+
+function promptNumericaFull(discipline: string, rawText: string): string {
+  return buildBatchQuestionPrompt(discipline, rawText, "numerica", "full");
+}
+
+function promptNumericaSimple(discipline: string, rawText: string): string {
+  return buildBatchQuestionPrompt(discipline, rawText, "numerica", "simple");
+}
+
+function promptNumericaMinimal(discipline: string, rawText: string): string {
+  return buildBatchQuestionPrompt(discipline, rawText, "numerica", "minimal");
 }
 
 function getModel(provider: AIProvider, ollamaModel?: string) {
@@ -175,6 +201,21 @@ async function attemptDissertativa(model: ReturnType<typeof getModel>, prompt: s
   }));
 }
 
+async function attemptNumerica(model: ReturnType<typeof getModel>, prompt: string): Promise<BatchGeneratedQuestion[]> {
+  const { object } = await generateObject({ model, schema: NumericaSchema, prompt, maxRetries: 0 });
+  return object.questions.map((q) => ({
+    statement: q.statement,
+    questionType: "numerica" as const,
+    options: [],
+    correctIndex: 0,
+    explanation: q.explanation,
+    difficulty: q.difficulty,
+    thematicArea: getThematicArea(q),
+    answerLines: 0,
+    correctAnswer: q.correctAnswer,
+  }));
+}
+
 export async function generateBatchQuestions(
   discipline: string,
   rawText: string,
@@ -193,6 +234,8 @@ export async function generateBatchQuestions(
       ? [[promptVFFull, promptVFSimple, promptVFMinimal], attemptVF]
       : questionType === "dissertativa"
       ? [[promptDissertativaFull, promptDissertativaSimple, promptDissertativaMinimal], attemptDissertativa]
+      : questionType === "numerica"
+      ? [[promptNumericaFull, promptNumericaSimple, promptNumericaMinimal], attemptNumerica]
       : [[promptObjetivaFull, promptObjetivaSimple, promptObjetivaMinimal], attemptObjetiva];
 
   const traceRounds: TraceRound[] = [];

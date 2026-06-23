@@ -21,7 +21,7 @@ function buildHtmlRules(): string {
 function buildGeneralRules(questionType: QuestionType): string {
   return [
     "- Retorne apenas JSON valido, sem markdown e sem texto fora do objeto.",
-    '- Use exatamente os campos: "statement", "questionType", "options", "correctIndex", "difficulty", "thematicArea", "explanation", "answerLines".',
+    '- Use exatamente os campos: "statement", "questionType", "options", "correctIndex", "difficulty", "thematicArea", "explanation", "answerLines", "correctAnswer".',
     `- questionType deve ser "${questionType}".`,
     '- difficulty deve ser "easy", "medium" ou "hard".',
     buildHtmlRules(),
@@ -46,6 +46,18 @@ function buildQuestionTypeRules(questionType: QuestionType): string {
       '- O statement deve pedir uma resposta aberta, delimitada e especifica.',
       '- "explanation" deve conter o gabarito esperado em ate 3 frases curtas.',
       '- "answerLines" deve ficar entre 4 e 12, proporcional a complexidade.',
+      '- "correctAnswer" deve ser "" (vazio).',
+    ].join("\n");
+  }
+
+  if (questionType === "numerica") {
+    return [
+      '- "options" deve ser um array vazio: [].',
+      '- "correctIndex" deve ser 0.',
+      '- O statement deve exigir do aluno uma sequencia numerica como resposta (ex: ordenacao, calculo, resultado).',
+      '- "correctAnswer" deve conter somente digitos, espacos ou virgulas (ex: "42" ou "3 1 4 2" ou "1,2,3").',
+      '- "answerLines" deve ser 0.',
+      '- "explanation" deve justificar como chegar ao valor correto.',
     ].join("\n");
   }
 
@@ -82,7 +94,22 @@ function buildSingleJsonShape(questionType: QuestionType): string {
   "difficulty": "medium",
   "thematicArea": "Subtopico especifico",
   "explanation": "Gabarito esperado em poucas frases",
-  "answerLines": 8
+  "answerLines": 8,
+  "correctAnswer": ""
+}`;
+  }
+
+  if (questionType === "numerica") {
+    return `{
+  "statement": "Coloque em ordem crescente os valores: 4, 2, 7, 1",
+  "questionType": "numerica",
+  "options": [],
+  "correctIndex": 0,
+  "difficulty": "medium",
+  "thematicArea": "Subtopico especifico",
+  "explanation": "A ordem crescente correta e 1 2 4 7",
+  "answerLines": 0,
+  "correctAnswer": "1 2 4 7"
 }`;
   }
 
@@ -94,7 +121,8 @@ function buildSingleJsonShape(questionType: QuestionType): string {
   "difficulty": "medium",
   "thematicArea": "Subtopico especifico",
   "explanation": "Por que a correta esta certa e as demais estao erradas",
-  "answerLines": 0
+  "answerLines": 0,
+  "correctAnswer": ""
 }`;
 }
 
@@ -113,6 +141,9 @@ function buildSingleObjective(questionType: QuestionType, topic: string): string
   if (questionType === "dissertativa") {
     return `Crie UMA questao dissertativa sobre: "${topic}".`;
   }
+  if (questionType === "numerica") {
+    return `Crie UMA questao numerica sobre: "${topic}" cuja resposta seja uma sequencia de numeros.`;
+  }
   return `Crie UMA questao objetiva de nivel universitario sobre: "${topic}".`;
 }
 
@@ -126,6 +157,11 @@ function buildBatchObjective(questionType: QuestionType, variant: PromptVariant)
     return variant === "minimal"
       ? "Gere questoes dissertativas a partir do texto."
       : "Analise o texto abaixo e gere uma questao dissertativa aberta para cada topico relevante identificado.";
+  }
+  if (questionType === "numerica") {
+    return variant === "minimal"
+      ? "Gere questoes numericas a partir do texto."
+      : "Analise o texto abaixo e gere uma questao numerica para cada topico relevante que envolva sequencia ou calculo numerico.";
   }
   return variant === "minimal"
     ? "Gere questoes objetivas a partir do texto."
@@ -148,7 +184,7 @@ export function buildImportPrompt(): string {
 
 REGRAS GERAIS
 ${buildGeneralRules("objetiva").replace('questionType deve ser "objetiva".\n', "")}
-- questionType pode ser "objetiva", "verdadeiro_falso" ou "dissertativa".
+- questionType pode ser "objetiva", "verdadeiro_falso", "dissertativa" ou "numerica".
 
 QUESTOES OBJETIVAS (questionType: "objetiva")
 ${buildQuestionTypeRules("objetiva")}
@@ -157,7 +193,10 @@ QUESTOES VERDADEIRO OU FALSO (questionType: "verdadeiro_falso")
 ${buildQuestionTypeRules("verdadeiro_falso")}
 
 QUESTOES DISSERTATIVAS (questionType: "dissertativa")
-${buildQuestionTypeRules("dissertativa")}`;
+${buildQuestionTypeRules("dissertativa")}
+
+QUESTOES NUMERICAS (questionType: "numerica")
+${buildQuestionTypeRules("numerica")}`;
 }
 
 export function buildSingleQuestionPrompt(

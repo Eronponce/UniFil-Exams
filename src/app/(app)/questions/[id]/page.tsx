@@ -43,8 +43,8 @@ export default async function QuestionPage({ params }: { params: Promise<{ id: s
       <div className="card" style={{ maxWidth: 700 }}>
         <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
           <span className="badge" style={{ background: "#f3f4f6" }}>{discipline?.name ?? "—"}</span>
-          <span className="badge" style={{ background: question.questionType === "objetiva" ? "#dbeafe" : question.questionType === "verdadeiro_falso" ? "#fef9c3" : "#f3e8ff" }}>
-            {question.questionType === "objetiva" ? "Objetiva" : question.questionType === "verdadeiro_falso" ? "V ou F" : "Dissertativa"}
+          <span className="badge" style={{ background: question.questionType === "objetiva" ? "#dbeafe" : question.questionType === "verdadeiro_falso" ? "#fef9c3" : question.questionType === "numerica" ? "#dcfce7" : "#f3e8ff" }}>
+            {question.questionType === "objetiva" ? "Objetiva" : question.questionType === "verdadeiro_falso" ? "V ou F" : question.questionType === "numerica" ? "Numérica" : "Dissertativa"}
           </span>
           <span className="badge" style={{ background: "#f3f4f6" }}>{question.difficulty}</span>
           <span className={`badge ${question.source === "ai" ? "badge-ai" : ""}`}>{question.source}</span>
@@ -89,10 +89,19 @@ export default async function QuestionPage({ params }: { params: Promise<{ id: s
           <p style={{ opacity: 0.65, fontSize: "0.875rem" }}>Questão dissertativa · {question.answerLines} linha{question.answerLines !== 1 ? "s" : ""} em branco no PDF</p>
         )}
 
+        {question.questionType === "numerica" && (
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span style={{ opacity: 0.65, fontSize: "0.875rem" }}>Resposta numérica:</span>
+            <span style={{ fontWeight: 700, color: "var(--success)", background: "#dcfce7", padding: "0.2rem 0.75rem", borderRadius: 6, fontSize: "1rem" }}>
+              {question.correctAnswer || "—"}
+            </span>
+          </div>
+        )}
+
         {question.explanation && (
           <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#eff6ff", borderRadius: 6, borderLeft: "3px solid #3b82f6" }}>
             <p style={{ fontSize: "0.85rem", margin: 0 }}>
-              <strong>{question.questionType === "dissertativa" ? "Gabarito esperado:" : "Justificativa:"}</strong> {question.explanation}
+              <strong>{question.questionType === "dissertativa" || question.questionType === "numerica" ? "Gabarito esperado:" : "Justificativa:"}</strong> {question.explanation}
             </p>
           </div>
         )}

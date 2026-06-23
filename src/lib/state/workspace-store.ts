@@ -29,6 +29,7 @@ export interface ExamDraft {
   numObjetivas: string;
   numVF: string;
   numDissertativas: string;
+  numNumericas: string;
 }
 
 export interface QuestionDraft {
@@ -41,6 +42,7 @@ export interface QuestionDraft {
   thematicArea: string;
   explanation: string;
   answerLines: string;
+  correctAnswer: string;
 }
 
 interface WorkspaceState {
@@ -90,6 +92,7 @@ export function makeExamDraft(): ExamDraft {
     numObjetivas: "",
     numVF: "",
     numDissertativas: "",
+    numNumericas: "",
   };
 }
 
@@ -104,6 +107,7 @@ export function makeQuestionDraft(disciplineId = ""): QuestionDraft {
     thematicArea: "",
     explanation: "",
     answerLines: "5",
+    correctAnswer: "",
   };
 }
 

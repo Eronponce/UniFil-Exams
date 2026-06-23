@@ -25,10 +25,11 @@ export interface ShuffledSet {
 export function buildSets(questions: QuestionInfo[], labels: string[]): ShuffledSet[] {
   const objetivas = questions.filter((q) => q.questionType === "objetiva");
   const vf = questions.filter((q) => q.questionType === "verdadeiro_falso");
+  const numericas = questions.filter((q) => q.questionType === "numerica");
   const dissertativas = questions.filter((q) => q.questionType === "dissertativa");
 
   return labels.map((label) => {
-    const ordered = [...shuffle(objetivas), ...shuffle(vf), ...dissertativas];
+    const ordered = [...shuffle(objetivas), ...shuffle(vf), ...shuffle(numericas), ...dissertativas];
     const questionOrder: number[] = [];
     const shuffledOptions: number[][] = [];
     const correctShuffledIndices: number[] = [];
@@ -44,7 +45,7 @@ export function buildSets(questions: QuestionInfo[], labels: string[]): Shuffled
         shuffledOptions.push(indices);
         correctShuffledIndices.push(indices.indexOf(q.correctIndex));
       } else {
-        // dissertativa: no shuffle, sentinel
+        // numerica / dissertativa: no shuffle, sentinel
         shuffledOptions.push([]);
         correctShuffledIndices.push(0);
       }

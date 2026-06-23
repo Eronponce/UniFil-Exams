@@ -16,6 +16,7 @@ interface QuestionRow {
   explanation: string;
   question_type: QuestionType;
   answer_lines: number;
+  correct_answer: string;
   created_at: string;
 }
 
@@ -36,6 +37,7 @@ function toModel(row: QuestionRow): Question {
     explanation: row.explanation ?? "",
     questionType: (row.question_type ?? "objetiva") as QuestionType,
     answerLines: row.answer_lines ?? 0,
+    correctAnswer: row.correct_answer ?? "",
     createdAt: row.created_at,
   };
 }
@@ -65,6 +67,7 @@ export interface CreateQuestionInput {
   explanation?: string;
   questionType?: QuestionType;
   answerLines?: number;
+  correctAnswer?: string;
 }
 
 export function createQuestion(data: CreateQuestionInput): Question {
@@ -72,8 +75,8 @@ export function createQuestion(data: CreateQuestionInput): Question {
   const result = db
     .prepare(
       `INSERT INTO questions
-        (discipline_id, statement, options, correct_index, image_path, difficulty, source, thematic_area, explanation, question_type, answer_lines)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (discipline_id, statement, options, correct_index, image_path, difficulty, source, thematic_area, explanation, question_type, answer_lines, correct_answer)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       data.disciplineId,
@@ -86,7 +89,8 @@ export function createQuestion(data: CreateQuestionInput): Question {
       data.thematicArea ?? null,
       data.explanation ?? "",
       data.questionType ?? "objetiva",
-      data.answerLines ?? 0
+      data.answerLines ?? 0,
+      data.correctAnswer ?? ""
     );
   return getQuestion(result.lastInsertRowid as number)!;
 }
@@ -110,6 +114,7 @@ export function updateQuestion(id: number, data: Partial<Omit<CreateQuestionInpu
   if (data.explanation !== undefined) db.prepare("UPDATE questions SET explanation = ? WHERE id = ?").run(data.explanation, id);
   if (data.questionType !== undefined) db.prepare("UPDATE questions SET question_type = ? WHERE id = ?").run(data.questionType, id);
   if (data.answerLines !== undefined) db.prepare("UPDATE questions SET answer_lines = ? WHERE id = ?").run(data.answerLines, id);
+  if (data.correctAnswer !== undefined) db.prepare("UPDATE questions SET correct_answer = ? WHERE id = ?").run(data.correctAnswer, id);
   return getQuestion(id);
 }
 

@@ -10,6 +10,7 @@ export interface GeneratedQuestion {
   explanation: string;
   difficulty?: "easy" | "medium" | "hard";
   thematicArea?: string;
+  correctAnswer?: string;
 }
 
 function parseDifficulty(value: unknown): GeneratedQuestion["difficulty"] {
@@ -82,6 +83,10 @@ export function buildPromptDissertativa(discipline: string, topic: string): stri
   return buildSingleQuestionPrompt(discipline, topic, "dissertativa");
 }
 
+export function buildPromptNumerica(discipline: string, topic: string): string {
+  return buildSingleQuestionPrompt(discipline, topic, "numerica");
+}
+
 export function parseResponseDissertativa(raw: string): GeneratedQuestion {
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Resposta nao contem JSON valido");
@@ -100,5 +105,24 @@ export function parseResponseDissertativa(raw: string): GeneratedQuestion {
     explanation: typeof parsed.explanation === "string" ? parsed.explanation : "",
     difficulty: parseDifficulty(parsed.difficulty),
     thematicArea: parseThematicArea(parsed),
+  };
+}
+
+export function parseResponseNumerica(raw: string): GeneratedQuestion {
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("Resposta nao contem JSON valido");
+  const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+  if (typeof parsed.statement !== "string") throw new Error("Estrutura do JSON invalida");
+  const answer = typeof parsed.correctAnswer === "string" ? parsed.correctAnswer.trim() : "";
+  return {
+    questionType: "numerica",
+    statement: parsed.statement,
+    options: [],
+    correctIndex: 0,
+    answerLines: 0,
+    explanation: typeof parsed.explanation === "string" ? parsed.explanation : "",
+    difficulty: parseDifficulty(parsed.difficulty),
+    thematicArea: parseThematicArea(parsed),
+    correctAnswer: answer,
   };
 }

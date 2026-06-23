@@ -12,7 +12,7 @@ const LETTERS = ["A", "B", "C", "D", "E"];
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
 
-export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string }> }) {
+export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const exams = listExams();
@@ -34,6 +34,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
     objetiva: auditedQuestions.filter((q) => q.questionType === "objetiva").length,
     verdadeiro_falso: auditedQuestions.filter((q) => q.questionType === "verdadeiro_falso").length,
     dissertativa: auditedQuestions.filter((q) => q.questionType === "dissertativa").length,
+    numerica: auditedQuestions.filter((q) => q.questionType === "numerica").length,
   };
 
   return (
@@ -65,6 +66,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               initialNumObjetivas={sp.numObjetivas ?? ""}
               initialNumVF={sp.numVF ?? ""}
               initialNumDissertativas={sp.numDissertativas ?? ""}
+              initialNumNumericas={sp.numNumericas ?? ""}
               typeCounts={typeCounts}
             />
 

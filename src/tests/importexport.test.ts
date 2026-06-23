@@ -24,6 +24,7 @@ const SAMPLE_QUESTION: Question = {
   explanation: "Brasília é a capital federal.",
   questionType: "objetiva",
   answerLines: 0,
+  correctAnswer: "",
   createdAt: "2026-04-22",
 };
 

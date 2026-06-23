@@ -1,6 +1,6 @@
 export type ID = number;
 
-export type QuestionType = "objetiva" | "verdadeiro_falso" | "dissertativa";
+export type QuestionType = "objetiva" | "verdadeiro_falso" | "dissertativa" | "numerica";
 
 export interface Discipline {
   id: ID;
@@ -24,6 +24,7 @@ export interface Question {
   explanation: string;
   questionType: QuestionType;
   answerLines: number;
+  correctAnswer: string;
   createdAt: string;
 }
 

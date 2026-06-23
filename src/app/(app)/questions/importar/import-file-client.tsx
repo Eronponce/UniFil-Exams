@@ -16,8 +16,8 @@ import { buildImportPrompt } from "@/lib/ai/prompt-templates";
 
 interface Discipline { id: number; name: string }
 
-const TYPE_LABEL: Record<string, string> = { objetiva: "Objetiva", verdadeiro_falso: "V/F", dissertativa: "Dissertativa" };
-const TYPE_COLOR: Record<string, string> = { objetiva: "#dbeafe", verdadeiro_falso: "#fef9c3", dissertativa: "#f3e8ff" };
+const TYPE_LABEL: Record<string, string> = { objetiva: "Objetiva", verdadeiro_falso: "V/F", dissertativa: "Dissertativa", numerica: "Numérica" };
+const TYPE_COLOR: Record<string, string> = { objetiva: "#dbeafe", verdadeiro_falso: "#fef9c3", dissertativa: "#f3e8ff", numerica: "#dcfce7" };
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
 
@@ -36,6 +36,13 @@ const TEMPLATE_QUESTIONS = [
     statement: "O protocolo HTTP não mantém estado entre requisições consecutivas.",
     preview: "Correto: Verdadeiro",
     note: "correct_index = 0 (Verdadeiro) ou 1 (Falso)",
+  },
+  {
+    type: "numerica",
+    typeLabel: "Numérica",
+    statement: "Coloque em ordem crescente os valores: 4, 2, 7, 1",
+    preview: "Resposta: 1 2 4 7",
+    note: "options vazio • correct_answer = sequência numérica",
   },
   {
     type: "dissertativa",
@@ -60,6 +67,7 @@ const TEMPLATE_JSON = JSON.stringify(
         thematicArea: "Desenvolvimento Web",
         explanation: "CSS é a linguagem responsável pela apresentação visual de páginas HTML.",
         answerLines: 0,
+        correctAnswer: "",
       },
       {
         statement: "O protocolo HTTP não mantém estado entre requisições consecutivas.",
@@ -70,6 +78,18 @@ const TEMPLATE_JSON = JSON.stringify(
         thematicArea: "Redes de Computadores",
         explanation: "HTTP é stateless: cada requisição é independente e não há sessão automática.",
         answerLines: 0,
+        correctAnswer: "",
+      },
+      {
+        statement: "Coloque em ordem crescente os valores: 4, 2, 7, 1",
+        questionType: "numerica",
+        options: [],
+        correctIndex: 0,
+        difficulty: "easy",
+        thematicArea: "Lógica",
+        explanation: "A ordem crescente correta é 1 2 4 7.",
+        answerLines: 0,
+        correctAnswer: "1 2 4 7",
       },
       {
         statement: "Explique o conceito de herança na programação orientada a objetos e apresente um exemplo prático.",
@@ -80,6 +100,7 @@ const TEMPLATE_JSON = JSON.stringify(
         thematicArea: "Programação Orientada a Objetos",
         explanation: "Espera-se que o aluno descreva reutilização de código e hierarquia de classes.",
         answerLines: 8,
+        correctAnswer: "",
       },
     ],
   },
@@ -88,17 +109,18 @@ const TEMPLATE_JSON = JSON.stringify(
 );
 
 const TEMPLATE_CSV = [
-  "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines,explanation",
-  "Qual linguagem é utilizada para estilizar páginas web?,objetiva,easy,HTML,CSS,JavaScript,Python,Java,1,Desenvolvimento Web,0,CSS é a linguagem responsável pela apresentação visual de páginas HTML.",
-  "O protocolo HTTP não mantém estado entre requisições consecutivas.,verdadeiro_falso,medium,Verdadeiro,Falso,,,,0,Redes de Computadores,0,HTTP é stateless: cada requisição é independente e não há sessão automática.",
-  "Explique o conceito de herança na POO e apresente um exemplo prático.,dissertativa,medium,,,,,,0,Programação Orientada a Objetos,8,Espera-se que o aluno descreva reutilização de código e hierarquia de classes.",
+  "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines,explanation,correct_answer",
+  "Qual linguagem é utilizada para estilizar páginas web?,objetiva,easy,HTML,CSS,JavaScript,Python,Java,1,Desenvolvimento Web,0,CSS é a linguagem responsável pela apresentação visual de páginas HTML.,",
+  "O protocolo HTTP não mantém estado entre requisições consecutivas.,verdadeiro_falso,medium,Verdadeiro,Falso,,,,0,Redes de Computadores,0,HTTP é stateless: cada requisição é independente e não há sessão automática.,",
+  "Coloque em ordem crescente os valores: 4 2 7 1,numerica,easy,,,,,,0,Lógica,0,A ordem crescente correta é 1 2 4 7.,1 2 4 7",
+  "Explique o conceito de herança na POO e apresente um exemplo prático.,dissertativa,medium,,,,,,0,Programação Orientada a Objetos,8,Espera-se que o aluno descreva reutilização de código e hierarquia de classes.,",
 ].join("\n");
 
 const AI_PROMPT = `Você receberá um arquivo de template em anexo com o formato de questões esperado. Gere questões estritamente nesse formato JSON, respeitando todas as regras abaixo.
 
 REGRAS GERAIS
-• Use exatamente os campos do template: statement, questionType, options, correctIndex, difficulty, thematicArea, explanation, answerLines.
-• Valores válidos — questionType: "objetiva" | "verdadeiro_falso" | "dissertativa". difficulty: "easy" | "medium" | "hard".
+• Use exatamente os campos do template: statement, questionType, options, correctIndex, difficulty, thematicArea, explanation, answerLines, correctAnswer.
+• Valores válidos — questionType: "objetiva" | "verdadeiro_falso" | "numerica" | "dissertativa". difficulty: "easy" | "medium" | "hard".
 • Retorne apenas o JSON válido, sem texto fora do objeto.
 • O campo statement pode conter HTML sanitizado.
 • Tags permitidas no statement: ${RICH_TEXT_ALLOWED_TAGS_LABEL}.
@@ -117,6 +139,13 @@ QUESTÕES VERDADEIRO OU FALSO (questionType: "verdadeiro_falso")
 • options deve ter exatamente 2 itens: ["Verdadeiro", "Falso"].
 • correctIndex: 0 para Verdadeiro, 1 para Falso.
 • O enunciado deve ser uma afirmação factual, clara e sem ambiguidade — deve ser inequivocamente verdadeira ou falsa, sem espaço para interpretação.
+
+QUESTÕES NUMÉRICAS (questionType: "numerica")
+• options deve ser um array vazio: [].
+• correctIndex deve ser 0.
+• O enunciado deve exigir do aluno uma sequência numérica como resposta (ex: ordenação, cálculo, resultado).
+• correctAnswer deve conter somente dígitos, espaços ou vírgulas (ex: "42" ou "3 1 4 2" ou "1,2,3").
+• answerLines deve ser 0.
 
 QUESTÕES DISSERTATIVAS (questionType: "dissertativa")
 • options deve ser um array vazio: [].
@@ -342,6 +371,11 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
                       Correto: <strong style={{ color: "#16a34a" }}>{q.correctIndex === 0 ? "Verdadeiro" : "Falso"}</strong>
                     </p>
                   )}
+                  {q.questionType === "numerica" && (
+                    <p style={{ marginBottom: "0.5rem", fontSize: "0.9rem" }}>
+                      Resposta: <strong style={{ color: "#16a34a" }}>{q.correctAnswer || "—"}</strong>
+                    </p>
+                  )}
                   {q.questionType === "dissertativa" && (
                     <p style={{ marginBottom: "0.5rem", fontSize: "0.85rem", opacity: 0.7 }}>{q.answerLines} linha{q.answerLines !== 1 ? "s" : ""} em branco no PDF</p>
                   )}
@@ -490,7 +524,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
       {/* Upload form */}
       <div className="card">
         <p style={{ marginBottom: "1.5rem", opacity: 0.75, fontSize: "0.9rem" }}>
-          Importe a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines, explanation).
+          Importe a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines, explanation, correct_answer).
         </p>
         <p style={{ marginBottom: "1rem", opacity: 0.75, fontSize: "0.82rem" }}>
           O campo <code>statement</code> aceita HTML sanitizado. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Atributos: {RICH_TEXT_ALLOWED_ATTRIBUTE_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}.

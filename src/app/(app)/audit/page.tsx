@@ -22,6 +22,16 @@ function OptionsDisplay({ q }: { q: Question }) {
   if (q.questionType === "dissertativa") {
     return <p style={{ fontSize: "0.85rem", opacity: 0.65 }}>{q.answerLines} linha{q.answerLines !== 1 ? "s" : ""} em branco no PDF</p>;
   }
+  if (q.questionType === "numerica") {
+    return (
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", fontSize: "0.875rem" }}>
+        <span style={{ opacity: 0.65 }}>Resposta numérica:</span>
+        <span style={{ fontWeight: 600, color: "var(--success)", background: "#dcfce7", padding: "0.1rem 0.5rem", borderRadius: 4 }}>
+          {q.correctAnswer || "—"}
+        </span>
+      </div>
+    );
+  }
   if (q.questionType === "verdadeiro_falso") {
     return (
       <div style={{ display: "flex", gap: "1rem" }}>
@@ -56,7 +66,7 @@ function ExplanationDisplay({ q }: { q: Question }) {
   }
   return (
     <div style={{ marginTop: "0.5rem", fontSize: "0.825rem", color: "#1e40af", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 4, padding: "0.4rem 0.7rem" }}>
-      <strong>{q.questionType === "dissertativa" ? "Gabarito esperado:" : "Justificativa:"}</strong> {q.explanation}
+      <strong>{q.questionType === "dissertativa" || q.questionType === "numerica" ? "Gabarito esperado:" : "Justificativa:"}</strong> {q.explanation}
     </div>
   );
 }

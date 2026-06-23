@@ -11,6 +11,7 @@ function questionToExported(q: Question): ExportedQuestion {
     thematicArea: q.thematicArea ?? null,
     explanation: q.explanation,
     answerLines: q.answerLines,
+    correctAnswer: q.correctAnswer,
   };
 }
 
@@ -31,10 +32,10 @@ function escapeCsv(value: string): string {
 }
 
 export function questionsToCsv(questions: Question[]): string {
-  const header = "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines,explanation";
+  const header = "statement,question_type,difficulty,option_a,option_b,option_c,option_d,option_e,correct_index,thematic_area,answer_lines,explanation,correct_answer";
   const rows = questions.map((q) => {
     const opts = q.options.map((o) => o.text);
-    // Pad to 5 slots (V/F has 2, dissertativa has 0)
+    // Pad to 5 slots (V/F has 2, numerica/dissertativa has 0)
     const [a, b, c, d, e] = [opts[0] ?? "", opts[1] ?? "", opts[2] ?? "", opts[3] ?? "", opts[4] ?? ""];
     return [
       escapeCsv(q.statement),
@@ -49,6 +50,7 @@ export function questionsToCsv(questions: Question[]): string {
       escapeCsv(q.thematicArea ?? ""),
       String(q.answerLines),
       escapeCsv(q.explanation ?? ""),
+      escapeCsv(q.correctAnswer ?? ""),
     ].join(",");
   });
   return [header, ...rows].join("\n");

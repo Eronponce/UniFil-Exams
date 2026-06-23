@@ -26,6 +26,7 @@ const TYPES = [
   { value: "objetiva", label: "Objetiva (múltipla escolha)" },
   { value: "verdadeiro_falso", label: "Verdadeiro ou Falso" },
   { value: "dissertativa", label: "Dissertativa" },
+  { value: "numerica", label: "Numérica" },
 ];
 
 interface Props {
@@ -200,6 +201,24 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
                   </label>
                 ))}
               </div>
+            </div>
+          )}
+
+          {questionType === "numerica" && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="correctAnswer">Resposta Correta (somente dígitos, espaços ou vírgulas)</label>
+              <input
+                id="correctAnswer" name="correctAnswer" type="text"
+                className="form-input" style={{ maxWidth: 240 }}
+                placeholder="Ex: 42 ou 3 1 4 2 ou 1,2,3"
+                pattern="^[\d\s,]+$"
+                title="Somente números, espaços e vírgulas"
+                required
+                {...(stored
+                  ? { value: stored.correctAnswer, onChange: (e) => upd({ correctAnswer: e.target.value }) }
+                  : { defaultValue: question?.correctAnswer ?? "" }
+                )}
+              />
             </div>
           )}
 

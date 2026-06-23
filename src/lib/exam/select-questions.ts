@@ -20,6 +20,7 @@ export function normalizeExamSelectionRequest(formData: FormData): ExamSelection
       objetiva: Math.max(Number(formData.get("numObjetivas")) || 0, 0),
       verdadeiro_falso: Math.max(Number(formData.get("numVF")) || 0, 0),
       dissertativa: Math.max(Number(formData.get("numDissertativas")) || 0, 0),
+      numerica: Math.max(Number(formData.get("numNumericas")) || 0, 0),
     },
   };
 }
@@ -28,13 +29,14 @@ export function pickQuestionsForExam(questions: QuestionInfo[], request: ExamSel
   const totalRequested = Object.values(request.requestedByType).reduce((sum, v) => sum + v, 0);
 
   if (totalRequested === 0) {
-    throw new Error("Preencha a quantidade de questões para pelo menos um tipo (Objetivas, V/F ou Dissertativas).");
+    throw new Error("Preencha a quantidade de questões para pelo menos um tipo (Objetivas, V/F, Numéricas ou Dissertativas).");
   }
 
   const grouped = {
     objetiva: questions.filter((q) => q.questionType === "objetiva"),
     verdadeiro_falso: questions.filter((q) => q.questionType === "verdadeiro_falso"),
     dissertativa: questions.filter((q) => q.questionType === "dissertativa"),
+    numerica: questions.filter((q) => q.questionType === "numerica"),
   } satisfies Record<QuestionType, QuestionInfo[]>;
 
   for (const [type, requested] of Object.entries(request.requestedByType) as [QuestionType, number][]) {
@@ -45,10 +47,11 @@ export function pickQuestionsForExam(questions: QuestionInfo[], request: ExamSel
     }
   }
 
-  // Order: objetivas → verdadeiro_falso → dissertativas
+  // Order: objetivas → verdadeiro_falso → numericas → dissertativas
   return [
     ...shuffle(grouped.objetiva).slice(0, request.requestedByType.objetiva),
     ...shuffle(grouped.verdadeiro_falso).slice(0, request.requestedByType.verdadeiro_falso),
+    ...shuffle(grouped.numerica).slice(0, request.requestedByType.numerica),
     ...shuffle(grouped.dissertativa).slice(0, request.requestedByType.dissertativa),
   ];
 }

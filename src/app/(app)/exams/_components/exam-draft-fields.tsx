@@ -9,10 +9,12 @@ interface ExamDraftFieldsProps {
   initialNumObjetivas: string;
   initialNumVF: string;
   initialNumDissertativas: string;
+  initialNumNumericas: string;
   typeCounts: {
     objetiva: number;
     verdadeiro_falso: number;
     dissertativa: number;
+    numerica: number;
   };
 }
 
@@ -23,6 +25,7 @@ export function ExamDraftFields({
   initialNumObjetivas,
   initialNumVF,
   initialNumDissertativas,
+  initialNumNumericas,
   typeCounts,
 }: ExamDraftFieldsProps) {
   const { exam, updateExam, resetExam } = useWorkspaceStore();
@@ -33,6 +36,7 @@ export function ExamDraftFields({
     numObjetivas: initialNumObjetivas || exam.numObjetivas,
     numVF: initialNumVF || exam.numVF,
     numDissertativas: initialNumDissertativas || exam.numDissertativas,
+    numNumericas: initialNumNumericas || (exam.numNumericas ?? ""),
   };
 
   return (
@@ -84,6 +88,7 @@ export function ExamDraftFields({
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
             <span className="badge" style={{ background: "#dbeafe" }}>Objetivas disponíveis: {typeCounts.objetiva}</span>
             <span className="badge" style={{ background: "#fef9c3" }}>V/F disponíveis: {typeCounts.verdadeiro_falso}</span>
+            <span className="badge" style={{ background: "#dcfce7" }}>Numéricas disponíveis: {typeCounts.numerica}</span>
             <span className="badge" style={{ background: "#f3e8ff" }}>Dissertativas disponíveis: {typeCounts.dissertativa}</span>
           </div>
         </div>
@@ -117,18 +122,33 @@ export function ExamDraftFields({
           </div>
         </div>
 
-        <div className="form-group" style={{ marginBottom: 0, marginTop: "1rem" }}>
-          <label className="form-label">Dissertativas</label>
-          <input
-            name="numDissertativas"
-            type="number"
-            className="form-input"
-            min={0}
-            max={typeCounts.dissertativa || 0}
-            placeholder="0"
-            value={draft.numDissertativas}
-            onChange={(e) => updateExam({ numDissertativas: e.target.value })}
-          />
+        <div className="form-row" style={{ marginTop: "1rem" }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Numéricas</label>
+            <input
+              name="numNumericas"
+              type="number"
+              className="form-input"
+              min={0}
+              max={typeCounts.numerica || 0}
+              placeholder="0"
+              value={draft.numNumericas}
+              onChange={(e) => updateExam({ numNumericas: e.target.value })}
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Dissertativas</label>
+            <input
+              name="numDissertativas"
+              type="number"
+              className="form-input"
+              min={0}
+              max={typeCounts.dissertativa || 0}
+              placeholder="0"
+              value={draft.numDissertativas}
+              onChange={(e) => updateExam({ numDissertativas: e.target.value })}
+            />
+          </div>
         </div>
       </div>
 

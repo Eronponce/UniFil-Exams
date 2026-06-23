@@ -16,6 +16,7 @@ interface QuestionRow {
   explanation: string;
   question_type: QuestionType;
   answer_lines: number;
+  correct_answer: string;
   created_at: string;
 }
 
@@ -36,6 +37,7 @@ function toModel(row: QuestionRow): Question {
     explanation: row.explanation ?? "",
     questionType: (row.question_type ?? "objetiva") as QuestionType,
     answerLines: row.answer_lines ?? 0,
+    correctAnswer: row.correct_answer ?? "",
     createdAt: row.created_at,
   };
 }

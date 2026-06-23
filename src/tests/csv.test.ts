@@ -29,6 +29,7 @@ function makeQuestion(overrides: Partial<Question> = {}): Question {
     explanation: "",
     questionType: "objetiva",
     answerLines: 0,
+    correctAnswer: "",
     createdAt: "2026-04-22",
     ...overrides,
   };

@@ -4,8 +4,9 @@ import { truncateRichTextPlain } from "@/lib/html/rich-text";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
-function resolveAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, questionType: string): string {
+function resolveAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, questionType: string, correctAnswer?: string): string {
   if (questionType === "dissertativa") return "-";
+  if (questionType === "numerica") return correctAnswer || "-";
   if (questionType === "verdadeiro_falso") {
     // shuffledOptions[correctShuffledIndex] gives the original index: 0=Verdadeiro, 1=Falso
     const origIdx = sq.shuffledOptions[sq.correctShuffledIndex];
@@ -21,7 +22,7 @@ export function buildAnswerKeyCsv(examTitle: string, set: ExamSet): string {
   const sorted = [...set.questions].sort((a, b) => a.position - b.position);
   sorted.forEach((sq, idx) => {
     const q = getQuestion(sq.questionId);
-    const answer = q ? resolveAnswer(sq, q.questionType) : "?";
+    const answer = q ? resolveAnswer(sq, q.questionType, q.correctAnswer) : "?";
     const stmt = q ? `"${truncateRichTextPlain(q.statement, 60).replace(/"/g, '""')}"` : `"Q${sq.questionId}"`;
     rows.push(`${idx + 1},${answer},${stmt}`);
   });

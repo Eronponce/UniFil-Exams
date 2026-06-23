@@ -2,13 +2,14 @@ import { z } from "zod";
 
 export const ExportedQuestionSchema = z.object({
   statement: z.string().min(1),
-  questionType: z.enum(["objetiva", "verdadeiro_falso", "dissertativa"]).default("objetiva"),
+  questionType: z.enum(["objetiva", "verdadeiro_falso", "dissertativa", "numerica"]).default("objetiva"),
   options: z.array(z.string()).default([]),
   correctIndex: z.number().int().min(0).max(4).default(0),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
   thematicArea: z.string().nullable().optional(),
   explanation: z.string().default(""),
   answerLines: z.number().int().min(0).default(0),
+  correctAnswer: z.string().default(""),
 });
 
 export const QuestionExportFileSchema = z.object({
@@ -31,7 +32,7 @@ export function parseCsvQuestions(csvText: string): ExportedQuestion[] {
   for (const row of rows) {
     if (!row.trim()) continue;
     const cells = parseCsvRow(row);
-    const [statement, questionType, difficulty, optA, optB, optC, optD, optE, correctIndexRaw, thematicArea, answerLinesRaw, explanationRaw] = cells;
+    const [statement, questionType, difficulty, optA, optB, optC, optD, optE, correctIndexRaw, thematicArea, answerLinesRaw, explanationRaw, correctAnswerRaw] = cells;
 
     const options: string[] = [optA, optB, optC, optD, optE].filter(Boolean);
     const parsed = ExportedQuestionSchema.safeParse({
@@ -43,6 +44,7 @@ export function parseCsvQuestions(csvText: string): ExportedQuestion[] {
       thematicArea: thematicArea || null,
       explanation: explanationRaw ?? "",
       answerLines: Number(answerLinesRaw ?? 0),
+      correctAnswer: correctAnswerRaw ?? "",
     });
     if (parsed.success) results.push(parsed.data);
   }

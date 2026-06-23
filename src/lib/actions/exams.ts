@@ -17,6 +17,7 @@ export async function createExamAction(formData: FormData) {
   const numObjetivasRaw = (formData.get("numObjetivas") as string | null) ?? "";
   const numVFRaw = (formData.get("numVF") as string | null) ?? "";
   const numDissertativasRaw = (formData.get("numDissertativas") as string | null) ?? "";
+  const numNumericasRaw = (formData.get("numNumericas") as string | null) ?? "";
   const allQuestionIds = (formData.getAll("questionIds") as string[]).map(Number).filter(Boolean);
   const qty = Math.min(Math.max(Number(quantitySetsRaw) || 1, 1), 8);
   const labels = SET_LETTERS.slice(0, qty);
@@ -27,6 +28,7 @@ export async function createExamAction(formData: FormData) {
     if (numObjetivasRaw) params.set("numObjetivas", numObjetivasRaw);
     if (numVFRaw) params.set("numVF", numVFRaw);
     if (numDissertativasRaw) params.set("numDissertativas", numDissertativasRaw);
+    if (numNumericasRaw) params.set("numNumericas", numNumericasRaw);
     return params;
   }
 

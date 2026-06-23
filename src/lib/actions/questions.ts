@@ -41,6 +41,7 @@ export async function createQuestionAction(
   let options: string[];
   let correctIndex: number;
   let answerLines = 0;
+  let correctAnswer = "";
 
   if (questionType === "objetiva") {
     options = [0, 1, 2, 3, 4].map((i) => (formData.get(`option${i}`) as string | null)?.trim() ?? "");
@@ -51,6 +52,14 @@ export async function createQuestionAction(
   } else if (questionType === "verdadeiro_falso") {
     options = ["Verdadeiro", "Falso"];
     correctIndex = Number(formData.get("correctIndex"));
+  } else if (questionType === "numerica") {
+    const raw = (formData.get("correctAnswer") as string | null)?.trim() ?? "";
+    if (!raw || !/^[\d\s,]+$/.test(raw)) {
+      return { error: "Resposta numérica inválida. Use somente dígitos, espaços ou vírgulas." };
+    }
+    correctAnswer = raw;
+    options = [];
+    correctIndex = 0;
   } else {
     // dissertativa
     options = [];
@@ -62,7 +71,7 @@ export async function createQuestionAction(
   const imageFile = formData.get("image") as File | null;
   if (imageFile && imageFile.size > 0) imagePath = await saveImage(imageFile);
 
-  createQuestion({ disciplineId, statement, options, correctIndex, difficulty: difficulty as "easy" | "medium" | "hard", source: source as "manual" | "ai", imagePath, thematicArea, explanation, questionType, answerLines });
+  createQuestion({ disciplineId, statement, options, correctIndex, difficulty: difficulty as "easy" | "medium" | "hard", source: source as "manual" | "ai", imagePath, thematicArea, explanation, questionType, answerLines, correctAnswer });
   revalidatePath("/questions");
   revalidatePath("/audit");
   revalidatePath("/");
@@ -87,6 +96,7 @@ export async function updateQuestionAction(
   let options: string[];
   let correctIndex: number;
   let answerLines = 0;
+  let correctAnswer = "";
 
   if (questionType === "objetiva") {
     options = [0, 1, 2, 3, 4].map((i) => (formData.get(`option${i}`) as string | null)?.trim() ?? "");
@@ -94,6 +104,11 @@ export async function updateQuestionAction(
   } else if (questionType === "verdadeiro_falso") {
     options = ["Verdadeiro", "Falso"];
     correctIndex = Number(formData.get("correctIndex"));
+  } else if (questionType === "numerica") {
+    const raw = (formData.get("correctAnswer") as string | null)?.trim() ?? "";
+    correctAnswer = raw;
+    options = [];
+    correctIndex = 0;
   } else {
     options = [];
     correctIndex = 0;
@@ -104,7 +119,7 @@ export async function updateQuestionAction(
   const imageFile = formData.get("image") as File | null;
   if (imageFile && imageFile.size > 0) imagePath = await saveImage(imageFile);
 
-  updateQuestion(id, { statement, options, correctIndex, difficulty, thematicArea, explanation, questionType, answerLines, ...(imagePath ? { imagePath } : {}) });
+  updateQuestion(id, { statement, options, correctIndex, difficulty, thematicArea, explanation, questionType, answerLines, correctAnswer, ...(imagePath ? { imagePath } : {}) });
   revalidatePath("/questions");
   revalidatePath(`/questions/${id}`);
   revalidatePath("/audit");
@@ -204,6 +219,7 @@ export async function batchSaveQuestionsAction(
     explanation?: string;
     questionType?: QuestionType;
     answerLines?: number;
+    correctAnswer?: string;
   }[],
   disciplineId: number
 ): Promise<{ count: number; error?: string }> {
@@ -222,6 +238,7 @@ export async function batchSaveQuestionsAction(
       explanation: q.explanation ?? "",
       questionType: q.questionType ?? "objetiva",
       answerLines: q.answerLines ?? 0,
+      correctAnswer: q.correctAnswer ?? "",
     });
     count++;
   }
