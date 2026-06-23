@@ -15,6 +15,7 @@ const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a",
 function quickAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, q: Question | undefined): string {
   if (!q) return "?";
   if (q.questionType === "dissertativa") return "-";
+  if (q.questionType === "numerica") return q.correctAnswer || "-";
   if (q.questionType === "verdadeiro_falso") return (sq.shuffledOptions[sq.correctShuffledIndex] === 0) ? "V" : "F";
   return LETTERS[sq.correctShuffledIndex] ?? "?";
 }
@@ -99,7 +100,10 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                 </div>
 
                 <div className="card">
-                  <h3 style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Gabarito Rápido por Set (CSV)</h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                    <h3 style={{ fontWeight: 600, margin: 0 }}>Gabarito Rápido por Set (CSV)</h3>
+                    <a href={`/api/csv/exam/${selectedExam.id}`} className="btn btn-ghost btn-sm" download>⬇ Todos os Sets</a>
+                  </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                     {selectedExam.sets.map((set) => (
                       <div key={set.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -174,8 +178,8 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                         )}
 
                         <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                          <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: 99, background: q.questionType === "objetiva" ? "#dbeafe" : q.questionType === "verdadeiro_falso" ? "#fef9c3" : "#f3e8ff" }}>
-                            {q.questionType === "objetiva" ? "Objetiva" : q.questionType === "verdadeiro_falso" ? "V ou F" : "Dissertativa"}
+                          <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: 99, background: q.questionType === "objetiva" ? "#dbeafe" : q.questionType === "verdadeiro_falso" ? "#fef9c3" : q.questionType === "numerica" ? "#dcfce7" : "#f3e8ff" }}>
+                            {q.questionType === "objetiva" ? "Objetiva" : q.questionType === "verdadeiro_falso" ? "V ou F" : q.questionType === "numerica" ? "Numérica" : "Dissertativa"}
                           </span>
                           <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: 99, background: DIFF_COLOR[q.difficulty] ?? "#f3f4f6" }}>
                             {DIFF_LABEL[q.difficulty]}
@@ -223,6 +227,15 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                       </div>
                     )}
 
+                    {q.questionType === "numerica" && (
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginLeft: 28, marginBottom: "0.75rem" }}>
+                        <span style={{ fontSize: "0.85rem", opacity: 0.65 }}>Resposta:</span>
+                        <span style={{ fontWeight: 700, color: "#15803d", background: "#dcfce7", padding: "0.2rem 0.6rem", borderRadius: 4, fontSize: "0.95rem" }}>
+                          {q.correctAnswer || "—"}
+                        </span>
+                      </div>
+                    )}
+
                     {q.questionType === "dissertativa" && (
                       <p style={{ marginLeft: 28, marginBottom: "0.75rem", fontSize: "0.85rem", opacity: 0.65 }}>
                         Questão dissertativa · {q.answerLines} linha{q.answerLines !== 1 ? "s" : ""} em branco no PDF
@@ -231,7 +244,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
 
                     {q.explanation && (
                       <div style={{ marginLeft: 28, fontSize: "0.825rem", color: "#1e40af", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 4, padding: "0.4rem 0.7rem" }}>
-                        <strong>{q.questionType === "dissertativa" ? "Gabarito esperado:" : "Justificativa:"}</strong> {q.explanation}
+                        <strong>{q.questionType === "dissertativa" || q.questionType === "numerica" ? "Gabarito esperado:" : "Justificativa:"}</strong> {q.explanation}
                       </div>
                     )}
                   </div>
