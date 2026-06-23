@@ -6,22 +6,33 @@ import { QuestionFilters } from "./_components/question-filters";
 import { QuestionsTable } from "./_components/questions-table";
 import type { QuestionType } from "@/types";
 
-export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; rejected?: string; q?: string; type?: string }> }) {
+export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; rejected?: string; q?: string; type?: string; area?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
+  const disciplineId = sp.discipline ? Number(sp.discipline) : undefined;
+
   const questions = listQuestionsFiltered({
-    disciplineId: sp.discipline ? Number(sp.discipline) : undefined,
+    disciplineId,
     rejected: sp.rejected === "1" ? true : undefined,
     audited: sp.rejected === "1" ? undefined : (sp.audited === "1" ? true : sp.audited === "0" ? false : undefined),
     search: sp.q,
     questionType: (sp.type ?? undefined) as QuestionType | undefined,
+    thematicArea: sp.area || undefined,
   });
+
+  // Available areas scoped to selected discipline (ignores other filters)
+  const allAreas = [...new Set(
+    listQuestionsFiltered({ disciplineId })
+      .map((q) => q.thematicArea)
+      .filter(Boolean) as string[]
+  )].sort();
 
   // Build export query params from current filters
   const exportParams = new URLSearchParams();
   if (sp.discipline) exportParams.set("discipline", sp.discipline);
   if (sp.audited) exportParams.set("audited", sp.audited);
   if (sp.type) exportParams.set("type", sp.type);
+  if (sp.area) exportParams.set("area", sp.area);
   const exportBase = `/api/export/questions?${exportParams.toString()}`;
 
   return (
@@ -36,7 +47,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <QuestionFilters disciplines={disciplines} />
+      <QuestionFilters disciplines={disciplines} areas={allAreas} />
 
       {questions.length === 0 ? (
         <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>

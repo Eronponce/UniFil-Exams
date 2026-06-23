@@ -6,7 +6,7 @@ import Link from "next/link";
 
 interface Discipline { id: number; name: string }
 
-export function QuestionFilters({ disciplines }: { disciplines: Discipline[] }) {
+export function QuestionFilters({ disciplines, areas = [] }: { disciplines: Discipline[]; areas?: string[] }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -15,7 +15,7 @@ export function QuestionFilters({ disciplines }: { disciplines: Discipline[] }) 
 
   const urlSearch = searchParams.get("q") ?? "";
 
-  const hasFilters = searchParams.get("discipline") || searchParams.get("audited") || searchParams.get("rejected") || searchParams.get("q") || searchParams.get("type");
+  const hasFilters = searchParams.get("discipline") || searchParams.get("audited") || searchParams.get("rejected") || searchParams.get("q") || searchParams.get("type") || searchParams.get("area");
 
   function navigate(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -50,8 +50,20 @@ export function QuestionFilters({ disciplines }: { disciplines: Discipline[] }) 
         <option value="">Todos os tipos</option>
         <option value="objetiva">Objetiva</option>
         <option value="verdadeiro_falso">V ou F</option>
+        <option value="numerica">Numérica</option>
         <option value="dissertativa">Dissertativa</option>
       </select>
+
+      {areas.length > 0 && (
+        <select
+          className="form-select"
+          value={searchParams.get("area") ?? ""}
+          onChange={(e) => navigate("area", e.target.value)}
+        >
+          <option value="">Todas as áreas</option>
+          {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+      )}
 
       <select
         className="form-select"
