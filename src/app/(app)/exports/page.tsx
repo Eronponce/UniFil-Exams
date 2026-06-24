@@ -96,6 +96,9 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                     <a href={`/api/pdf/exam/${selectedExam.id}`} className="btn btn-ghost">
                       PDF direto
                     </a>
+                    <a href={`/api/zip/exam/${selectedExam.id}`} className="btn btn-ghost" download>
+                      ⬇ ZIP (1 PDF por set)
+                    </a>
                   </div>
                 </div>
 
