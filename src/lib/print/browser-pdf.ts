@@ -69,6 +69,8 @@ export async function renderHtmlPageToPdfBuffer(url: string): Promise<Buffer> {
       "--headless=new",
       "--disable-gpu",
       "--no-first-run",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--run-all-compositor-stages-before-draw",
       "--virtual-time-budget=15000",
