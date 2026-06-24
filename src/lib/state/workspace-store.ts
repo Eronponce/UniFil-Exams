@@ -45,11 +45,19 @@ export interface QuestionDraft {
   correctAnswer: string;
 }
 
+export interface TypeCounts {
+  objetiva: number;
+  verdadeiro_falso: number;
+  dissertativa: number;
+  numerica: number;
+}
+
 interface WorkspaceState {
   singleAi: SingleAiDraft;
   batchAi: BatchAiDraft;
   exam: ExamDraft;
   questionDrafts: Record<string, QuestionDraft>;
+  selectedTypeCounts: TypeCounts | null;
   updateSingleAi: (patch: Partial<SingleAiDraft>) => void;
   resetSingleAi: (disciplineId?: string) => void;
   updateBatchAi: (patch: Partial<BatchAiDraft>) => void;
@@ -58,6 +66,7 @@ interface WorkspaceState {
   resetExam: () => void;
   updateQuestionDraft: (key: string, patch: Partial<QuestionDraft>) => void;
   resetQuestionDraft: (key: string) => void;
+  setSelectedTypeCounts: (counts: TypeCounts | null) => void;
 }
 
 export const DEFAULT_INSTITUTION = "UniFil - Centro Universitário Filadélfia";
@@ -118,6 +127,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       batchAi: makeBatchAiDraft(),
       exam: makeExamDraft(),
       questionDrafts: {},
+      selectedTypeCounts: null,
       updateSingleAi: (patch) => set((state) => ({ singleAi: { ...state.singleAi, ...patch } })),
       resetSingleAi: (disciplineId) => set({ singleAi: makeSingleAiDraft(disciplineId) }),
       updateBatchAi: (patch) => set((state) => ({ batchAi: { ...state.batchAi, ...patch } })),
@@ -135,6 +145,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         delete next[key];
         return { questionDrafts: next };
       }),
+      setSelectedTypeCounts: (counts) => set({ selectedTypeCounts: counts }),
     }),
     {
       name: "unifil-workspace-state",

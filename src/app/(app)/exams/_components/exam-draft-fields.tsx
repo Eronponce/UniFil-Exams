@@ -28,7 +28,7 @@ export function ExamDraftFields({
   initialNumNumericas,
   typeCounts,
 }: ExamDraftFieldsProps) {
-  const { exam, updateExam, resetExam } = useWorkspaceStore();
+  const { exam, updateExam, resetExam, selectedTypeCounts } = useWorkspaceStore();
   const draft = {
     title: initialTitle || exam.title,
     institution: initialInstitution || exam.institution,
@@ -86,10 +86,17 @@ export function ExamDraftFields({
             </p>
           </div>
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-            <span className="badge" style={{ background: "#dbeafe" }}>Objetivas disponíveis: {typeCounts.objetiva}</span>
-            <span className="badge" style={{ background: "#fef9c3" }}>V/F disponíveis: {typeCounts.verdadeiro_falso}</span>
-            <span className="badge" style={{ background: "#dcfce7" }}>Numéricas disponíveis: {typeCounts.numerica}</span>
-            <span className="badge" style={{ background: "#f3e8ff" }}>Dissertativas disponíveis: {typeCounts.dissertativa}</span>
+            {(() => {
+              const counts = selectedTypeCounts ?? typeCounts;
+              return (
+                <>
+                  <span className="badge" style={{ background: "#dbeafe" }}>Objetivas: {counts.objetiva}</span>
+                  <span className="badge" style={{ background: "#fef9c3" }}>V/F: {counts.verdadeiro_falso}</span>
+                  <span className="badge" style={{ background: "#dcfce7" }}>Numéricas: {counts.numerica}</span>
+                  <span className="badge" style={{ background: "#f3e8ff" }}>Dissertativas: {counts.dissertativa}</span>
+                </>
+              );
+            })()}
           </div>
         </div>
 

@@ -3,14 +3,11 @@ import Link from "next/link";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { ExamDisciplineFilter } from "./_components/exam-discipline-filter";
 import { ExamDraftFields } from "./_components/exam-draft-fields";
+import { AuditedQuestionsSelector } from "./_components/audited-questions-selector";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { listExams } from "@/lib/db/exams";
 import { createExamAction } from "@/lib/actions/exams";
-import { truncateRichTextPlain } from "@/lib/html/rich-text";
 
-const LETTERS = ["A", "B", "C", "D", "E"];
-const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
-const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
 
 export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string }> }) {
   const sp = await searchParams;
@@ -81,41 +78,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
                 <Link href="/questions/new">criar questões</Link>.
               </div>
             ) : (
-              <div className="form-group">
-                <label className="form-label">
-                  Questões auditadas — {auditedQuestions.length} disponíveis{selectedArea ? ` (área: ${selectedArea})` : ""}
-                </label>
-                <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6, padding: "0.5rem" }}>
-                  {auditedQuestions.map((q) => (
-                    <label key={q.id} style={{ display: "flex", gap: "0.5rem", padding: "0.4rem 0.25rem", fontSize: "0.875rem", cursor: "pointer", alignItems: "flex-start", borderBottom: "1px solid #f3f4f6" }}>
-                      <input type="checkbox" name="questionIds" value={q.id} defaultChecked style={{ marginTop: "0.15rem", flexShrink: 0 }} />
-                      <span style={{ flex: 1 }}>
-                        {truncateRichTextPlain(q.statement, 90)}
-                        <span style={{ display: "flex", gap: "0.3rem", marginTop: "0.2rem", flexWrap: "wrap" }}>
-                          <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: q.questionType === "objetiva" ? "#dbeafe" : q.questionType === "verdadeiro_falso" ? "#fef9c3" : "#f3e8ff" }}>
-                            {q.questionType === "objetiva" ? "Objetiva" : q.questionType === "verdadeiro_falso" ? "V/F" : "Dissertativa"}
-                          </span>
-                          <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: DIFF_COLOR[q.difficulty] ?? "#f3f4f6" }}>
-                            {DIFF_LABEL[q.difficulty]}
-                          </span>
-                          {q.thematicArea && (
-                            <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: "#e0e7ff", color: "#3730a3" }}>
-                              {q.thematicArea}
-                            </span>
-                          )}
-                          <span style={{ fontSize: "0.7rem", color: "#888" }}>
-                            {q.questionType === "objetiva"
-                              ? `[${LETTERS[q.correctIndex]}]`
-                              : q.questionType === "verdadeiro_falso"
-                                ? `[${q.correctIndex === 0 ? "V" : "F"}]`
-                                : `[${q.answerLines} linhas]`}
-                          </span>
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <AuditedQuestionsSelector questions={auditedQuestions} area={selectedArea || undefined} />
             )}
 
             <div className="form-actions">
