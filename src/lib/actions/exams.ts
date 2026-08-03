@@ -1,13 +1,28 @@
 "use server";
 
+import fs from "node:fs";
+import path from "node:path";
 import { revalidatePath } from "next/cache";
-import { createExam, createExamSet } from "@/lib/db/exams";
+import { createExam, createExamSet, deleteExam } from "@/lib/db/exams";
 import { getQuestion } from "@/lib/db/questions";
 import { buildSets, type QuestionInfo } from "@/lib/exam/randomize";
 import { normalizeExamSelectionRequest, pickQuestionsForExam } from "@/lib/exam/select-questions";
 import { redirectWithToast } from "@/lib/toast";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const GABARITO_EXTENSIONS = ["png", "jpg", "jpeg"] as const;
+
+function removeExamFiles(examId: number) {
+  const directory = path.join(process.cwd(), "public", "gabaritos");
+  for (const extension of GABARITO_EXTENSIONS) {
+    const filePath = path.join(directory, `${examId}.${extension}`);
+    try {
+      fs.unlinkSync(filePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+}
 
 export async function createExamAction(formData: FormData) {
   const disciplineId = Number(formData.get("disciplineId"));
@@ -87,5 +102,35 @@ export async function createExamAction(formData: FormData) {
     type: "success",
     title: "Prova criada",
     description: `${selectedQuestionInfos.length} questão(ões) distribuídas em ${qty} set(s).`,
+  });
+}
+
+export async function deleteExamAction(formData: FormData) {
+  const examId = Number(formData.get("id"));
+  if (!Number.isInteger(examId) || examId <= 0) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Prova inválida",
+      description: "Não foi possível identificar a prova para exclusão.",
+    });
+  }
+
+  const deleted = deleteExam(examId);
+  if (!deleted) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Prova não encontrada",
+      description: "A prova já foi removida ou não existe mais.",
+    });
+  }
+
+  removeExamFiles(examId);
+  revalidatePath("/exams");
+  revalidatePath("/exports");
+  revalidatePath("/");
+  redirectWithToast("/exams", {
+    type: "success",
+    title: "Prova excluída",
+    description: `A prova "${deleted.title}" e seus conjuntos foram removidos.`,
   });
 }

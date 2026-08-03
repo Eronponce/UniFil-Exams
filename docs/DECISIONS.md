@@ -151,3 +151,8 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: provide a root `Dockerfile` plus `compose.yml` for the current production release flow, using `next build` + `next start`.
 - Reason: the project needed a repeatable local release startup path and an easy way to reset the SQLite database while keeping user assets mounted.
 - Impact: Docker runs the app on port `3000`, persists `data/`, `public/uploads/`, and `public/gabaritos/` via bind mounts, and defaults container-to-host Ollama access to `host.docker.internal`.
+
+## 2026-08-03 - Runtime files use dynamic route handlers
+- Decision: serve runtime question images through `src/app/uploads/questions/[filename]/route.ts` instead of relying only on the `public` static-file path.
+- Reason: in the production Docker runtime, files created after the Next build were present in the bind-mounted directory but direct `/uploads/questions/...` requests returned `404`.
+- Impact: existing `image_path` values remain compatible, image names/extensions are validated, and the handler reads only files under `public/uploads/questions`.
