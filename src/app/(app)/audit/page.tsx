@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import Image from "next/image";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { AuditFilters } from "./_components/audit-filters";
@@ -56,6 +57,31 @@ function OptionsDisplay({ q }: { q: Question }) {
   );
 }
 
+function QuestionImage({ q, compact = false }: { q: Question; compact?: boolean }) {
+  if (!q.imageUrl) return null;
+
+  return (
+    <div style={{ margin: compact ? 0 : "0.75rem 0", flexShrink: 0 }}>
+      <Image
+        src={q.imageUrl}
+        alt={`Imagem da questão ${q.id}`}
+        width={compact ? 96 : 720}
+        height={compact ? 64 : 480}
+        sizes={compact ? "96px" : "(max-width: 600px) 100vw, 560px"}
+        style={{
+          display: "block",
+          width: compact ? 96 : "100%",
+          maxWidth: compact ? 96 : 560,
+          height: "auto",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          objectFit: "contain",
+        }}
+      />
+    </div>
+  );
+}
+
 function ExplanationDisplay({ q }: { q: Question }) {
   if (!q.explanation) {
     return (
@@ -108,6 +134,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}><MarkdownText text={q.statement} /></div>
+                      <QuestionImage q={q} />
                       <OptionsDisplay q={q} />
                       <ExplanationDisplay q={q} />
                     </div>
@@ -150,6 +177,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
             {rejected.map((q) => (
               <div key={q.id} className="card" style={{ opacity: 0.75, borderLeft: "3px solid #f97316", padding: "0.6rem 0.9rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+                  <QuestionImage q={q} compact />
                   <span style={{ fontSize: "0.875rem", flex: 1 }}>{truncateRichTextPlain(q.statement, 100)}</span>
                   <form action={rejectQuestionAction}>
                     <input type="hidden" name="id" value={q.id} />
@@ -180,6 +208,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 500, marginBottom: "0.5rem", fontSize: "0.9rem" }}><MarkdownText text={q.statement} /></div>
+                      <QuestionImage q={q} />
                       <OptionsDisplay q={q} />
                       <ExplanationDisplay q={q} />
                     </div>

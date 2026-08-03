@@ -107,6 +107,21 @@ export function updateExamAnswerKeyWidth(examId: number, widthPt: number): numbe
   return normalizedWidth;
 }
 
+export function deleteExam(id: number): Exam | undefined {
+  const db = getDb();
+  const existing = getExam(id);
+  if (!existing) return undefined;
+
+  const tx = db.transaction((examId: number) => {
+    db.prepare("DELETE FROM exam_set_questions WHERE set_id IN (SELECT id FROM exam_sets WHERE exam_id = ?)").run(examId);
+    db.prepare("DELETE FROM exam_questions WHERE exam_id = ?").run(examId);
+    db.prepare("DELETE FROM exam_sets WHERE exam_id = ?").run(examId);
+    db.prepare("DELETE FROM exams WHERE id = ?").run(examId);
+  });
+  tx(id);
+  return existing;
+}
+
 export interface ExamSetInput {
   label: string;
   questionOrder: number[];

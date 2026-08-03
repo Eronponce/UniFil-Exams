@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.4.6] - 2026-08-03
+
+### Features
+
+- Add confirmed exam deletion, removing its sets and answer-key file while preserving the question bank
+- Show question images in pending, rejected, and audited cards on the Audit page
+
+### Bug Fixes
+
+- Serve question uploads created after the production build through a validated dynamic route
+- Include Chromium in the versioned production image for server-side PDF export
+
+---
+
 ## [2.4.5] - 2026-06-08
 
 ### Bug Fixes

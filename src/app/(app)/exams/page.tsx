@@ -6,7 +6,8 @@ import { ExamDraftFields } from "./_components/exam-draft-fields";
 import { AuditedQuestionsSelector } from "./_components/audited-questions-selector";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { listExams } from "@/lib/db/exams";
-import { createExamAction } from "@/lib/actions/exams";
+import { createExamAction, deleteExamAction } from "@/lib/actions/exams";
+import { ConfirmButton } from "@/components/confirm-button";
 
 
 export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string }> }) {
@@ -100,7 +101,19 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
                 <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
                   {exam.sets.length} set(s) · {exam.sets[0]?.questions.length ?? 0} questões por set
                 </div>
-                <Link href={`/exports?exam=${exam.id}`} className="btn btn-sm btn-ghost">Exportar →</Link>
+                <div className="actions-row">
+                  <Link href={`/exports?exam=${exam.id}`} className="btn btn-sm btn-ghost">Exportar →</Link>
+                  <form action={deleteExamAction}>
+                    <input type="hidden" name="id" value={exam.id} />
+                    <ConfirmButton
+                      type="submit"
+                      className="btn btn-sm btn-danger"
+                      confirm={`Excluir a prova "${exam.title}"? Esta ação remove a prova e seus sets, mas preserva as questões.`}
+                    >
+                      Excluir
+                    </ConfirmButton>
+                  </form>
+                </div>
               </div>
             ))
           )}

@@ -466,3 +466,21 @@
 - `npm run lint`: passou.
 - `docker compose down`: passou.
 - `docker compose up --build -d`: bloqueado por rede do ambiente Docker; `npm ci` no container falhou com multiplos `ECONNRESET` ao baixar tarballs de `registry.npmjs.org`, impedindo a validacao local da release em Compose.
+
+## 2026-08-03 - Imagens de questao no runtime Docker e exclusao de provas
+
+### Diagnostico e correcao
+- A instancia usada pelo app e o container `unifil-exams-release` no host `100.92.163.25`, construido em `/home/eronp/UniFil-Exams`.
+- O volume `/home/eronp/UniFil-Exams/public/uploads` esta montado em `/app/public/uploads`; os arquivos das questoes existiam no container, mas `/uploads/questions/<arquivo>` retornava `404` no `next start`.
+- Foi criada a rota dinamica `src/app/uploads/questions/[filename]/route.ts`, com validacao de nome/extensao e leitura segura do arquivo. Os caminhos antigos gravados no banco continuam validos.
+- Foi implementada `deleteExam`/`deleteExamAction`, com confirmacao na tela de montagem, exclusao transacional de prova, sets e tabelas de relacionamento, preservacao das questoes e limpeza do gabarito por ID.
+- A instalacao do Chromium e `UNIFIL_PDF_BROWSER=/usr/bin/chromium`, antes mantidas apenas no Dockerfile remoto, foram incorporadas ao Dockerfile versionado.
+
+### Validacao
+- `npm run typecheck`: passou.
+- `npm run lint`: passou.
+- `npm test -- --run`: passou (`12` arquivos, `70` testes).
+- Build remoto Docker: passou; rota `/uploads/questions/[filename]` incluida no build.
+- Preview remoto da prova 14: 12 questoes, 36 tags de imagem medidas, 36/36 carregadas com dimensoes validas.
+- PDF direto `/api/pdf/exam/14`: HTTP 200, 326950 bytes.
+- Prova temporaria 15 criada, excluida pela Server Action e removida da lista; provas 12, 13 e 14 permaneceram.
