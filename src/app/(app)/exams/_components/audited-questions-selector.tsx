@@ -24,10 +24,10 @@ export interface AuditedQuestion {
 
 interface Props {
   questions: AuditedQuestion[];
-  area?: string;
+  areas?: string[];
 }
 
-export function AuditedQuestionsSelector({ questions, area }: Props) {
+export function AuditedQuestionsSelector({ questions, areas = [] }: Props) {
   const { setSelectedTypeCounts } = useWorkspaceStore();
 
   const sorted = useMemo(
@@ -43,7 +43,20 @@ export function AuditedQuestionsSelector({ questions, area }: Props) {
     [questions],
   );
 
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set(sorted.map((q) => q.id)));
+  const selectionKey = JSON.stringify({
+    areas: areas.map((area) => area.trim()).filter(Boolean).sort(),
+    questionIds: sorted.map((question) => question.id),
+  });
+  const allQuestionIds = useMemo(() => new Set(sorted.map((question) => question.id)), [sorted]);
+  const [selection, setSelection] = useState(() => ({ key: selectionKey, ids: new Set(sorted.map((q) => q.id)) }));
+
+  // A changed filtered pool deliberately starts fully selected by policy. The
+  // parent gives this component a pool key, so a changed area set mounts a
+  // fresh selection instead of restoring an old manual deselection.
+  const selectedIds = useMemo(
+    () => selection.key === selectionKey ? selection.ids : allQuestionIds,
+    [allQuestionIds, selection, selectionKey],
+  );
 
   useEffect(() => {
     const counts = { objetiva: 0, verdadeiro_falso: 0, dissertativa: 0, numerica: 0 };
@@ -57,18 +70,17 @@ export function AuditedQuestionsSelector({ questions, area }: Props) {
     return () => { setSelectedTypeCounts(null); };
   }, [selectedIds, setSelectedTypeCounts, sorted]);
 
-  const toggle = (id: number) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggle = (id: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelection({ key: selectionKey, ids: next });
+  };
 
   return (
     <div className="form-group">
       <label className="form-label">
-        Questões auditadas — {questions.length} disponíveis{area ? ` (área: ${area})` : ""} · {selectedIds.size} selecionadas
+        Questões auditadas — {questions.length} disponíveis{areas.length ? ` (${areas.length} área(s) selecionada(s))` : ""} · {selectedIds.size} selecionadas
       </label>
       <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6, padding: "0.5rem" }}>
         {sorted.map((q) => (
@@ -82,6 +94,7 @@ export function AuditedQuestionsSelector({ questions, area }: Props) {
               value={q.id}
               checked={selectedIds.has(q.id)}
               onChange={() => toggle(q.id)}
+              aria-label={`Selecionar questão ${q.id}`}
               style={{ marginTop: "0.15rem", flexShrink: 0 }}
             />
             <span style={{ flex: 1 }}>

@@ -2,14 +2,16 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
+import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import { QuestionFilters } from "./_components/question-filters";
 import { QuestionsTable } from "./_components/questions-table";
 import type { QuestionType } from "@/types";
 
-export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; rejected?: string; q?: string; type?: string; area?: string }> }) {
+export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; rejected?: string; q?: string; type?: string; area?: string | string[] }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const disciplineId = sp.discipline ? Number(sp.discipline) : undefined;
+  const thematicAreas = normalizeThematicAreas(sp.area);
 
   const questions = listQuestionsFiltered({
     disciplineId,
@@ -17,7 +19,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
     audited: sp.rejected === "1" ? undefined : (sp.audited === "1" ? true : sp.audited === "0" ? false : undefined),
     search: sp.q,
     questionType: (sp.type ?? undefined) as QuestionType | undefined,
-    thematicArea: sp.area || undefined,
+    thematicAreas,
   });
 
   // Available areas scoped to selected discipline (ignores other filters)
@@ -31,8 +33,10 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   const exportParams = new URLSearchParams();
   if (sp.discipline) exportParams.set("discipline", sp.discipline);
   if (sp.audited) exportParams.set("audited", sp.audited);
+  if (sp.rejected) exportParams.set("rejected", sp.rejected);
+  if (sp.q) exportParams.set("q", sp.q);
   if (sp.type) exportParams.set("type", sp.type);
-  if (sp.area) exportParams.set("area", sp.area);
+  for (const area of thematicAreas) exportParams.append("area", area);
   const exportBase = `/api/export/questions?${exportParams.toString()}`;
 
   return (

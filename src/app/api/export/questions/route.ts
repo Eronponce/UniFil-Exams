@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
+import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import type { QuestionType } from "@/types";
 import { questionsToJson, questionsToCsv } from "@/lib/importexport/export";
 
@@ -10,8 +11,10 @@ export async function GET(req: NextRequest) {
   const questionType = (sp.get("type") ?? undefined) as QuestionType | undefined;
   const auditedParam = sp.get("audited");
   const audited = auditedParam === "1" ? true : auditedParam === "0" ? false : undefined;
+  const rejected = sp.get("rejected") === "1" ? true : undefined;
+  const thematicAreas = normalizeThematicAreas(sp.getAll("area"));
 
-  const questions = listQuestionsFiltered({ disciplineId, audited, questionType });
+  const questions = listQuestionsFiltered({ disciplineId, audited, rejected, search: sp.get("q") ?? undefined, questionType, thematicAreas });
 
   const date = new Date().toISOString().slice(0, 10);
   if (format === "csv") {

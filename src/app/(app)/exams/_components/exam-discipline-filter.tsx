@@ -3,15 +3,19 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTransition } from "react";
 import Link from "next/link";
+import { ThematicAreaFilter } from "@/components/thematic-area-filter";
+import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 
 interface Discipline { id: number; name: string }
 
 export function ExamDisciplineFilter({
   disciplines,
   areas,
+  selectedAreas,
 }: {
   disciplines: Discipline[];
   areas: string[];
+  selectedAreas: string[];
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -24,6 +28,15 @@ export function ExamDisciplineFilter({
     else params.delete(key);
     // When discipline changes, reset area
     if (key === "discipline") params.delete("area");
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }
+
+  function setAreas(nextAreas: string[]) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("area");
+    for (const area of nextAreas) params.append("area", area);
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
@@ -46,19 +59,9 @@ export function ExamDisciplineFilter({
           </select>
         </div>
 
-        {areas.length > 0 && (
-          <div className="form-group">
-            <label className="form-label">Área Temática</label>
-            <select
-              className="form-select"
-              value={searchParams.get("area") ?? ""}
-              onChange={(e) => navigate("area", e.target.value)}
-            >
-              <option value="">Todas as áreas</option>
-              {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-        )}
+        <div className="form-group" style={{ flex: 1 }}>
+          <ThematicAreaFilter areas={areas} selectedAreas={normalizeThematicAreas(selectedAreas)} onChange={setAreas} />
+        </div>
       </div>
 
       {hasDiscipline && (

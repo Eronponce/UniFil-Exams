@@ -4,7 +4,17 @@ import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import type { QuestionType } from "@/types";
-import { createQuestion, updateQuestion, auditQuestion, rejectQuestion, deleteQuestion, deleteQuestions } from "@/lib/db/questions";
+import {
+  createQuestion,
+  updateQuestion,
+  auditQuestion,
+  rejectQuestion,
+  deleteQuestion,
+  deleteQuestions,
+  getQuestion,
+  getQuestionNavigation,
+  updateQuestionsStatementAndThematicArea,
+} from "@/lib/db/questions";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { redirectWithToast } from "@/lib/toast";
 
@@ -74,6 +84,8 @@ export async function createQuestionAction(
   createQuestion({ disciplineId, statement, options, correctIndex, difficulty: difficulty as "easy" | "medium" | "hard", source: source as "manual" | "ai", imagePath, thematicArea, explanation, questionType, answerLines, correctAnswer });
   revalidatePath("/questions");
   revalidatePath("/audit");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
   redirectWithToast("/questions", {
     type: "success",
@@ -87,6 +99,8 @@ export async function updateQuestionAction(
   formData: FormData
 ): Promise<QuestionFormState | undefined> {
   const id = Number(formData.get("id"));
+  const existing = getQuestion(id);
+  if (!existing) return { error: "Questão não encontrada." };
   const statement = (formData.get("statement") as string | null)?.trim();
   const questionType = ((formData.get("questionType") as string | null) ?? "objetiva") as QuestionType;
   const difficulty = (formData.get("difficulty") as string | null) as "easy" | "medium" | "hard" | undefined;
@@ -123,12 +137,59 @@ export async function updateQuestionAction(
   revalidatePath("/questions");
   revalidatePath(`/questions/${id}`);
   revalidatePath("/audit");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
-  redirectWithToast(`/questions/${id}`, {
+  const navigation = formData.get("navigation");
+  const neighbor = navigation === "previous" || navigation === "next"
+    ? getQuestionNavigation(id, existing.disciplineId)[navigation === "previous" ? "previousId" : "nextId"]
+    : undefined;
+  redirectWithToast(neighbor ? `/questions/${neighbor}/edit` : `/questions/${id}`, {
     type: "success",
     title: "Questão atualizada",
     description: "As alterações foram salvas.",
   });
+}
+
+export interface BatchQuestionEditState {
+  ok?: boolean;
+  count?: number;
+  error?: string;
+}
+
+function areStrings(values: FormDataEntryValue[]): values is string[] {
+  return values.every((value) => typeof value === "string");
+}
+
+export async function batchUpdateQuestionsAction(
+  _prev: BatchQuestionEditState | undefined,
+  formData: FormData,
+): Promise<BatchQuestionEditState> {
+  const ids = formData.getAll("id");
+  const statements = formData.getAll("statement");
+  const thematicAreas = formData.getAll("thematicArea");
+  if (ids.length === 0 || ids.length !== statements.length || ids.length !== thematicAreas.length) {
+    return { error: "Dados da edição em lote inválidos." };
+  }
+  if (!areStrings(ids) || !areStrings(statements) || !areStrings(thematicAreas)) {
+    return { error: "Dados da edição em lote inválidos." };
+  }
+
+  try {
+    const count = updateQuestionsStatementAndThematicArea(ids.map((id, index) => ({
+      id: Number(id),
+      statement: statements[index],
+      thematicArea: thematicAreas[index],
+    })));
+    revalidatePath("/questions");
+    revalidatePath("/audit");
+    revalidatePath("/exams");
+    revalidatePath("/exports");
+    revalidatePath("/");
+    return { ok: true, count };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Não foi possível editar as questões." };
+  }
 }
 
 export async function auditQuestionAction(formData: FormData) {
@@ -139,6 +200,8 @@ export async function auditQuestionAction(formData: FormData) {
   revalidatePath("/questions");
   revalidatePath(`/questions/${id}`);
   revalidatePath("/audit");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
   redirectWithToast(back, {
     type: "success",
@@ -153,6 +216,8 @@ export async function setQuestionAuditedAction(id: number, audited: boolean): Pr
   revalidatePath("/questions");
   revalidatePath(`/questions/${id}`);
   revalidatePath("/audit");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
   return { ok: true };
 }
@@ -163,6 +228,8 @@ export async function deleteQuestionAction(formData: FormData) {
   deleteQuestion(id);
   revalidatePath("/questions");
   revalidatePath("/audit");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
   redirectWithToast(back, {
     type: "success",
@@ -177,6 +244,8 @@ export async function rejectQuestionAction(formData: FormData) {
   rejectQuestion(id, value);
   revalidatePath("/audit");
   revalidatePath("/questions");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
 }
 
@@ -201,6 +270,8 @@ export async function deleteManyQuestionsAction(formData: FormData) {
   deleteQuestions(ids);
   revalidatePath("/questions");
   revalidatePath("/audit");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
   redirectWithToast("/questions", {
     type: "success",
@@ -245,6 +316,8 @@ export async function batchSaveQuestionsAction(
 
   revalidatePath("/questions");
   revalidatePath("/audit");
+  revalidatePath("/exams");
+  revalidatePath("/exports");
   revalidatePath("/");
   return { count };
 }

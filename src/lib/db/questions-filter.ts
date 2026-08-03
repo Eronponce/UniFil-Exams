@@ -1,5 +1,8 @@
 import type { Question, QuestionType } from "@/types";
+import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import { getDb } from "./client";
+
+export { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 
 interface QuestionRow {
   id: number;
@@ -47,6 +50,9 @@ export interface QuestionFilters {
   audited?: boolean;
   rejected?: boolean;
   search?: string;
+  /** Preferred multi-value thematic-area filter. */
+  thematicAreas?: readonly string[];
+  /** Legacy single-value thematic-area filter. */
   thematicArea?: string;
   questionType?: QuestionType;
 }
@@ -72,9 +78,10 @@ export function listQuestionsFiltered(filters: QuestionFilters = {}): Question[]
     conditions.push("q.statement LIKE ?");
     params.push(`%${filters.search}%`);
   }
-  if (filters.thematicArea) {
-    conditions.push("q.thematic_area = ?");
-    params.push(filters.thematicArea);
+  const thematicAreas = normalizeThematicAreas(filters.thematicAreas, filters.thematicArea);
+  if (thematicAreas.length > 0) {
+    conditions.push(`q.thematic_area IN (${thematicAreas.map(() => "?").join(", ")})`);
+    params.push(...thematicAreas);
   }
   if (filters.questionType) {
     conditions.push("q.question_type = ?");
@@ -82,5 +89,5 @@ export function listQuestionsFiltered(filters: QuestionFilters = {}): Question[]
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  return (db.prepare(`SELECT * FROM questions q ${where} ORDER BY q.created_at DESC`).all(...params) as QuestionRow[]).map(toModel);
+  return (db.prepare(`SELECT * FROM questions q ${where} ORDER BY q.created_at DESC, q.id DESC`).all(...params) as QuestionRow[]).map(toModel);
 }

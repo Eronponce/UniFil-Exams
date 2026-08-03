@@ -8,6 +8,7 @@ import { getQuestion } from "@/lib/db/questions";
 import { buildSets, type QuestionInfo } from "@/lib/exam/randomize";
 import { normalizeExamSelectionRequest, pickQuestionsForExam } from "@/lib/exam/select-questions";
 import { redirectWithToast } from "@/lib/toast";
+import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const GABARITO_EXTENSIONS = ["png", "jpg", "jpeg"] as const;
@@ -34,12 +35,14 @@ export async function createExamAction(formData: FormData) {
   const numDissertativasRaw = (formData.get("numDissertativas") as string | null) ?? "";
   const numNumericasRaw = (formData.get("numNumericas") as string | null) ?? "";
   const allQuestionIds = (formData.getAll("questionIds") as string[]).map(Number).filter(Boolean);
+  const thematicAreas = normalizeThematicAreas(formData.getAll("area").filter((value): value is string => typeof value === "string"));
   const qty = Math.min(Math.max(Number(quantitySetsRaw) || 1, 1), 8);
   const labels = SET_LETTERS.slice(0, qty);
 
   function buildErrorParams(error: string) {
     const params = new URLSearchParams({ error, title, institution, quantitySets: String(qty) });
     if (disciplineId) params.set("discipline", String(disciplineId));
+    for (const area of thematicAreas) params.append("area", area);
     if (numObjetivasRaw) params.set("numObjetivas", numObjetivasRaw);
     if (numVFRaw) params.set("numVF", numVFRaw);
     if (numDissertativasRaw) params.set("numDissertativas", numDissertativasRaw);

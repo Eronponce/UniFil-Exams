@@ -45,8 +45,8 @@ function toModel(row: QuestionRow): Question {
 export function listQuestions(disciplineId?: number): Question[] {
   const db = getDb();
   const rows = disciplineId
-    ? (db.prepare("SELECT * FROM questions WHERE discipline_id = ? ORDER BY created_at DESC").all(disciplineId) as QuestionRow[])
-    : (db.prepare("SELECT * FROM questions ORDER BY created_at DESC").all() as QuestionRow[]);
+    ? (db.prepare("SELECT * FROM questions WHERE discipline_id = ? ORDER BY created_at DESC, id DESC").all(disciplineId) as QuestionRow[])
+    : (db.prepare("SELECT * FROM questions ORDER BY created_at DESC, id DESC").all() as QuestionRow[]);
   return rows.map(toModel);
 }
 
@@ -116,6 +116,60 @@ export function updateQuestion(id: number, data: Partial<Omit<CreateQuestionInpu
   if (data.answerLines !== undefined) db.prepare("UPDATE questions SET answer_lines = ? WHERE id = ?").run(data.answerLines, id);
   if (data.correctAnswer !== undefined) db.prepare("UPDATE questions SET correct_answer = ? WHERE id = ?").run(data.correctAnswer, id);
   return getQuestion(id);
+}
+
+export interface BatchQuestionUpdate {
+  id: number;
+  statement: string;
+  thematicArea?: string | null;
+}
+
+/** Updates exactly the two fields exposed by the bulk editor, atomically. */
+export function updateQuestionsStatementAndThematicArea(updates: BatchQuestionUpdate[]): number {
+  if (updates.length === 0) throw new Error("Selecione ao menos uma questão.");
+
+  const normalized = updates.map((update) => ({
+    id: update.id,
+    statement: update.statement.trim(),
+    thematicArea: update.thematicArea?.trim() || null,
+  }));
+  const ids = new Set<number>();
+  for (const update of normalized) {
+    if (!Number.isInteger(update.id) || update.id <= 0) throw new Error("ID de questão inválido.");
+    if (ids.has(update.id)) throw new Error("Uma questão não pode ser enviada mais de uma vez.");
+    if (!update.statement) throw new Error("O enunciado não pode ficar vazio.");
+    ids.add(update.id);
+  }
+
+  const db = getDb();
+  const placeholders = normalized.map(() => "?").join(", ");
+  const transaction = db.transaction((items: typeof normalized) => {
+    const found = db.prepare(`SELECT id FROM questions WHERE id IN (${placeholders})`).all(...items.map((item) => item.id)) as { id: number }[];
+    if (found.length !== items.length) throw new Error("Uma ou mais questões não existem mais.");
+
+    const update = db.prepare("UPDATE questions SET statement = ?, thematic_area = ? WHERE id = ?");
+    for (const item of items) update.run(item.statement, item.thematicArea, item.id);
+  });
+  transaction(normalized);
+  return normalized.length;
+}
+
+export interface QuestionNavigation {
+  previousId?: number;
+  nextId?: number;
+}
+
+/** Returns adjacent questions in the visible (newest-first) discipline order. */
+export function getQuestionNavigation(questionId: number, disciplineId: number): QuestionNavigation {
+  const rows = getDb()
+    .prepare("SELECT id FROM questions WHERE discipline_id = ? ORDER BY created_at DESC, id DESC")
+    .all(disciplineId) as { id: number }[];
+  const index = rows.findIndex((row) => row.id === questionId);
+  if (index === -1) return {};
+  return {
+    previousId: rows[index - 1]?.id,
+    nextId: rows[index + 1]?.id,
+  };
 }
 
 export function deleteQuestion(id: number): void {

@@ -38,9 +38,10 @@ interface Props {
   submitLabel?: string;
   /** When set, form state is persisted to the workspace store under this key. */
   draftKey?: string;
+  navigation?: { previousId?: number; nextId?: number };
 }
 
-export function QuestionForm({ disciplines, action, question, cancelHref, title, submitLabel = "Salvar Questão", draftKey }: Props) {
+export function QuestionForm({ disciplines, action, question, cancelHref, title, submitLabel = "Salvar Questão", draftKey, navigation }: Props) {
   const { questionDrafts, updateQuestionDraft, resetQuestionDraft } = useWorkspaceStore();
   const stored = draftKey ? (questionDrafts[draftKey] ?? makeQuestionDraft()) : null;
 
@@ -59,7 +60,11 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
     <>
       <div className="page-header">
         <h1 className="page-title">{title}</h1>
-        <a href={cancelHref} className="btn btn-ghost">← Voltar</a>
+        <div className="actions-row">
+          {navigation?.previousId ? <a href={`/questions/${navigation.previousId}/edit`} className="btn btn-ghost" aria-label="Questão anterior">← Anterior</a> : navigation && <button type="button" className="btn btn-ghost" aria-label="Questão anterior indisponível" disabled style={{ opacity: 0.45 }}>← Anterior</button>}
+          {navigation?.nextId ? <a href={`/questions/${navigation.nextId}/edit`} className="btn btn-ghost" aria-label="Próxima questão">Próxima →</a> : navigation && <button type="button" className="btn btn-ghost" aria-label="Próxima questão indisponível" disabled style={{ opacity: 0.45 }}>Próxima →</button>}
+          <a href={cancelHref} className="btn btn-ghost">← Voltar</a>
+        </div>
       </div>
       <div className="card">
         <form action={formAction}>
@@ -272,6 +277,12 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={isPending}>{isPending ? "Salvando…" : submitLabel}</button>
+            {navigation && (
+              <>
+                <button type="submit" name="navigation" value="previous" className="btn btn-ghost" disabled={isPending || !navigation.previousId}>Salvar e anterior</button>
+                <button type="submit" name="navigation" value="next" className="btn btn-ghost" disabled={isPending || !navigation.nextId}>Salvar e próxima</button>
+              </>
+            )}
             <a href={cancelHref} className="btn btn-ghost">Cancelar</a>
             {stored && (
               <button type="button" className="btn btn-ghost" onClick={() => draftKey && resetQuestionDraft(draftKey)} style={{ marginLeft: "auto", fontSize: "0.8rem", opacity: 0.65 }}>

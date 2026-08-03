@@ -5,20 +5,21 @@ import { ExamDisciplineFilter } from "./_components/exam-discipline-filter";
 import { ExamDraftFields } from "./_components/exam-draft-fields";
 import { AuditedQuestionsSelector } from "./_components/audited-questions-selector";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
+import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import { listExams } from "@/lib/db/exams";
 import { createExamAction, deleteExamAction } from "@/lib/actions/exams";
 import { ConfirmButton } from "@/components/confirm-button";
 
 
-export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string }> }) {
+export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const exams = listExams();
   const selectedDisciplineId = sp.discipline ? Number(sp.discipline) : undefined;
-  const selectedArea = sp.area ?? "";
+  const selectedAreas = normalizeThematicAreas(sp.area);
 
   const auditedQuestions = selectedDisciplineId
-    ? listQuestionsFiltered({ audited: true, disciplineId: selectedDisciplineId, thematicArea: selectedArea || undefined })
+    ? listQuestionsFiltered({ audited: true, disciplineId: selectedDisciplineId, thematicAreas: selectedAreas })
     : [];
 
   const allAreasForDiscipline = selectedDisciplineId
@@ -51,11 +52,12 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
           )}
 
           <div style={{ marginBottom: "1.25rem" }}>
-            <ExamDisciplineFilter disciplines={disciplines} areas={allAreasForDiscipline} />
+            <ExamDisciplineFilter disciplines={disciplines} areas={allAreasForDiscipline} selectedAreas={selectedAreas} />
           </div>
 
           <form action={createExamAction}>
             <input type="hidden" name="disciplineId" value={selectedDisciplineId ?? ""} />
+            {selectedAreas.map((area) => <input key={area} type="hidden" name="area" value={area} />)}
 
             <ExamDraftFields
               initialTitle={sp.title ?? ""}
@@ -74,12 +76,16 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               </div>
             ) : auditedQuestions.length === 0 ? (
               <div style={{ background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6, padding: "0.75rem", marginBottom: "1rem", fontSize: "0.875rem" }}>
-                Nenhuma questão auditada{selectedArea ? ` na área "${selectedArea}"` : ""}.{" "}
+                Nenhuma questão auditada{selectedAreas.length ? ` nas áreas selecionadas` : ""}.{" "}
                 <Link href="/audit">Auditar questões</Link> ou{" "}
                 <Link href="/questions/new">criar questões</Link>.
               </div>
             ) : (
-              <AuditedQuestionsSelector questions={auditedQuestions} area={selectedArea || undefined} />
+              <AuditedQuestionsSelector
+                key={JSON.stringify({ areas: [...selectedAreas].sort(), questionIds: auditedQuestions.map((question) => question.id) })}
+                questions={auditedQuestions}
+                areas={selectedAreas}
+              />
             )}
 
             <div className="form-actions">

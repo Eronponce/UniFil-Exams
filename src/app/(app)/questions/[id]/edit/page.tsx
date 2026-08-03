@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
-import { getQuestion } from "@/lib/db/questions";
+import { getQuestion, getQuestionNavigation } from "@/lib/db/questions";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { updateQuestionAction } from "@/lib/actions/questions";
 import { QuestionForm } from "../../_components/question-form";
@@ -10,6 +10,7 @@ export default async function EditQuestionPage({ params }: { params: Promise<{ i
   const question = getQuestion(Number(id));
   if (!question) notFound();
   const disciplines = listDisciplines();
+  const navigation = getQuestionNavigation(question.id, question.disciplineId);
 
   return (
     <QuestionForm
@@ -19,6 +20,7 @@ export default async function EditQuestionPage({ params }: { params: Promise<{ i
       cancelHref={`/questions/${question.id}`}
       title={`Editar Questão #${question.id}`}
       submitLabel="Salvar"
+      navigation={navigation}
     />
   );
 }
