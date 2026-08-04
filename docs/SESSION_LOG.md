@@ -485,7 +485,7 @@
 - PDF direto `/api/pdf/exam/14`: HTTP 200, 326950 bytes.
 - Prova temporaria 15 criada, excluida pela Server Action e removida da lista; provas 12, 13 e 14 permaneceram.
 
-## 2026-08-04 — Workspace acadêmico responsivo
+## 2026-08-04 - Workspace acadêmico responsivo
 
 ### Interface
 - Implementado shell responsivo em `src/app/(app)/layout.tsx`: sidebar desktop recolhível, drawer móvel, skip link, main landmark, tema persistente e dock de atividade.
@@ -508,3 +508,10 @@
 - `rtk npm test -- --run`: 16 arquivos, 82 testes passando.
 - `rtk npm run build`: passou; rotas app/API/print listadas. Permaneceu apenas o warning não fatal de NFT tracing da rota de imagem runtime.
 - `rtk playwright test`: bloqueado pelo repositório sem `playwright.config.*`; Playwright 1.62.1 auto-descobriu os testes Vitest, falhou ao importar Vitest em CommonJS e terminou com `No tests found` (0 pass/0 fail). Nenhuma dependência ou configuração foi adicionada; build e testes Vitest foram usados como fallback.
+
+## 2026-08-04 - Navegação na visualização e imagem grande na edição
+
+- A visualização individual de questão passou a oferecer `Anterior` e `Próxima`, usando a mesma ordem por disciplina já aplicada na edição.
+- Na edição, a imagem atual agora aparece em preview grande e responsivo logo após o enunciado.
+- O campo inferior de arquivo ficou dedicado apenas a substituir a imagem existente.
+- Validado com `npm run typecheck`, `npm run lint`, `npm test -- --run src/tests/questions-behavior.test.ts` e `npm run build`.

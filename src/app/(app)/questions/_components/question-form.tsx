@@ -142,6 +142,22 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
             )}
           </div>
 
+          {question?.imageUrl && (
+            <div className="form-group question-edit-image-preview">
+              <p className="form-label">Imagem atual da questão</p>
+              <div className="question-edit-image-frame">
+                <Image
+                  src={question.imageUrl}
+                  alt="Imagem atual da questão"
+                  width={1200}
+                  height={800}
+                  sizes="(max-width: 860px) calc(100vw - 2rem), 960px"
+                  priority
+                />
+              </div>
+            </div>
+          )}
+
           {questionType === "objetiva" && (
             <div className="form-group">
               <label className="form-label">Alternativas *</label>
@@ -264,12 +280,7 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="image">Imagem{question?.imageUrl ? " (substituir)" : " (opcional)"}</label>
-            {question?.imageUrl && (
-              <div style={{ marginBottom: "0.5rem" }}>
-                <Image src={question.imageUrl} alt="Atual" width={200} height={140} style={{ borderRadius: 4, border: "1px solid var(--border)" }} />
-              </div>
-            )}
+            <label className="form-label" htmlFor="image">{question?.imageUrl ? "Substituir imagem" : "Imagem (opcional)"}</label>
             <input id="image" name="image" type="file" accept="image/*" className="form-input" style={{ padding: "0.4rem" }} />
           </div>
 

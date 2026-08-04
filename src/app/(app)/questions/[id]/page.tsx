@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getQuestion } from "@/lib/db/questions";
+import { getQuestion, getQuestionNavigation } from "@/lib/db/questions";
 import { getDiscipline } from "@/lib/db/disciplines";
 import { auditQuestionAction, deleteQuestionAction } from "@/lib/actions/questions";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -16,10 +16,13 @@ export default async function QuestionPage({ params }: { params: Promise<{ id: s
   const question = getQuestion(Number(id));
   if (!question) notFound();
   const discipline = getDiscipline(question.disciplineId);
+  const navigation = getQuestionNavigation(question.id, question.disciplineId);
 
   return (
     <>
       <PageHeader eyebrow="Organizar · Banco de questões" title={`Questão #${question.id}`} description="Visualize o enunciado, confira o gabarito e escolha a próxima ação de revisão." actions={<>
+          {navigation.previousId ? <Link href={`/questions/${navigation.previousId}`} className="btn btn-ghost" aria-label="Questão anterior">← Anterior</Link> : <button type="button" className="btn btn-ghost" aria-label="Questão anterior indisponível" disabled>← Anterior</button>}
+          {navigation.nextId ? <Link href={`/questions/${navigation.nextId}`} className="btn btn-ghost" aria-label="Próxima questão">Próxima →</Link> : <button type="button" className="btn btn-ghost" aria-label="Próxima questão indisponível" disabled>Próxima →</button>}
           <Link href="/questions" className="btn btn-ghost">← Banco</Link>
           <Link href={`/questions/${question.id}/edit`} className="btn btn-ghost">Editar</Link>
           <form action={auditQuestionAction} style={{ display: "inline" }}>
