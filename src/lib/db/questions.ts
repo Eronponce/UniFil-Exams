@@ -154,6 +154,31 @@ export function updateQuestionsStatementAndThematicArea(updates: BatchQuestionUp
   return normalized.length;
 }
 
+/** Applies one thematic area to every selected question without touching other fields. */
+export function updateQuestionsThematicArea(ids: number[], thematicArea: string | null): number {
+  if (ids.length === 0) throw new Error("Selecione ao menos uma questão.");
+
+  const uniqueIds = new Set<number>();
+  for (const id of ids) {
+    if (!Number.isInteger(id) || id <= 0) throw new Error("ID de questão inválido.");
+    if (uniqueIds.has(id)) throw new Error("Uma questão não pode ser enviada mais de uma vez.");
+    uniqueIds.add(id);
+  }
+
+  const normalizedArea = thematicArea?.trim() || null;
+  const db = getDb();
+  const placeholders = ids.map(() => "?").join(", ");
+  const transaction = db.transaction((questionIds: number[]) => {
+    const found = db.prepare(`SELECT id FROM questions WHERE id IN (${placeholders})`).all(...questionIds) as { id: number }[];
+    if (found.length !== questionIds.length) throw new Error("Uma ou mais questões não existem mais.");
+
+    const update = db.prepare("UPDATE questions SET thematic_area = ? WHERE id = ?");
+    for (const id of questionIds) update.run(normalizedArea, id);
+  });
+  transaction(ids);
+  return ids.length;
+}
+
 export interface QuestionNavigation {
   previousId?: number;
   nextId?: number;

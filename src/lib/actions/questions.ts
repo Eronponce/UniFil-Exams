@@ -13,6 +13,7 @@ import {
   deleteQuestions,
   getQuestion,
   getQuestionNavigation,
+  updateQuestionsThematicArea,
   updateQuestionsStatementAndThematicArea,
 } from "@/lib/db/questions";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
@@ -189,6 +190,29 @@ export async function batchUpdateQuestionsAction(
     return { ok: true, count };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Não foi possível editar as questões." };
+  }
+}
+
+export async function batchSetQuestionsThematicAreaAction(
+  _prev: BatchQuestionEditState | undefined,
+  formData: FormData,
+): Promise<BatchQuestionEditState> {
+  const ids = formData.getAll("id");
+  const thematicArea = formData.get("thematicArea");
+  if (ids.length === 0 || !areStrings(ids) || typeof thematicArea !== "string") {
+    return { error: "Dados da edição em lote inválidos." };
+  }
+
+  try {
+    const count = updateQuestionsThematicArea(ids.map(Number), thematicArea);
+    revalidatePath("/questions");
+    revalidatePath("/audit");
+    revalidatePath("/exams");
+    revalidatePath("/exports");
+    revalidatePath("/");
+    return { ok: true, count };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Não foi possível alterar a área temática." };
   }
 }
 

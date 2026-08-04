@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import type { Question, QuestionType } from "@/types";
-import { batchUpdateQuestionsAction, deleteManyQuestionsAction } from "@/lib/actions/questions";
+import { batchSetQuestionsThematicAreaAction, batchUpdateQuestionsAction, deleteManyQuestionsAction } from "@/lib/actions/questions";
 import { truncateRichTextPlain } from "@/lib/html/rich-text";
 import { reconcileSelectedQuestionIds } from "@/lib/questions/selection";
 
@@ -17,7 +17,9 @@ function correctLabel(type: QuestionType, index: number): string {
 
 export function QuestionsTable({ questions }: { questions: Question[] }) {
   const [selection, setSelection] = useState<Set<number>>(new Set());
+  const [isAreaEditorOpen, setAreaEditorOpen] = useState(false);
   const [isBatchEditorOpen, setBatchEditorOpen] = useState(false);
+  const [areaState, areaAction, isAreaPending] = useActionState(batchSetQuestionsThematicAreaAction, undefined);
   const [batchState, batchAction, isBatchPending] = useActionState(batchUpdateQuestionsAction, undefined);
   const visibleIds = useMemo(() => questions.map((question) => question.id), [questions]);
   // Keep the source selection reconciled at render time so stale IDs can
@@ -26,6 +28,7 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
 
   const allSelected = questions.length > 0 && selected.size === questions.length;
   const selectedQuestions = questions.filter((question) => selected.has(question.id));
+  const availableAreas = [...new Set(questions.map((question) => question.thematicArea).filter((area): area is string => Boolean(area)))].sort();
 
   function toggleAll() {
     setSelection(allSelected ? new Set() : new Set(visibleIds));
@@ -70,10 +73,36 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
       {selected.size > 0 && (
         <div style={{ position: "sticky", bottom: "1rem", display: "flex", alignItems: "center", gap: "1rem", background: "var(--card-bg, #fff)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.75rem 1.25rem", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", marginTop: "0.75rem", flexWrap: "wrap" }}>
           <span style={{ fontSize: "0.9rem", fontWeight: 500, flex: 1 }}>{selected.size} questão(ões) selecionada(s)</span>
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setSelection(new Set()); setBatchEditorOpen(false); }}>Cancelar</button>
-          <button type="button" className="btn btn-sm btn-primary" onClick={() => setBatchEditorOpen(true)}>Editar em lote</button>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setSelection(new Set()); setAreaEditorOpen(false); setBatchEditorOpen(false); }}>Cancelar</button>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => { setAreaEditorOpen(true); setBatchEditorOpen(false); }}>Definir área temática</button>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setBatchEditorOpen(true); setAreaEditorOpen(false); }}>Editar conteúdo</button>
           <button type="submit" form="delete-selected-questions" className="btn btn-sm" style={{ background: "#dc2626", color: "#fff", border: "none" }} onClick={(event) => { if (!window.confirm(`Excluir ${selected.size} questão(ões)? Esta ação não pode ser desfeita.`)) event.preventDefault(); }}>Excluir selecionadas</button>
         </div>
+      )}
+
+      {isAreaEditorOpen && selectedQuestions.length > 0 && (
+        <form action={areaAction} className="card" style={{ marginTop: "1rem", maxWidth: 720 }}>
+          {[...selected].map((id) => <input key={id} type="hidden" name="id" value={id} />)}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline", marginBottom: "0.9rem" }}>
+            <div>
+              <h2 style={{ fontSize: "1rem", margin: 0 }}>Definir área temática em lote</h2>
+              <p style={{ fontSize: "0.8rem", color: "var(--muted)", margin: "0.25rem 0 0" }}>Aplica a mesma área às {selected.size} questões selecionadas sem alterar os enunciados.</p>
+            </div>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAreaEditorOpen(false)}>Cancelar</button>
+          </div>
+          {areaState?.error && <p style={{ color: "#b91c1c", fontSize: "0.875rem", marginBottom: "0.75rem" }}>{areaState.error}</p>}
+          {areaState?.ok && <p style={{ color: "var(--success)", fontSize: "0.875rem", marginBottom: "0.75rem" }}>{areaState.count} questão(ões) atualizada(s).</p>}
+          <label className="form-label" htmlFor="bulk-shared-thematic-area">Área temática para todas</label>
+          <input id="bulk-shared-thematic-area" name="thematicArea" className="form-input" list="bulk-thematic-area-options" placeholder="Ex: Herança, Polimorfismo, Normalização…" autoFocus />
+          <datalist id="bulk-thematic-area-options">
+            {availableAreas.map((area) => <option key={area} value={area} />)}
+          </datalist>
+          <p style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.45rem" }}>Deixe vazio para remover a área temática das questões selecionadas.</p>
+          <div className="form-actions" style={{ marginTop: "1rem" }}>
+            <button type="submit" className="btn btn-primary" disabled={isAreaPending}>{isAreaPending ? "Aplicando…" : `Aplicar a ${selected.size} questão(ões)`}</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setAreaEditorOpen(false)} disabled={isAreaPending}>Cancelar</button>
+          </div>
+        </form>
       )}
 
       {isBatchEditorOpen && selectedQuestions.length > 0 && (

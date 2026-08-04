@@ -515,3 +515,11 @@
 - Na edição, a imagem atual agora aparece em preview grande e responsivo logo após o enunciado.
 - O campo inferior de arquivo ficou dedicado apenas a substituir a imagem existente.
 - Validado com `npm run typecheck`, `npm run lint`, `npm test -- --run src/tests/questions-behavior.test.ts` e `npm run build`.
+
+## 2026-08-04 - Área temática coletiva no banco de questões
+
+- A barra de seleção do banco ganhou a ação `Definir área temática`.
+- Uma única área pode ser aplicada transacionalmente a todas as questões selecionadas sem alterar seus enunciados.
+- O campo sugere áreas existentes; quando enviado vazio, remove a área temática da seleção.
+- O editor detalhado anterior foi preservado em `Editar conteúdo`.
+- Validado com `npm run typecheck`, `npm run lint` e 11 testes focados.

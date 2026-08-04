@@ -7,7 +7,7 @@ vi.mock("@/lib/db/client", () => ({ getDb: () => db }));
 
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
-import { getQuestionNavigation, updateQuestionsStatementAndThematicArea } from "@/lib/db/questions";
+import { getQuestionNavigation, updateQuestionsStatementAndThematicArea, updateQuestionsThematicArea } from "@/lib/db/questions";
 
 function addQuestion(id: number, disciplineId: number, statement: string, thematicArea: string | null, createdAt: string) {
   db.prepare("INSERT INTO questions (id, discipline_id, statement, thematic_area, created_at) VALUES (?, ?, ?, ?, ?)").run(id, disciplineId, statement, thematicArea, createdAt);
@@ -56,6 +56,29 @@ describe("thematic-area filters", () => {
 });
 
 describe("bulk question updates", () => {
+  it("applies one thematic area to every selected question without changing other fields", () => {
+    addQuestion(1, 1, "Primeira", "A", "2026-01-01");
+    addQuestion(2, 1, "Segunda", "B", "2026-01-02");
+
+    expect(updateQuestionsThematicArea([1, 2], " Área comum ")).toBe(2);
+    expect(db.prepare("SELECT id, statement, thematic_area FROM questions ORDER BY id").all()).toEqual([
+      { id: 1, statement: "Primeira", thematic_area: "Área comum" },
+      { id: 2, statement: "Segunda", thematic_area: "Área comum" },
+    ]);
+  });
+
+  it("can clear the shared thematic area and rejects partial invalid selections", () => {
+    addQuestion(1, 1, "Primeira", "A", "2026-01-01");
+    addQuestion(2, 1, "Segunda", "B", "2026-01-02");
+
+    expect(() => updateQuestionsThematicArea([1, 999], "X")).toThrow(/não existem/);
+    expect(updateQuestionsThematicArea([1, 2], "  ")).toBe(2);
+    expect(db.prepare("SELECT id, thematic_area FROM questions ORDER BY id").all()).toEqual([
+      { id: 1, thematic_area: null },
+      { id: 2, thematic_area: null },
+    ]);
+  });
+
   it("changes only statement and thematic area", () => {
     addQuestion(1, 1, "Original", "Antiga", "2026-01-01");
     db.prepare("UPDATE questions SET options = ?, correct_index = ?, difficulty = ?, audited = ?, rejected = ?, explanation = ?, question_type = ? WHERE id = 1")

@@ -26,6 +26,7 @@ status: active
 - `src/components/command-palette.tsx` handles `Ctrl/Cmd + K`, search, focus, Escape, arrows and Enter; navigation is client-only.
 - `src/lib/db/stats.ts` adds read-only dashboard aggregation through `getDashboardStats()`.
 - Question detail and edit screens share discipline-scoped previous/next navigation; the edit form shows the current image at large size directly after the statement and keeps replacement upload separate.
+- The question bank supports selecting multiple questions and applying one shared thematic area without changing their statements; submitting a blank area clears it from the selection.
 
 ## Product IA
 
