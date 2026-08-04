@@ -8,6 +8,7 @@ import type { Question } from "@/types";
 import { GabaritoUpload, LogoUpload } from "./upload-panel";
 import { RichText } from "@/components/rich-text";
 import { EmptyState, PageHeader } from "@/components/ui";
+import { getExamQuestionIdsInSetAOrder } from "@/lib/exam/reference-set";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
@@ -31,7 +32,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
   const isNew = sp.new === "1";
 
   const selectedExamQuestionIds = selectedExam
-    ? Array.from(new Set(selectedExam.sets.flatMap((set) => set.questions.map((sq) => sq.questionId))))
+    ? getExamQuestionIdsInSetAOrder(selectedExam.sets)
     : [];
   const selectedExamQuestions = selectedExamQuestionIds
     .map((id) => getQuestion(id))
@@ -127,10 +128,10 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
           {selectedExamQuestions.length > 0 && selectedExam && (
             <div className="card">
               <h3 style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "0.25rem" }}>
-                Gabarito Completo
+                Gabarito Completo · Ordem do Set A
               </h3>
               <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "1.5rem" }}>
-                {selectedExamQuestions.length} questão(ões) únicas da prova selecionada — com alternativas originais, resposta correta e justificativa.
+                {selectedExamQuestions.length} questão(ões) únicas na mesma sequência do Set A — com alternativas originais, resposta correta e justificativa.
               </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>

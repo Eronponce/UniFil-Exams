@@ -523,3 +523,10 @@
 - O campo sugere áreas existentes; quando enviado vazio, remove a área temática da seleção.
 - O editor detalhado anterior foi preservado em `Editar conteúdo`.
 - Validado com `npm run typecheck`, `npm run lint` e 11 testes focados.
+
+## 2026-08-04 - Set A como ordem padrão da exportação
+
+- O `Gabarito Completo` passou a numerar e exibir as questões na ordem explícita do Set A.
+- A ordem não depende mais da sequência incidental dos sets retornados pelo SQLite.
+- PDFs e CSVs individuais continuam respeitando o embaralhamento próprio de cada set.
+- Provas antigas sem Set A usam o primeiro rótulo disponível como fallback determinístico.
