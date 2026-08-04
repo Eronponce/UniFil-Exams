@@ -9,6 +9,7 @@ import type { QuestionType } from "@/types";
 import { useOllamaModels } from "@/lib/hooks/use-ollama-models";
 import { useToast } from "@/components/toast-provider";
 import { MarkdownText } from "@/components/markdown-text";
+import { PageHeader } from "@/components/ui";
 import { enqueueAiGenerationAction } from "@/lib/actions/queue-actions";
 import { useWorkspaceStore } from "@/lib/state/workspace-store";
 import { buildBatchQuestionPrompt } from "@/lib/ai/prompt-templates";
@@ -237,7 +238,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
   if (step === "done") {
     return (
       <>
-        <div className="page-header"><h1 className="page-title">Importação Concluída</h1></div>
+        <PageHeader eyebrow="Criar · Assistido" title="Importação concluída" description="O lote revisado já está disponível no banco de questões." />
         <div className="card" style={{ maxWidth: 480, textAlign: "center", padding: "2rem" }}>
           <p style={{ fontSize: "3rem", margin: "0 0 0.5rem" }}>✓</p>
           <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
@@ -257,10 +258,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
     const allSelected = selected.size === questions.length;
     return (
       <>
-        <div className="page-header">
-          <h1 className="page-title">Revisar Questões ({questions.length} identificadas)</h1>
-          <button className="btn btn-ghost" onClick={resetToInput}>← Voltar</button>
-        </div>
+        <PageHeader eyebrow="Criar · Assistido" title={`Revisar questões (${questions.length} identificadas)`} description="Ajuste áreas temáticas e selecione somente o que deve entrar no banco." actions={<button className="btn btn-ghost" onClick={resetToInput}>← Voltar</button>} />
 
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
           <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", userSelect: "none" }}>
@@ -333,7 +331,7 @@ export function ImportClient({ disciplines, initialTaskId }: { disciplines: Disc
   // ── Input form ───────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="page-header"><h1 className="page-title">Importar Questões via IA</h1></div>
+      <PageHeader eyebrow="Criar · Assistido" title="Importar questões via IA" description="Cole tópicos ou rascunhos, gere um lote em background e revise cada item antes de salvar." actions={<Link href="/ai" className="btn btn-ghost">Gerar uma questão →</Link>} />
       <div className="card">
         <p style={{ marginBottom: "1.5rem", opacity: 0.75, fontSize: "0.9rem" }}>
           Cole o texto com as questões ou tópicos. A IA gera questões do tipo selecionado, classifica a dificuldade e sugere a área temática.

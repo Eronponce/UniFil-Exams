@@ -4,53 +4,89 @@ tags:
   - product/workflows
   - ux
 aliases:
-  - Fluxos de Usuario
-status: draft
+  - Fluxos de Usuário
+status: active
 ---
 
 # User Workflows
 
-## 1. Cadastrar Disciplina
-1. Usuario cria disciplina.
-2. Sistema mostra disciplina na lista.
-3. Usuario entra no banco de questoes dessa disciplina.
+O UniFil Exams foi organizado para reduzir a troca de contexto do professor. A trilha recomendada é `ORGANIZAR → REVISAR → CRIAR → ENTREGAR`.
 
-## 2. Criar Questao Manual
-1. Usuario escolhe disciplina.
-2. Informa enunciado, alternativas A-E e correta.
-3. Anexa imagem opcional.
-4. Salva como rascunho ou auditada.
+## 1. Preparar o espaço
 
-## 3. Auditar Questao
-1. Usuario abre fila/lista de questoes da disciplina.
-2. Visualiza enunciado, imagem, alternativas e correta.
-3. Edita conteudo se necessario.
-4. Exclui questao ruim ou marca como auditada.
+1. Abra `/` e confira os KPIs e o cartão “Continue de onde parou”.
+2. Use `/disciplines` para cadastrar ou editar componentes curriculares.
+3. Entre em `/questions` para pesquisar o banco; filtros e exportações preservam os parâmetros atuais.
+4. Em desktop, recolha a sidebar se precisar de mais largura; em celular, use o menu móvel.
+5. Pressione `Ctrl/Cmd + K` para buscar qualquer destino ou ação sem percorrer o menu.
 
-## 4. Gerar Questao com IA
-1. Usuario escolhe disciplina e provedor IA.
-2. Descreve tema/competencia desejada.
-3. Sistema envia prompt padronizado.
-4. Sistema recebe questao estruturada.
-5. Usuario revisa antes de salvar.
+## 2. Criar questão manual
 
-## 5. Montar Prova
-1. Usuario escolhe disciplina.
-2. Seleciona questoes auditadas.
-3. Define sets necessarios, por exemplo A, B, C.
-4. Anexa imagem EvalBee correspondente a cada set.
-5. Sistema randomiza questoes e alternativas por set.
-6. Sistema gera PDF e CSV de gabarito.
+1. Acesse `/questions/new` ou escolha “Nova questão” na paleta.
+2. Escolha a disciplina, dificuldade e tipo.
+3. Preencha enunciado, alternativas/resposta, justificativa e linhas de resposta quando aplicável.
+4. Anexe imagem opcional sem alterar o contrato do upload.
+5. Salve; a questão aparece no banco e, enquanto não auditada, entra na fila de revisão.
 
-## 6. Usar EvalBee
-1. Usuario prepara imagem EvalBee do set fora do sistema.
-2. Marca previamente a bolha do set na imagem, quando necessario.
-3. Anexa imagem ao set correspondente.
-4. PDF final inclui essa imagem na ultima pagina.
-5. Usuario configura/corrige no EvalBee usando o gabarito CSV como referencia.
+## 3. Auditar o banco
+
+1. Abra `/audit` a partir do dashboard ou do menu Conteúdo.
+2. Filtre por disciplina, confira o HTML rico, imagem, alternativas e justificativa.
+3. Escolha `Auditar`, `Recusar`, `Editar` ou `Excluir`; ações destrutivas mantêm confirmação.
+4. Questões auditadas passam a ser elegíveis para montagem. O estado otimista dá resposta imediata e o refresh atualiza os dados do SQLite.
+5. Se uma operação em background estiver ativa, acompanhe o dock de atividade; o cancelamento e a recuperação continuam disponíveis.
+
+## 4. Gerar com IA
+
+### Uma questão — `/ai`
+
+1. Escolha disciplina, tipo, provedor/modelo e tema.
+2. Envie para a fila; é seguro navegar para outra rota.
+3. Retorne pelo link “Ver” do `QueuePanel` ou por `/ai?task=...`.
+4. Leia o trace, ajuste o formulário e salve somente depois da revisão humana.
+
+### Lote — `/ai/import`
+
+1. Cole tópicos, enunciados rascunhados ou texto de referência.
+2. Envie o lote para a fila e recupere-o por `?task=` se sair da tela.
+3. Selecione os itens, ajuste áreas temáticas e confirme o salvamento em lote.
+
+## 5. Importar arquivo
+
+1. Acesse `/questions/importar`.
+2. Baixe/copiei o template JSON ou CSV; o prompt de IA da tela usa o mesmo contrato do backend.
+3. Escolha a disciplina e carregue `.json` ou `.csv`.
+4. Revise o preview, selecione os itens desejados e importe.
+5. Em erro de leitura ou validação, corrija o arquivo sem perder a URL nem o restante do fluxo.
+
+## 6. Montar uma avaliação
+
+1. Abra `/exams` e selecione a disciplina.
+2. Opcionalmente filtre áreas temáticas e ajuste a seleção de questões auditadas.
+3. Defina título, instituição, quantidade de sets e contagem por tipo.
+4. Gere a prova; cada set preserva a randomização das questões e alternativas.
+5. Em falha de validação, título, instituição, sets e quantidades retornam pelos parâmetros de recuperação existentes.
+
+## 7. Entregar PDF, CSV e ZIP
+
+1. Em `/exports`, escolha a prova criada.
+2. Anexe ou substitua o gabarito EvalBee e ajuste a largura se necessário.
+3. Abra o preview HTML A4 para conferir questões, sets e a última página.
+4. Baixe PDF direto, CSV por set/todos os sets e ZIP (um PDF por set).
+5. Use o “Gabarito Completo” para uma última conferência antes de imprimir.
+
+## 8. Operar em tela pequena e teclado
+
+- O drawer móvel é aberto/fechado por botão com estado ARIA e overlay clicável.
+- Todos os controles têm foco visível; `Esc` fecha a paleta e o drawer quando aplicável.
+- Setas e `Enter` operam a paleta; links continuam navegáveis por Tab.
+- Tabelas e previews têm overflow controlado; ações não são escondidas em viewport estreita.
+- A preferência de tema respeita o sistema e pode ser fixada em claro/escuro.
 
 ## Aceite V1
-- Professor consegue sair de banco de questoes ate PDF final sem planilha manual.
-- Cada set tem PDF proprio e CSV proprio.
-- Gabarito bate com alternativas randomizadas.
-- Imagem EvalBee correta aparece na ultima pagina do set.
+
+- O professor consegue sair do banco de questões e chegar ao PDF final sem planilha manual.
+- Cada set tem PDF próprio e CSV próprio.
+- O gabarito acompanha alternativas randomizadas.
+- A imagem EvalBee correta aparece na última página do set.
+- O redesign não altera URLs, nomes de campos, Server Actions, fila, uploads, APIs nem rotas de impressão.

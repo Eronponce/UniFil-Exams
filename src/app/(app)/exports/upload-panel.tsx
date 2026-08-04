@@ -249,14 +249,7 @@ export function GabaritoUpload({ examId, answerKeyWidthPt, isNew }: { examId: nu
           <span>{ANSWER_KEY_MAX_WIDTH_PT}pt</span>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(180px, 220px) 1fr",
-            gap: "1rem",
-            alignItems: "start",
-          }}
-        >
+        <div className="answer-key-preview-grid" style={{ display: "grid", gap: "1rem", alignItems: "start" }}>
           <div
             style={{
               width: "100%",

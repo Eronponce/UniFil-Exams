@@ -16,6 +16,7 @@ import {
 } from "@/lib/html/rich-text";
 import { deleteAllRejectedAction, rejectQuestionAction } from "@/lib/actions/questions";
 import { ConfirmButton } from "@/components/confirm-button";
+import { EmptyState, PageHeader } from "@/components/ui";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -107,10 +108,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
   return (
     <AuditOptimisticProvider>
-      <div className="page-header">
-        <h1 className="page-title">Auditoria</h1>
-        <span style={{ color: "var(--muted)", fontSize: "0.875rem" }}>{pending.length} pendente(s) · {audited.length} auditada(s) · {rejected.length} recusada(s)</span>
-      </div>
+      <PageHeader eyebrow="Revisar · Qualidade" title="Auditoria" description="Valide enunciados, alternativas e gabaritos antes de liberar questões para uma avaliação." actions={<span className="badge badge-warning">{pending.length} pendente(s)</span>} />
 
       <AuditFilters disciplines={disciplines} />
       <div className="card" style={{ marginBottom: "1rem", fontSize: "0.82rem", color: "var(--muted)" }}>
@@ -123,15 +121,13 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
           Pendentes ({pending.length})
         </h2>
         {pending.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>
-            Nenhuma questão pendente. 🎉
-          </div>
+          <EmptyState title="Nenhuma questão pendente" description="O banco está pronto para a próxima etapa de criação ou montagem." icon="circle-check" />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {pending.map((q) => (
               <AuditOptimisticCard key={q.id} questionId={q.id}>
                 <div className="card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                  <div className="audit-card-layout" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, marginBottom: "0.75rem" }}><MarkdownText text={q.statement} /></div>
                       <QuestionImage q={q} />
@@ -197,15 +193,13 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
           Auditadas ({audited.length})
         </h2>
         {audited.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", color: "var(--muted)", fontSize: "0.875rem" }}>
-            Nenhuma questão auditada ainda.
-          </div>
+          <EmptyState title="Nenhuma questão auditada ainda" description="Use as ações acima para validar uma questão e liberá-la para a montagem." icon="layers" />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {audited.map((q) => (
               <AuditOptimisticCard key={q.id} questionId={q.id}>
                 <div className="card" style={{ opacity: 0.85 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                  <div className="audit-card-layout" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 500, marginBottom: "0.5rem", fontSize: "0.9rem" }}><MarkdownText text={q.statement} /></div>
                       <QuestionImage q={q} />

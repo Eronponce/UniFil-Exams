@@ -50,7 +50,7 @@ export function AuditCardActions({ questionId }: Props) {
   }
 
   return (
-    <div className="actions-row" style={{ flexDirection: "column", alignItems: "flex-end" }}>
+    <div className="actions-row audit-card-actions">
       <button
         type="button"
         className="btn btn-ghost btn-sm"

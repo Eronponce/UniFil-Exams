@@ -9,6 +9,8 @@ import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import { listExams } from "@/lib/db/exams";
 import { createExamAction, deleteExamAction } from "@/lib/actions/exams";
 import { ConfirmButton } from "@/components/confirm-button";
+import { EmptyState, PageHeader } from "@/components/ui";
+import { Icon } from "@/components/icon";
 
 
 export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string }> }) {
@@ -38,11 +40,9 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Montagem de Prova</h1>
-      </div>
+      <PageHeader eyebrow="Avaliações · Criar" title="Montagem de prova" description="Selecione questões auditadas, defina a composição e gere conjuntos randomizados prontos para exportar." actions={<Link href="/audit" className="btn btn-ghost"><Icon name="circle-check" size={15} /> Revisar banco</Link>} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", alignItems: "start" }}>
+      <div className="exam-workspace">
         <div className="card">
           <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1.25rem" }}>Nova Prova</h2>
           {sp.error && sp.error !== "campos-obrigatorios" && (
@@ -99,7 +99,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
         <div>
           <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1rem" }}>Provas Existentes</h2>
           {exams.length === 0 ? (
-            <div className="card" style={{ color: "var(--muted)", textAlign: "center" }}>Nenhuma prova criada ainda.</div>
+            <EmptyState title="Nenhuma prova criada ainda" description="Quando o banco estiver auditado, sua próxima avaliação aparecerá aqui." action={<Link href="/audit" className="btn btn-ghost">Ver auditoria</Link>} icon="clipboard" />
           ) : (
             exams.map((exam) => (
               <div key={exam.id} className="card" style={{ marginBottom: "0.75rem" }}>

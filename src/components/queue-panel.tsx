@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { TaskRecord, TaskStatus } from "@/lib/task-queue";
 import { cancelTaskAction } from "@/lib/actions/queue-actions";
 import { shouldRefreshForTask } from "@/components/queue-panel-utils";
+import { Icon } from "@/components/icon";
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   pending: "Aguardando",
@@ -12,22 +13,6 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   done: "Concluída",
   error: "Erro",
   cancelled: "Cancelada",
-};
-
-const STATUS_BG: Record<TaskStatus, string> = {
-  pending: "#fef9c3",
-  processing: "#dbeafe",
-  done: "#dcfce7",
-  error: "#fee2e2",
-  cancelled: "#f3f4f6",
-};
-
-const STATUS_COLOR: Record<TaskStatus, string> = {
-  pending: "#92400e",
-  processing: "#1e40af",
-  done: "#166534",
-  error: "#991b1b",
-  cancelled: "#6b7280",
 };
 
 export function QueuePanel() {
@@ -59,15 +44,15 @@ export function QueuePanel() {
       } catch {
         // silent
       }
-      if (active) setTimeout(poll, 1000);
+      if (active) window.setTimeout(poll, 1000);
     }
 
     poll();
     return () => { active = false; };
   }, [router]);
 
-  const activeTasks = tasks.filter((t) => t.status === "pending" || t.status === "processing");
-  const recentDone = tasks.filter((t) => t.status === "done" || t.status === "error" || t.status === "cancelled");
+  const activeTasks = tasks.filter((task) => task.status === "pending" || task.status === "processing");
+  const recentDone = tasks.filter((task) => task.status === "done" || task.status === "error" || task.status === "cancelled");
   const visible = [...activeTasks, ...recentDone.slice(0, 5)];
 
   function handleCancel(id: string) {
@@ -79,117 +64,30 @@ export function QueuePanel() {
   }
 
   return (
-    <div
-      style={{
-        width: "100%",
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 8,
-        boxShadow: "0 12px 28px rgba(15, 23, 42, 0.18)",
-        fontSize: "0.8rem",
-      }}
-    >
-      {/* Header */}
-      <button
-        type="button"
-        style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "0.6rem 0.85rem",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontWeight: 600,
-          fontSize: "0.82rem",
-        }}
-        onClick={() => setExpanded((e) => !e)}
-      >
-        <span>
-          {activeTasks.length > 0 ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.5s ease-in-out infinite" }} />
-              Painel de tarefas · {activeTasks.length} ativa{activeTasks.length !== 1 ? "s" : ""}
-            </span>
-          ) : (
-            <span style={{ color: "#6b7280" }}>
-              Painel de tarefas · {visible.length > 0 ? "concluída" : "vazio"}
-            </span>
-          )}
+    <section className="activity-panel queue-panel" aria-label="Painel de tarefas">
+      <button type="button" className="activity-panel-toggle" aria-expanded={expanded} aria-controls="queue-panel-content" onClick={() => setExpanded((current) => !current)}>
+        <span className="activity-panel-title">
+          <span className={`activity-dot${activeTasks.length > 0 ? " is-active" : ""}`} />
+          {activeTasks.length > 0 ? `Painel de tarefas · ${activeTasks.length} ativa${activeTasks.length !== 1 ? "s" : ""}` : `Painel de tarefas · ${visible.length > 0 ? "concluída" : "vazio"}`}
         </span>
-        <span style={{ color: "#9ca3af", marginLeft: "0.5rem" }}>{expanded ? "▼" : "▲"}</span>
+        <Icon name="chevron-down" size={16} className={expanded ? "activity-chevron is-open" : "activity-chevron"} />
       </button>
 
       {expanded && (
-        <div style={{ borderTop: "1px solid #f3f4f6", padding: "0.5rem 0.85rem 0.75rem" }}>
-          {visible.length === 0 && (
-            <p style={{ margin: 0, color: "#6b7280", fontSize: "0.78rem" }}>
-              Nenhuma tarefa em execução. Auditorias e gerações por IA aparecem aqui.
-            </p>
-          )}
+        <div id="queue-panel-content" className="activity-panel-content">
+          {visible.length === 0 && <p className="activity-empty">Nenhuma tarefa em execução. Auditorias e gerações por IA aparecem aqui.</p>}
           {visible.map((task) => (
-            <div key={task.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.3rem 0", borderBottom: "1px solid #f9fafb" }}>
-              <span
-                style={{
-                  fontSize: "0.7rem",
-                  fontWeight: 600,
-                  padding: "0.1rem 0.4rem",
-                  borderRadius: 99,
-                  background: STATUS_BG[task.status],
-                  color: STATUS_COLOR[task.status],
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
-              >
-                {STATUS_LABEL[task.status]}
-              </span>
-              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#374151" }}>
-                {task.label}
-              </span>
-              {(task.status === "pending" || task.status === "processing") && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", flexShrink: 0 }}
-                  disabled={isPending}
-                  onClick={() => handleCancel(task.id)}
-                >
-                  Cancelar
-                </button>
-              )}
-              {task.status === "done" && task.type === "ai-generate" && (
-                <a
-                  href={`/ai/import?task=${task.id}`}
-                  className="btn btn-ghost btn-sm"
-                  style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", flexShrink: 0 }}
-                >
-                  Ver
-                </a>
-              )}
-              {task.status === "done" && task.type === "ai-generate-single" && (
-                <a
-                  href={`/ai?task=${task.id}`}
-                  className="btn btn-ghost btn-sm"
-                  style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", flexShrink: 0 }}
-                >
-                  Ver
-                </a>
-              )}
-              {task.status === "error" && task.errorMessage && (
-                <span title={task.errorMessage} style={{ color: "#991b1b", cursor: "help", flexShrink: 0 }}>⚠</span>
-              )}
+            <div key={task.id} className="activity-task-row">
+              <span className={`activity-status activity-status-${task.status}`}>{STATUS_LABEL[task.status]}</span>
+              <span className="activity-task-label" title={task.label}>{task.label}</span>
+              {(task.status === "pending" || task.status === "processing") && <button type="button" className="btn btn-ghost btn-sm" disabled={isPending} onClick={() => handleCancel(task.id)}>Cancelar</button>}
+              {task.status === "done" && task.type === "ai-generate" && <a href={`/ai/import?task=${task.id}`} className="btn btn-ghost btn-sm">Ver</a>}
+              {task.status === "done" && task.type === "ai-generate-single" && <a href={`/ai?task=${task.id}`} className="btn btn-ghost btn-sm">Ver</a>}
+              {task.status === "error" && task.errorMessage && <span className="activity-error" title={task.errorMessage}><Icon name="help" size={15} /></span>}
             </div>
           ))}
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
-    </div>
+    </section>
   );
 }

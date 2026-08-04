@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { createDisciplineAction } from "@/lib/actions/disciplines";
+import { PageHeader } from "@/components/ui";
 
 export default function NewDisciplinePage() {
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Nova Disciplina</h1>
-        <Link href="/disciplines" className="btn btn-ghost">← Voltar</Link>
-      </div>
+      <PageHeader eyebrow="Organizar · Conteúdo" title="Nova disciplina" description="Cadastre um componente curricular para conectar questões, auditoria e provas." actions={<Link href="/disciplines" className="btn btn-ghost">← Voltar</Link>} />
       <div className="card" style={{ maxWidth: 480 }}>
         <form action={createDisciplineAction}>
           <div className="form-row">

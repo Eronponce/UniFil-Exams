@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/ui";
+
 export default function SettingsPage() {
   const ollamaUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
   const ollamaModel = process.env.OLLAMA_MODEL ?? "qwen2.5:latest";
@@ -10,13 +12,11 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Configurações</h1>
-      </div>
+      <PageHeader eyebrow="Sistema" title="Configurações" description="Confira integrações, armazenamento local e as preferências persistentes desta estação de trabalho." />
 
-      <div className="card" style={{ maxWidth: 560 }}>
+      <div className="card settings-card" style={{ maxWidth: 560 }}>
         <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1.25rem" }}>Provedores IA</h2>
-        <table className="table">
+        <div className="table-wrap"><table className="table">
           <tbody>
             <tr>
               <td><strong>Ollama URL</strong></td>
@@ -35,7 +35,7 @@ export default function SettingsPage() {
               <td style={{ color: geminiKey ? "var(--success)" : "var(--danger)" }}>{status(geminiKey)}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "1rem" }}>
           Edite <code>.env.local</code> na raiz do projeto para configurar chaves e URLs. Reinicie o servidor após alterações.
         </p>
@@ -43,7 +43,7 @@ export default function SettingsPage() {
 
       <div className="card" style={{ maxWidth: 560, marginTop: "1rem" }}>
         <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1.25rem" }}>Armazenamento Local</h2>
-        <table className="table">
+        <div className="table-wrap"><table className="table">
           <tbody>
             <tr>
               <td><strong>Banco de dados</strong></td>
@@ -58,7 +58,7 @@ export default function SettingsPage() {
               <td><code>public/uploads/evalbee/</code></td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </>
   );

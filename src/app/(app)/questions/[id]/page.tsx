@@ -7,6 +7,7 @@ import { getDiscipline } from "@/lib/db/disciplines";
 import { auditQuestionAction, deleteQuestionAction } from "@/lib/actions/questions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { MarkdownText } from "@/components/markdown-text";
+import { PageHeader } from "@/components/ui";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -18,9 +19,7 @@ export default async function QuestionPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Questão #{question.id}</h1>
-        <div className="actions-row">
+      <PageHeader eyebrow="Organizar · Banco de questões" title={`Questão #${question.id}`} description="Visualize o enunciado, confira o gabarito e escolha a próxima ação de revisão." actions={<>
           <Link href="/questions" className="btn btn-ghost">← Banco</Link>
           <Link href={`/questions/${question.id}/edit`} className="btn btn-ghost">Editar</Link>
           <form action={auditQuestionAction} style={{ display: "inline" }}>
@@ -33,12 +32,11 @@ export default async function QuestionPage({ params }: { params: Promise<{ id: s
           <form action={deleteQuestionAction} style={{ display: "inline" }}>
             <input type="hidden" name="id" value={question.id} />
             <input type="hidden" name="back" value="/questions" />
-            <ConfirmButton type="submit" className="btn btn-danger btn-sm" confirm="Excluir questão?">
-              Excluir
-            </ConfirmButton>
+          <ConfirmButton type="submit" className="btn btn-danger btn-sm" confirm="Excluir questão?">
+            Excluir
+          </ConfirmButton>
           </form>
-        </div>
-      </div>
+        </>} />
 
       <div className="card" style={{ maxWidth: 700 }}>
         <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>

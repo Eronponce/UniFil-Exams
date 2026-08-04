@@ -484,3 +484,27 @@
 - Preview remoto da prova 14: 12 questoes, 36 tags de imagem medidas, 36/36 carregadas com dimensoes validas.
 - PDF direto `/api/pdf/exam/14`: HTTP 200, 326950 bytes.
 - Prova temporaria 15 criada, excluida pela Server Action e removida da lista; provas 12, 13 e 14 permaneceram.
+
+## 2026-08-04 — Workspace acadêmico responsivo
+
+### Interface
+- Implementado shell responsivo em `src/app/(app)/layout.tsx`: sidebar desktop recolhível, drawer móvel, skip link, main landmark, tema persistente e dock de atividade.
+- Navegação agrupada em Visão geral, Conteúdo, Criar, Avaliações e Sistema; ativos têm estado visual e `aria-current`.
+- Criada paleta de comandos global (`Ctrl/Cmd + K`) com busca, grupos, ações de criação, foco inicial, `Esc`, setas e `Enter`.
+- Criado sistema visual compartilhado em `src/components/ui.tsx` e `src/components/icon.tsx`, sem dependência adicional de ícones.
+- Dashboard passou a ser centro de comando com KPIs, prontidão por disciplina, continuidade, atenção recente e avaliações recentes.
+- Headers, estados vazios e layouts responsivos aplicados às telas de disciplinas, banco, auditoria, IA, importação, montagem e exportação.
+- `QueuePanel` e `IssueChatPanel` foram encaixados no mesmo dock e tiveram apenas a apresentação modernizada; polling, cancelamento, links de resultado e integração GitHub foram preservados.
+- `globals.css` ganhou tokens claro/escuro/sistema, acessibilidade, reduced motion, overflow de tabelas e isolamento explícito do print A4.
+
+### Documentação e estado
+- [[SCREEN_MAP]] e [[USER_WORKFLOWS]] atualizados para a nova arquitetura `ORGANIZAR → REVISAR → CRIAR → ENTREGAR`.
+- [[DECISIONS]] recebeu a decisão estável do sistema visual.
+- `.agents/project-memory.md` criado neste checkout, que não possuía memória persistente.
+
+### Validação
+- `rtk npm run typecheck`: passou.
+- `rtk npm run lint`: passou.
+- `rtk npm test -- --run`: 16 arquivos, 82 testes passando.
+- `rtk npm run build`: passou; rotas app/API/print listadas. Permaneceu apenas o warning não fatal de NFT tracing da rota de imagem runtime.
+- `rtk playwright test`: bloqueado pelo repositório sem `playwright.config.*`; Playwright 1.62.1 auto-descobriu os testes Vitest, falhou ao importar Vitest em CommonJS e terminou com `No tests found` (0 pass/0 fail). Nenhuma dependência ou configuração foi adicionada; build e testes Vitest foram usados como fallback.

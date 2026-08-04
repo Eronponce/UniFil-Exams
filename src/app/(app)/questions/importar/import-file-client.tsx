@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { MarkdownText } from "@/components/markdown-text";
+import { PageHeader } from "@/components/ui";
+import { Icon } from "@/components/icon";
 import { QuestionExportFileSchema, parseCsvQuestions, type ExportedQuestion } from "@/lib/importexport/types";
 import { importQuestionsFromJsonAction } from "@/lib/actions/import";
 import { useToast } from "@/components/toast-provider";
@@ -299,7 +301,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
   if (step === "done") {
     return (
       <>
-        <div className="page-header"><h1 className="page-title">Importação Concluída</h1></div>
+        <PageHeader eyebrow="Criar · Arquivo" title="Importação concluída" description="As questões selecionadas já estão disponíveis no banco." />
         <div className="card" style={{ maxWidth: 480, textAlign: "center", padding: "2rem" }}>
           <p style={{ fontSize: "3rem", margin: "0 0 0.5rem" }}>✓</p>
           <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
@@ -319,10 +321,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
     const allSelected = selected.size === questions.length;
     return (
       <>
-        <div className="page-header">
-          <h1 className="page-title">Revisar Questões ({questions.length} encontradas)</h1>
-          <button className="btn btn-ghost" onClick={reset}>← Voltar</button>
-        </div>
+        <PageHeader eyebrow="Criar · Arquivo" title={`Revisar questões (${questions.length} encontradas)`} description="Confira o conteúdo e escolha quais itens devem entrar na disciplina selecionada." actions={<button className="btn btn-ghost" onClick={reset}>← Voltar</button>} />
 
         <div style={{ marginBottom: "1rem" }}>
           <label className="form-label">Salvar na disciplina:</label>
@@ -400,10 +399,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
   // ── Input ─────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Importar Questões</h1>
-        <Link href="/questions" className="btn btn-ghost">← Voltar</Link>
-      </div>
+      <PageHeader eyebrow="Criar · Arquivo" title="Importar questões" description="Traga arquivos JSON ou CSV, valide o formato e selecione os itens antes de persistir." actions={<Link href="/questions" className="btn btn-ghost">← Voltar</Link>} />
 
       {/* Template reference */}
       <div className="card" style={{ marginBottom: "1.5rem" }}>
@@ -478,7 +474,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", gap: "0.75rem", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <span style={{ fontSize: "1.1rem" }}>🤖</span>
+            <Icon name="wand" size={19} />
             <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#991b1b" }}>Prompt pronto para IA geradora de questões</span>
           </div>
           <button

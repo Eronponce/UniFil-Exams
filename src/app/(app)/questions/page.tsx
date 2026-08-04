@@ -6,6 +6,8 @@ import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import { QuestionFilters } from "./_components/question-filters";
 import { QuestionsTable } from "./_components/questions-table";
 import type { QuestionType } from "@/types";
+import { EmptyState, PageHeader } from "@/components/ui";
+import { Icon } from "@/components/icon";
 
 export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; rejected?: string; q?: string; type?: string; area?: string | string[] }> }) {
   const sp = await searchParams;
@@ -28,6 +30,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
       .map((q) => q.thematicArea)
       .filter(Boolean) as string[]
   )].sort();
+  const hasFilters = Boolean(sp.discipline || sp.audited || sp.rejected || sp.q || sp.type || thematicAreas.length > 0);
 
   // Build export query params from current filters
   const exportParams = new URLSearchParams();
@@ -41,22 +44,17 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Banco de Questões</h1>
-        <div className="actions-row">
-          <Link href="/questions/importar" className="btn btn-ghost">↑ Importar</Link>
-          <a href={`${exportBase}&format=json`} download className="btn btn-ghost">↓ JSON</a>
-          <a href={`${exportBase}&format=csv`} download className="btn btn-ghost">↓ CSV</a>
-          <Link href="/questions/new" className="btn btn-primary">+ Nova Questão</Link>
-        </div>
-      </div>
+      <PageHeader eyebrow="Organizar · Conteúdo" title="Banco de questões" description="Pesquise, filtre e reutilize um acervo confiável para suas próximas avaliações." actions={<>
+        <Link href="/questions/importar" className="btn btn-ghost"><Icon name="upload" size={15} /> Importar</Link>
+        <a href={`${exportBase}&format=json`} download className="btn btn-ghost">↓ JSON</a>
+        <a href={`${exportBase}&format=csv`} download className="btn btn-ghost">↓ CSV</a>
+        <Link href="/questions/new" className="btn btn-primary"><Icon name="plus" size={15} /> Nova questão</Link>
+      </>} />
 
       <QuestionFilters disciplines={disciplines} areas={allAreas} />
 
       {questions.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>
-          Nenhuma questão encontrada.
-        </div>
+        <EmptyState title="Nenhuma questão encontrada" description={hasFilters ? "Tente remover algum filtro ou crie uma nova questão para este banco." : "Crie a primeira questão para começar seu acervo reutilizável."} action={<Link href={hasFilters ? "/questions" : "/questions/new"} className="btn btn-primary">{hasFilters ? "Limpar filtros" : "Criar questão"}</Link>} icon="layers" />
       ) : (
         <QuestionsTable questions={questions} />
       )}

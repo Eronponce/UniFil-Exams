@@ -143,7 +143,7 @@ export function AIClient({ disciplines, initialTaskId }: { disciplines: Discipli
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: result ? "1fr 1fr" : "1fr", gap: "1.5rem", alignItems: "start" }}>
+    <div className={`ai-workspace${result ? " has-result" : ""}`}>
       {/* ── Config form ───────────────────────────────────────────────────── */}
       <div className="card">
         <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1.25rem" }}>Configuração</h2>

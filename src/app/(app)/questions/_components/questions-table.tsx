@@ -44,7 +44,7 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
         {[...selected].map((id) => <input key={id} type="hidden" name="ids" value={id} />)}
       </form>
 
-      <table className="table">
+      <div className="table-wrap"><table className="table">
         <thead>
           <tr>
             <th style={{ width: 36 }}><input type="checkbox" checked={allSelected} onChange={toggleAll} title="Selecionar todas" aria-label="Selecionar todas as questões visíveis" /></th>
@@ -65,7 +65,7 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       {selected.size > 0 && (
         <div style={{ position: "sticky", bottom: "1rem", display: "flex", alignItems: "center", gap: "1rem", background: "var(--card-bg, #fff)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.75rem 1.25rem", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", marginTop: "0.75rem", flexWrap: "wrap" }}>

@@ -3,24 +3,20 @@ import Link from "next/link";
 import { listDisciplinesWithCount } from "@/lib/db/stats";
 import { deleteDisciplineAction } from "@/lib/actions/disciplines";
 import { ConfirmButton } from "@/components/confirm-button";
+import { EmptyState, PageHeader } from "@/components/ui";
+import { Icon } from "@/components/icon";
 
 export default function DisciplinesPage() {
   const disciplines = listDisciplinesWithCount();
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Disciplinas</h1>
-        <Link href="/disciplines/new" className="btn btn-primary">+ Nova Disciplina</Link>
-      </div>
+      <PageHeader eyebrow="Organizar · Conteúdo" title="Disciplinas" description="Mantenha os componentes curriculares que alimentam seu banco de questões." actions={<Link href="/disciplines/new" className="btn btn-primary"><Icon name="plus" size={16} /> Nova disciplina</Link>} />
 
       {disciplines.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>
-          Nenhuma disciplina cadastrada.{" "}
-          <Link href="/disciplines/new">Criar a primeira</Link>.
-        </div>
+        <EmptyState title="Nenhuma disciplina cadastrada" description="Crie a primeira para começar a organizar questões e avaliações." action={<Link href="/disciplines/new" className="btn btn-primary">Criar primeira disciplina</Link>} icon="book-open" />
       ) : (
-        <table className="table">
+        <div className="table-wrap"><table className="table">
           <thead>
             <tr>
               <th>Código</th>
@@ -49,7 +45,7 @@ export default function DisciplinesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </>
   );

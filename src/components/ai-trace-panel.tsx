@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AIStatusEvent } from "@/lib/ai/stream";
 import type { AITrace } from "@/lib/ai/trace";
+import { Icon } from "@/components/icon";
 
 const TYPE_LABEL: Record<string, string> = {
   objetiva: "Objetiva",
@@ -154,7 +155,7 @@ export function AITracePanel({
         style={{ background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", padding: 0 }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#94a3b8" }}>🔍 Processo interno da IA</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, color: "#94a3b8" }}><Icon name="activity" size={15} /> Processo interno da IA</span>
           <span style={{ fontSize: "0.75rem", color: statusColor }}>{statusText}</span>
           {isStreaming && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#38bdf8", boxShadow: "0 0 0 4px rgba(56, 189, 248, 0.12)" }} />}
         </div>

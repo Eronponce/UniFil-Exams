@@ -7,6 +7,7 @@ import { getQuestion } from "@/lib/db/questions";
 import type { Question } from "@/types";
 import { GabaritoUpload, LogoUpload } from "./upload-panel";
 import { RichText } from "@/components/rich-text";
+import { EmptyState, PageHeader } from "@/components/ui";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
@@ -39,18 +40,13 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Exportações</h1>
-        <Link href="/exams" className="btn btn-ghost">← Montar Prova</Link>
-      </div>
+      <PageHeader eyebrow="Avaliações · Entregar" title="Exportações" description="Confira cada conjunto e gere o preview A4, PDF direto, CSV de gabarito ou ZIP." actions={<Link href="/exams" className="btn btn-ghost">← Montar prova</Link>} />
 
       {exams.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", color: "var(--muted)" }}>
-          Nenhuma prova criada. <Link href="/exams">Montar prova</Link>.
-        </div>
+        <EmptyState title="Nenhuma avaliação criada" description="Monte uma prova para liberar os arquivos de entrega." action={<Link href="/exams" className="btn btn-primary">Montar prova</Link>} icon="file-text" />
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: "1.5rem", alignItems: "start", marginBottom: "2rem" }}>
+          <div className="exports-layout">
             {/* Sidebar */}
             <div>
               <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.5rem" }}>Provas</p>

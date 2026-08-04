@@ -7,6 +7,7 @@ import type { QuestionFormState } from "@/lib/actions/questions";
 import { makeQuestionDraft, useWorkspaceStore } from "@/lib/state/workspace-store";
 import type { QuestionDraft } from "@/lib/state/workspace-store";
 import { MarkdownText } from "@/components/markdown-text";
+import { PageHeader } from "@/components/ui";
 import {
   RICH_TEXT_ALLOWED_ATTRIBUTE_LABEL,
   RICH_TEXT_ALLOWED_STYLE_LABEL,
@@ -58,14 +59,11 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">{title}</h1>
-        <div className="actions-row">
+      <PageHeader eyebrow={question ? "Organizar · Banco de questões" : "Criar · Manual"} title={title} description={question ? "Revise o conteúdo e mantenha o item pronto para reutilização." : "Registre uma questão com contexto, alternativas e gabarito para revisar depois."} actions={<>
           {navigation?.previousId ? <a href={`/questions/${navigation.previousId}/edit`} className="btn btn-ghost" aria-label="Questão anterior">← Anterior</a> : navigation && <button type="button" className="btn btn-ghost" aria-label="Questão anterior indisponível" disabled style={{ opacity: 0.45 }}>← Anterior</button>}
           {navigation?.nextId ? <a href={`/questions/${navigation.nextId}/edit`} className="btn btn-ghost" aria-label="Próxima questão">Próxima →</a> : navigation && <button type="button" className="btn btn-ghost" aria-label="Próxima questão indisponível" disabled style={{ opacity: 0.45 }}>Próxima →</button>}
           <a href={cancelHref} className="btn btn-ghost">← Voltar</a>
-        </div>
-      </div>
+        </>} />
       <div className="card">
         <form action={formAction}>
           {question && <input type="hidden" name="id" value={question.id} />}

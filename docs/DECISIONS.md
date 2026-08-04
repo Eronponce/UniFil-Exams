@@ -156,3 +156,9 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: serve runtime question images through `src/app/uploads/questions/[filename]/route.ts` instead of relying only on the `public` static-file path.
 - Reason: in the production Docker runtime, files created after the Next build were present in the bind-mounted directory but direct `/uploads/questions/...` requests returned `404`.
 - Impact: existing `image_path` values remain compatible, image names/extensions are validated, and the handler reads only files under `public/uploads/questions`.
+
+## 2026-08-04 - Academic Workspace UI System
+- Decision: standardize non-print app routes around a responsive shell, reusable visual primitives, and the `ORGANIZAR → REVISAR → CRIAR → ENTREGAR` information architecture.
+- Reason: the previous utility-first pages made the teacher reconstruct the workflow from isolated forms and tables.
+- Impact: `PageHeader`, `SectionCard`, `StatCard`, `ProgressDisplay`, `EmptyState`, `WorkflowStepper` and inline SVG `Icon` provide shared hierarchy; the shell adds mobile navigation, persisted theme/sidebar preferences, skip navigation, focus states, command palette and an activity dock.
+- Compatibility: route URLs, search parameters, form names/IDs, Server Actions, queue recovery links, upload endpoints and print routes remain unchanged. Theme rules are scoped away from the A4 print DOM.

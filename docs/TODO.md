@@ -12,6 +12,9 @@ aliases:
 
 Use this note with [[SESSION_LOG]] and [[DECISIONS]] to track the latest requested implementation bundle.
 
+> [!success]
+> 2026-08-04 — UI workspace bundle implemented in the Luna task lane; see [[SCREEN_MAP]], [[USER_WORKFLOWS]] and [[SESSION_LOG]].
+
 > [!note]
 > Last bundle: 2026-04-24 — T1–T11 (justificativa, audit fix, PDF uniform, queue, form preservation).
 
@@ -43,3 +46,14 @@ Use this note with [[SESSION_LOG]] and [[DECISIONS]] to track the latest request
 - [ ] Smoke manual no navegador dos fluxos de streaming com Ollama/Claude/Gemini reais.
 - [ ] Validar visualmente PDFs longos com combinações mistas de seção para ajustar densidade.
 - [ ] Testar QueuePanel no navegador com operações reais de auditoria e geração IA.
+
+## UI workspace — 2026-08-04
+- [x] Shell responsivo com sidebar desktop recolhível e drawer móvel acessível.
+- [x] Tema claro/escuro/sistema e preferência da sidebar persistidos no navegador.
+- [x] Paleta `Ctrl/Cmd + K` com busca, grupos, ações rápidas e operação por teclado.
+- [x] Primitives reutilizáveis de header, card, stat, progress, empty state, stepper e ícones inline.
+- [x] Dashboard de comando com prontidão de auditoria, KPIs, continuidade e atenção recente.
+- [x] Hierarquia contextual aplicada às rotas de conteúdo, criação, auditoria, avaliação e entrega.
+- [x] Dock de atividade modernizado sem alterar polling, cancelamento ou links de recuperação.
+- [x] Regras de impressão preservadas e isoladas do tema da aplicação.
+- [x] Verificado: typecheck, lint, Vitest e build.
