@@ -530,3 +530,10 @@
 - A ordem não depende mais da sequência incidental dos sets retornados pelo SQLite.
 - PDFs e CSVs individuais continuam respeitando o embaralhamento próprio de cada set.
 - Provas antigas sem Set A usam o primeiro rótulo disponível como fallback determinístico.
+
+## 2026-08-05 - Alternativas do gabarito completo iguais ao Set A
+
+- Corrigida a divergência em que o gabarito rápido indicava, por exemplo, `Q1→D`, mas o completo mostrava as alternativas originais e marcava `A`.
+- O gabarito completo agora reproduz tanto a sequência das questões quanto o embaralhamento das alternativas objetivas do Set A.
+- A alternativa correta é destacada usando a letra efetivamente impressa no Set A.
+- Embaralhamentos inválidos ou ausentes usam a ordem original como fallback seguro.

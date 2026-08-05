@@ -8,7 +8,7 @@ import type { Question } from "@/types";
 import { GabaritoUpload, LogoUpload } from "./upload-panel";
 import { RichText } from "@/components/rich-text";
 import { EmptyState, PageHeader } from "@/components/ui";
-import { getExamQuestionIdsInSetAOrder } from "@/lib/exam/reference-set";
+import { getExamQuestionIdsInSetAOrder, getExamReferenceSet, getQuestionOptionsInSetOrder } from "@/lib/exam/reference-set";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
@@ -38,6 +38,13 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
     .map((id) => getQuestion(id))
     .filter((q): q is NonNullable<typeof q> => q != null);
   const qMap = Object.fromEntries(selectedExamQuestions.map((q) => [q.id, q]));
+  const referenceSet = selectedExam ? getExamReferenceSet(selectedExam.sets) : undefined;
+  const referenceSetLabel = referenceSet?.label ?? "A";
+  const referenceQuestionMap = new Map(referenceSet?.questions.map((question) => [question.questionId, question]) ?? []);
+  const referenceOptionsMap = new Map(selectedExamQuestions.map((question) => [
+    question.id,
+    getQuestionOptionsInSetOrder(question, referenceQuestionMap.get(question.id)),
+  ]));
 
   return (
     <>
@@ -128,10 +135,10 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
           {selectedExamQuestions.length > 0 && selectedExam && (
             <div className="card">
               <h3 style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "0.25rem" }}>
-                Gabarito Completo · Ordem do Set A
+                Gabarito Completo · Ordem do Set {referenceSetLabel}
               </h3>
               <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "1.5rem" }}>
-                {selectedExamQuestions.length} questão(ões) únicas na mesma sequência do Set A — com alternativas originais, resposta correta e justificativa.
+                {selectedExamQuestions.length} questão(ões) na sequência e com as alternativas exatamente como aparecem no Set {referenceSetLabel}.
               </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -197,13 +204,13 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                     {/* Options / answer by type */}
                     {q.questionType === "objetiva" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginLeft: 28, marginBottom: "0.75rem" }}>
-                        {q.options.map((opt) => {
-                          const isCorrect = opt.index === q.correctIndex;
+                        {(referenceOptionsMap.get(q.id) ?? []).map((option) => {
+                          const isCorrect = option.isCorrect;
                           return (
-                            <div key={opt.index} style={{ display: "flex", gap: "0.4rem", padding: "0.25rem 0.5rem", borderRadius: 4, background: isCorrect ? "#dcfce7" : "transparent" }}>
-                              <span style={{ fontWeight: 700, minWidth: 20, color: isCorrect ? "#15803d" : "var(--muted)", fontSize: "0.85rem" }}>{LETTERS[opt.index]})</span>
+                            <div key={option.originalIndex} style={{ display: "flex", gap: "0.4rem", padding: "0.25rem 0.5rem", borderRadius: 4, background: isCorrect ? "#dcfce7" : "transparent" }}>
+                              <span style={{ fontWeight: 700, minWidth: 20, color: isCorrect ? "#15803d" : "var(--muted)", fontSize: "0.85rem" }}>{option.letter})</span>
                               <span style={{ fontSize: "0.875rem", color: isCorrect ? "#15803d" : "inherit", fontWeight: isCorrect ? 600 : 400 }}>
-                                {opt.text}{isCorrect && <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem" }}>✓</span>}
+                                {option.text}{isCorrect && <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem" }}>✓</span>}
                               </span>
                             </div>
                           );

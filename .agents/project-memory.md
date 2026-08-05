@@ -27,7 +27,7 @@ status: active
 - `src/lib/db/stats.ts` adds read-only dashboard aggregation through `getDashboardStats()`.
 - Question detail and edit screens share discipline-scoped previous/next navigation; the edit form shows the current image at large size directly after the statement and keeps replacement upload separate.
 - The question bank supports selecting multiple questions and applying one shared thematic area without changing their statements; submitting a blank area clears it from the selection.
-- The full answer key on `/exports` uses Set A positions as its canonical question sequence; per-set PDFs and CSVs retain each set's shuffled order.
+- The full answer key on `/exports` reproduces Set A question positions and objective-option shuffling, so its marked letters match the Set A quick CSV; other per-set PDFs and CSVs retain their own shuffled order.
 
 ## Product IA
 
