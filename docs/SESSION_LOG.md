@@ -537,3 +537,10 @@
 - O gabarito completo agora reproduz tanto a sequência das questões quanto o embaralhamento das alternativas objetivas do Set A.
 - A alternativa correta é destacada usando a letra efetivamente impressa no Set A.
 - Embaralhamentos inválidos ou ausentes usam a ordem original como fallback seguro.
+
+## 2026-08-06 - Reabertura da sidebar recolhida
+
+- Corrigido o CSS que escondia o próprio botão `Expandir menu lateral` quando `sidebarCollapsed` estava ativo.
+- O botão permanece visível no trilho compacto e o espaçamento foi ajustado para manter a área clicável dentro dos 82px.
+- Preferência persistida de sidebar continua funcionando; mobile mantém o layout expandido do drawer.
+- Validado com typecheck, lint, teste do app shell e build de produção.

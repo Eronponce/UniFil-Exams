@@ -31,7 +31,7 @@
   z-index: 30;
 }
 
-.collapsed { width: 82px; }
+.collapsed { width: 82px; padding-inline: .35rem; }
 
 .brandRow { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 0 .35rem .75rem; border-bottom: 1px solid var(--nav-border); }
 .brand { display: inline-flex; align-items: center; min-width: 0; gap: .65rem; color: var(--nav-text-strong); font-size: .96rem; font-weight: 700; text-decoration: none; }
@@ -42,9 +42,10 @@
 .brandCopy span { color: var(--nav-text-muted); font-size: .69rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-top: .22rem; }
 .collapseButton, .mobileMenuButton { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--nav-text-muted); cursor: pointer; }
 .collapseButton:hover, .mobileMenuButton:hover { background: var(--nav-hover); color: var(--nav-text-strong); }
-.collapsed .brandCopy, .collapsed .collapseButton { display: none; }
-.collapsed .brandRow { justify-content: center; padding-inline: 0; }
+.collapsed .brandCopy { display: none; }
+.collapsed .brandRow { justify-content: space-between; gap: .25rem; padding-inline: 0; }
 .collapsed .brand { gap: 0; }
+.collapsed .collapseButton { width: 30px; height: 34px; }
 
 .workspaceTag { display: flex; align-items: center; gap: .45rem; margin: .9rem .4rem .75rem; color: var(--nav-text-muted); font-size: .68rem; font-weight: 650; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
 .workspaceDot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 4px rgba(30, 166, 155, .13); }
