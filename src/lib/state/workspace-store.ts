@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { QuestionType } from "@/types";
+import type { QuestionLayout, QuestionType } from "@/types";
 
 export interface SingleAiDraft {
   disciplineId: string;
@@ -30,6 +30,10 @@ export interface ExamDraft {
   numVF: string;
   numDissertativas: string;
   numNumericas: string;
+  layoutObjetiva: QuestionLayout;
+  layoutVF: QuestionLayout;
+  layoutNumerica: QuestionLayout;
+  layoutDissertativa: QuestionLayout;
 }
 
 export interface QuestionDraft {
@@ -102,6 +106,10 @@ export function makeExamDraft(): ExamDraft {
     numVF: "",
     numDissertativas: "",
     numNumericas: "",
+    layoutObjetiva: "column",
+    layoutVF: "column",
+    layoutNumerica: "column",
+    layoutDissertativa: "full",
   };
 }
 

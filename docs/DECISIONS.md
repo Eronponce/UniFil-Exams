@@ -162,3 +162,10 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Reason: the previous utility-first pages made the teacher reconstruct the workflow from isolated forms and tables.
 - Impact: `PageHeader`, `SectionCard`, `StatCard`, `ProgressDisplay`, `EmptyState`, `WorkflowStepper` and inline SVG `Icon` provide shared hierarchy; the shell adds mobile navigation, persisted theme/sidebar preferences, skip navigation, focus states, command palette and an activity dock.
 - Compatibility: route URLs, search parameters, form names/IDs, Server Actions, queue recovery links, upload endpoints and print routes remain unchanged. Theme rules are scoped away from the A4 print DOM.
+
+## 2026-08-10 - Exam type layouts are explicit, persisted print preferences
+
+- Decision: store one normalized layout preference per question type on each exam: `column` or `full`.
+- Defaults: objective, true/false, and numeric questions use `column`; discursive questions use `full`.
+- Reason: automatic width promotion made long objective questions consume full-page pagination and prevented teachers from deliberately using compact discursive layouts.
+- Impact: print measurement and pagination honor the saved type preference; rich tables adapt inside that chosen width instead of changing the width. Legacy/malformed rows normalize to the same defaults.

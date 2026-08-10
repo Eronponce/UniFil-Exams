@@ -1,5 +1,6 @@
-import type { Exam, ExamSet } from "@/types";
+import type { Exam, ExamQuestionLayouts, ExamSet } from "@/types";
 import { clampAnswerKeyWidth, ANSWER_KEY_DEFAULT_WIDTH_PT } from "@/lib/pdf/answer-key-layout";
+import { normalizeExamQuestionLayouts } from "@/lib/exam/layout";
 import { getDb } from "./client";
 
 interface ExamRow {
@@ -8,6 +9,10 @@ interface ExamRow {
   title: string;
   institution: string;
   answer_key_width_pt: number | null;
+  layout_objetiva: string | null;
+  layout_verdadeiro_falso: string | null;
+  layout_numerica: string | null;
+  layout_dissertativa: string | null;
   created_at: string;
 }
 
@@ -55,6 +60,12 @@ function examToModel(er: ExamRow, sets: ExamSet[]): Exam {
     title: er.title,
     institution: er.institution ?? DEFAULT_INSTITUTION,
     answerKeyWidthPt: clampAnswerKeyWidth(er.answer_key_width_pt ?? ANSWER_KEY_DEFAULT_WIDTH_PT),
+    questionLayouts: normalizeExamQuestionLayouts({
+      objetiva: er.layout_objetiva,
+      verdadeiro_falso: er.layout_verdadeiro_falso,
+      numerica: er.layout_numerica,
+      dissertativa: er.layout_dissertativa,
+    }),
     sets,
     createdAt: er.created_at,
   };
@@ -90,11 +101,30 @@ export function listAllExamQuestionIds(): number[] {
   return rows.map((r) => r.question_id);
 }
 
-export function createExam(data: { disciplineId: number; title: string; institution?: string; questionIds: number[] }): Exam {
+export function createExam(data: {
+  disciplineId: number;
+  title: string;
+  institution?: string;
+  questionIds: number[];
+  questionLayouts?: Partial<ExamQuestionLayouts>;
+}): Exam {
   const db = getDb();
+  const layouts = normalizeExamQuestionLayouts(data.questionLayouts);
   const result = db
-    .prepare("INSERT INTO exams (discipline_id, title, institution, answer_key_width_pt) VALUES (?, ?, ?, ?)")
-    .run(data.disciplineId, data.title, data.institution ?? DEFAULT_INSTITUTION, ANSWER_KEY_DEFAULT_WIDTH_PT);
+    .prepare(`INSERT INTO exams (
+      discipline_id, title, institution, answer_key_width_pt,
+      layout_objetiva, layout_verdadeiro_falso, layout_numerica, layout_dissertativa
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(
+      data.disciplineId,
+      data.title,
+      data.institution ?? DEFAULT_INSTITUTION,
+      ANSWER_KEY_DEFAULT_WIDTH_PT,
+      layouts.objetiva,
+      layouts.verdadeiro_falso,
+      layouts.numerica,
+      layouts.dissertativa,
+    );
   const examId = result.lastInsertRowid as number;
   const insertQ = db.prepare("INSERT INTO exam_questions (exam_id, question_id, position) VALUES (?, ?, ?)");
   data.questionIds.forEach((qid, pos) => insertQ.run(examId, qid, pos));

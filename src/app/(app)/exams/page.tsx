@@ -13,7 +13,7 @@ import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icon";
 
 
-export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string }> }) {
+export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string; layoutObjetiva?: string; layoutVF?: string; layoutNumerica?: string; layoutDissertativa?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const exams = listExams();
@@ -67,6 +67,15 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               initialNumVF={sp.numVF ?? ""}
               initialNumDissertativas={sp.numDissertativas ?? ""}
               initialNumNumericas={sp.numNumericas ?? ""}
+              initialLayoutObjetiva={sp.layoutObjetiva ?? ""}
+              initialLayoutVF={sp.layoutVF ?? ""}
+              initialLayoutNumerica={sp.layoutNumerica ?? ""}
+              initialLayoutDissertativa={sp.layoutDissertativa ?? ""}
+              availabilityKey={JSON.stringify({
+                discipline: selectedDisciplineId ?? null,
+                areas: [...selectedAreas].sort(),
+                questionIds: auditedQuestions.map((question) => question.id),
+              })}
               typeCounts={typeCounts}
             />
 

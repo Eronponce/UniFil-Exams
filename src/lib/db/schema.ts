@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS exams (
   discipline_id INTEGER NOT NULL REFERENCES disciplines(id),
   title         TEXT    NOT NULL,
   answer_key_width_pt INTEGER NOT NULL DEFAULT 350,
+  layout_objetiva TEXT NOT NULL DEFAULT 'column',
+  layout_verdadeiro_falso TEXT NOT NULL DEFAULT 'column',
+  layout_numerica TEXT NOT NULL DEFAULT 'column',
+  layout_dissertativa TEXT NOT NULL DEFAULT 'full',
   created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -71,4 +75,8 @@ export function migrate(): void {
   const eCols = (db.prepare("PRAGMA table_info(exams)").all() as { name: string }[]).map((c) => c.name);
   if (!eCols.includes("institution")) db.exec("ALTER TABLE exams ADD COLUMN institution TEXT NOT NULL DEFAULT 'UniFil - Centro Universitário Filadélfia'");
   if (!eCols.includes("answer_key_width_pt")) db.exec("ALTER TABLE exams ADD COLUMN answer_key_width_pt INTEGER NOT NULL DEFAULT 350");
+  if (!eCols.includes("layout_objetiva")) db.exec("ALTER TABLE exams ADD COLUMN layout_objetiva TEXT NOT NULL DEFAULT 'column'");
+  if (!eCols.includes("layout_verdadeiro_falso")) db.exec("ALTER TABLE exams ADD COLUMN layout_verdadeiro_falso TEXT NOT NULL DEFAULT 'column'");
+  if (!eCols.includes("layout_numerica")) db.exec("ALTER TABLE exams ADD COLUMN layout_numerica TEXT NOT NULL DEFAULT 'column'");
+  if (!eCols.includes("layout_dissertativa")) db.exec("ALTER TABLE exams ADD COLUMN layout_dissertativa TEXT NOT NULL DEFAULT 'full'");
 }

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import type { Exam, ExamSet, QuestionOption, QuestionType } from "@/types";
+import type { Exam, ExamQuestionLayouts, ExamSet, QuestionOption, QuestionType } from "@/types";
 import { getQuestion } from "@/lib/db/questions";
 import { sanitizeRichText } from "@/lib/html/rich-text";
 
@@ -25,6 +25,7 @@ export interface PrintExamPayload {
   title: string;
   institution: string;
   answerKeyWidthPt: number;
+  questionLayouts: ExamQuestionLayouts;
   logoUrl: string | null;
   answerKeyUrl: string | null;
   sets: PrintSetPayload[];
@@ -90,6 +91,7 @@ export function buildPrintExamPayload(exam: Exam): PrintExamPayload {
     title: exam.title,
     institution: exam.institution,
     answerKeyWidthPt: exam.answerKeyWidthPt,
+    questionLayouts: exam.questionLayouts,
     logoUrl: getLogoUrl(),
     answerKeyUrl: getAnswerKeyUrl(exam.id),
     sets,

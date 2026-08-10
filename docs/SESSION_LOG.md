@@ -544,3 +544,9 @@
 - O botão permanece visível no trilho compacto e o espaçamento foi ajustado para manter a área clicável dentro dos 82px.
 - Preferência persistida de sidebar continua funcionando; mobile mantém o layout expandido do drawer.
 - Validado com typecheck, lint, teste do app shell e build de produção.
+
+## 2026-08-10 - Layout por tipo e campos de resposta na prova impressa
+
+- A montagem de prova passou a persistir largura `column`/`full` independentemente para objetiva, V/F, numérica e dissertativa; provas anteriores recebem defaults compatíveis.
+- Mudanças de disciplina ou área removem quantidades antigas da URL e sincronizam todos os quatro campos com o pool auditado atual, inclusive `0`; switches de largura permanecem inalterados.
+- A impressão agora respeita o layout salvo para cada tipo, mantém tabelas contidas nessa largura, renderiza V/F com escolhas desmarcadas, numérica com campo rotulado e não cria linhas para dissertativa com `answerLines=0`.

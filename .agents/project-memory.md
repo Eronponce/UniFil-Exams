@@ -52,6 +52,7 @@ status: active
 ## Durable cautions
 
 - Preserve names, IDs, search params, Server Action signatures, queue task links, upload behavior and print selectors beginning `exam-print-`.
+- Exam print width is a persisted per-type preference: objective/VF/numeric default to `column`; discursive defaults to `full`. Missing or invalid legacy columns must normalize to those values.
 - Do not add an icon dependency; use `Icon`.
 - Keep documentation Obsidian-friendly with frontmatter and `[[wikilinks]]`.
 - Prefix useful shell commands with `rtk`.

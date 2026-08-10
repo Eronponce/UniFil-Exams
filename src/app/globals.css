@@ -428,15 +428,18 @@ fieldset { min-width: 0; }
 .exam-print-question-statement { flex: 1; min-width: 0; line-height: 1.4; }
 .exam-print-question-statement .rich-content { font-size: 10pt; }
 .exam-print-question--adaptive-table { --essay-table-scale: 1; }
-.exam-print-question--adaptive-table .rich-content table { width: 100%; margin: .35rem 0; }
-.exam-print-question--adaptive-table .rich-content th, .exam-print-question--adaptive-table .rich-content td { padding: calc(.25rem * var(--essay-table-scale)) calc(.5rem * var(--essay-table-scale)); font-size: calc(.9em * var(--essay-table-scale)); line-height: 1.25; }
+.exam-print-question--adaptive-table .rich-content { overflow: hidden; }
+.exam-print-question--adaptive-table .rich-content table { width: 100%; max-width: 100%; margin: .35rem 0; table-layout: fixed; }
+.exam-print-question--adaptive-table .rich-content th, .exam-print-question--adaptive-table .rich-content td { padding: calc(.25rem * var(--essay-table-scale)) calc(.5rem * var(--essay-table-scale)); overflow-wrap: anywhere; font-size: calc(.9em * var(--essay-table-scale)); line-height: 1.25; }
 .exam-print-question-image { display: block; max-width: calc(100% - 20px); max-height: 180px; margin: 0 0 4px 20px; object-fit: contain; }
 .exam-print-options { display: grid; gap: 2px; }
 .exam-print-option { display: flex; align-items: flex-start; gap: 4px; padding-left: 18px; font-size: 9.5pt; line-height: 1.35; }
 .exam-print-option-letter { width: 14px; flex-shrink: 0; font-weight: 700; }
-.exam-print-vf-row { display: flex; gap: 16px; padding-left: 18px; margin-top: 2px; }
-.exam-print-vf-option { display: flex; align-items: center; gap: 4px; font-size: 9.5pt; }
-.exam-print-vf-box { display: inline-block; width: 10px; height: 10px; border: 1px solid #555; }
+.exam-print-vf-row { display: flex; flex-wrap: wrap; gap: 16px; padding-left: 18px; margin-top: 3px; }
+.exam-print-vf-option { display: flex; align-items: center; gap: 4px; font-size: 9.5pt; white-space: nowrap; }
+.exam-print-vf-box { display: inline-block; width: 10px; height: 10px; flex: 0 0 10px; border: 1px solid #555; border-radius: 1px; }
+.exam-print-numeric-answer { display: flex; align-items: baseline; gap: 6px; padding-left: 18px; margin-top: 3px; font-size: 9.5pt; }
+.exam-print-numeric-line { display: inline-block; flex: 1; min-width: 70px; border-bottom: .5pt solid #555; }
 .exam-print-essay-lines { display: grid; gap: 2px; }
 .exam-print-essay-line { height: 18px; border-bottom: .5pt solid #aaa; }
 .exam-print-answer-key { position: absolute; bottom: 0; left: 50%; display: flex; justify-content: center; transform: translateX(-50%); }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { normalizeQuestionLayout } from "@/lib/exam/layout";
 import { useWorkspaceStore } from "@/lib/state/workspace-store";
 
 interface ExamDraftFieldsProps {
@@ -10,6 +12,11 @@ interface ExamDraftFieldsProps {
   initialNumVF: string;
   initialNumDissertativas: string;
   initialNumNumericas: string;
+  initialLayoutObjetiva: string;
+  initialLayoutVF: string;
+  initialLayoutNumerica: string;
+  initialLayoutDissertativa: string;
+  availabilityKey: string;
   typeCounts: {
     objetiva: number;
     verdadeiro_falso: number;
@@ -26,9 +33,17 @@ export function ExamDraftFields({
   initialNumVF,
   initialNumDissertativas,
   initialNumNumericas,
+  initialLayoutObjetiva,
+  initialLayoutVF,
+  initialLayoutNumerica,
+  initialLayoutDissertativa,
+  availabilityKey,
   typeCounts,
 }: ExamDraftFieldsProps) {
   const { exam, updateExam, resetExam, selectedTypeCounts } = useWorkspaceStore();
+  const previousAvailabilityKey = useRef(availabilityKey);
+  const hasInitializedAvailability = useRef(false);
+  const seededInitialLayoutKey = useRef<string | null>(null);
   const draft = {
     title: initialTitle || exam.title,
     institution: initialInstitution || exam.institution,
@@ -37,7 +52,42 @@ export function ExamDraftFields({
     numVF: initialNumVF || exam.numVF,
     numDissertativas: initialNumDissertativas || exam.numDissertativas,
     numNumericas: initialNumNumericas || (exam.numNumericas ?? ""),
+    layoutObjetiva: normalizeQuestionLayout(exam.layoutObjetiva, "column"),
+    layoutVF: normalizeQuestionLayout(exam.layoutVF, "column"),
+    layoutNumerica: normalizeQuestionLayout(exam.layoutNumerica, "column"),
+    layoutDissertativa: normalizeQuestionLayout(exam.layoutDissertativa, "full"),
   };
+
+  useEffect(() => {
+    const initialLayouts = [initialLayoutObjetiva, initialLayoutVF, initialLayoutNumerica, initialLayoutDissertativa];
+    const initialLayoutKey = initialLayouts.join("|");
+    if (seededInitialLayoutKey.current === initialLayoutKey) return;
+    seededInitialLayoutKey.current = initialLayoutKey;
+    if (!initialLayouts.some(Boolean)) return;
+    updateExam({
+      layoutObjetiva: normalizeQuestionLayout(initialLayoutObjetiva, "column"),
+      layoutVF: normalizeQuestionLayout(initialLayoutVF, "column"),
+      layoutNumerica: normalizeQuestionLayout(initialLayoutNumerica, "column"),
+      layoutDissertativa: normalizeQuestionLayout(initialLayoutDissertativa, "full"),
+    });
+  }, [initialLayoutDissertativa, initialLayoutNumerica, initialLayoutObjetiva, initialLayoutVF, updateExam]);
+
+  useEffect(() => {
+    const hasExplicitQuantities = [initialNumObjetivas, initialNumVF, initialNumNumericas, initialNumDissertativas].some(Boolean);
+    if (!hasInitializedAvailability.current) {
+      hasInitializedAvailability.current = true;
+      if (hasExplicitQuantities) return;
+    } else if (previousAvailabilityKey.current === availabilityKey) {
+      return;
+    }
+    previousAvailabilityKey.current = availabilityKey;
+    updateExam({
+      numObjetivas: String(typeCounts.objetiva),
+      numVF: String(typeCounts.verdadeiro_falso),
+      numNumericas: String(typeCounts.numerica),
+      numDissertativas: String(typeCounts.dissertativa),
+    });
+  }, [availabilityKey, initialNumDissertativas, initialNumNumericas, initialNumObjetivas, initialNumVF, typeCounts, updateExam]);
 
   return (
     <>
@@ -156,6 +206,34 @@ export function ExamDraftFields({
               onChange={(e) => updateExam({ numDissertativas: e.target.value })}
             />
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ background: "#f8fafc", marginBottom: "1.25rem", padding: "1rem" }}>
+        <div style={{ marginBottom: "0.9rem" }}>
+          <p style={{ fontWeight: 600, marginBottom: "0.2rem" }}>Largura por tipo na impressão</p>
+          <p style={{ fontSize: "0.78rem", color: "var(--muted)" }}>Marque largura total; desmarcado usa meia página.</p>
+        </div>
+        <input type="hidden" name="layoutObjetiva" value={draft.layoutObjetiva} />
+        <input type="hidden" name="layoutVF" value={draft.layoutVF} />
+        <input type="hidden" name="layoutNumerica" value={draft.layoutNumerica} />
+        <input type="hidden" name="layoutDissertativa" value={draft.layoutDissertativa} />
+        <div className="form-row">
+          {([
+            ["Objetivas", "layoutObjetiva", draft.layoutObjetiva],
+            ["Verdadeiro/Falso", "layoutVF", draft.layoutVF],
+            ["Numéricas", "layoutNumerica", draft.layoutNumerica],
+            ["Dissertativas", "layoutDissertativa", draft.layoutDissertativa],
+          ] as const).map(([label, key, layout]) => (
+            <label key={key} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
+              <input
+                type="checkbox"
+                checked={layout === "full"}
+                onChange={(event) => updateExam({ [key]: event.target.checked ? "full" : "column" })}
+              />
+              {label}: largura total
+            </label>
+          ))}
         </div>
       </div>
 

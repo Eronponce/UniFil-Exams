@@ -9,6 +9,7 @@ import { buildSets, type QuestionInfo } from "@/lib/exam/randomize";
 import { normalizeExamSelectionRequest, pickQuestionsForExam } from "@/lib/exam/select-questions";
 import { redirectWithToast } from "@/lib/toast";
 import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
+import { normalizeExamQuestionLayouts } from "@/lib/exam/layout";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const GABARITO_EXTENSIONS = ["png", "jpg", "jpeg"] as const;
@@ -34,6 +35,12 @@ export async function createExamAction(formData: FormData) {
   const numVFRaw = (formData.get("numVF") as string | null) ?? "";
   const numDissertativasRaw = (formData.get("numDissertativas") as string | null) ?? "";
   const numNumericasRaw = (formData.get("numNumericas") as string | null) ?? "";
+  const questionLayouts = normalizeExamQuestionLayouts({
+    objetiva: formData.get("layoutObjetiva"),
+    verdadeiro_falso: formData.get("layoutVF"),
+    numerica: formData.get("layoutNumerica"),
+    dissertativa: formData.get("layoutDissertativa"),
+  });
   const allQuestionIds = (formData.getAll("questionIds") as string[]).map(Number).filter(Boolean);
   const thematicAreas = normalizeThematicAreas(formData.getAll("area").filter((value): value is string => typeof value === "string"));
   const qty = Math.min(Math.max(Number(quantitySetsRaw) || 1, 1), 8);
@@ -47,6 +54,10 @@ export async function createExamAction(formData: FormData) {
     if (numVFRaw) params.set("numVF", numVFRaw);
     if (numDissertativasRaw) params.set("numDissertativas", numDissertativasRaw);
     if (numNumericasRaw) params.set("numNumericas", numNumericasRaw);
+    params.set("layoutObjetiva", questionLayouts.objetiva);
+    params.set("layoutVF", questionLayouts.verdadeiro_falso);
+    params.set("layoutNumerica", questionLayouts.numerica);
+    params.set("layoutDissertativa", questionLayouts.dissertativa);
     return params;
   }
 
@@ -86,7 +97,13 @@ export async function createExamAction(formData: FormData) {
     });
   }
 
-  const exam = createExam({ disciplineId, title, institution, questionIds: selectedQuestionInfos.map((q) => q.id) });
+  const exam = createExam({
+    disciplineId,
+    title,
+    institution,
+    questionIds: selectedQuestionInfos.map((q) => q.id),
+    questionLayouts,
+  });
   const sets = buildSets(selectedQuestionInfos, labels);
 
   for (const s of sets) {

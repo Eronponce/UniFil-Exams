@@ -12,7 +12,7 @@ import {
 import type { PrintExamPayload, PrintQuestionPayload, PrintSetPayload } from "@/lib/print/build-print-payload";
 import { getAnswerKeyWidthRatio } from "@/lib/pdf/answer-key-layout";
 import { richTextHasTable } from "@/lib/html/rich-text";
-import { decideEssayTableLayout } from "@/lib/print/table-layout";
+import { MIN_ESSAY_TABLE_SCALE } from "@/lib/print/table-layout";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -109,7 +109,7 @@ function StatementHtml({ html }: { html: string }) {
   return <div className="rich-content" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-function QuestionBlock({
+export function QuestionBlock({
   question,
   tableScale = 1,
   adaptiveTable = false,
@@ -151,10 +151,24 @@ function QuestionBlock({
       )}
 
       {question.questionType === "dissertativa" && (
-        <div className="exam-print-essay-lines">
-          {Array.from({ length: question.answerLines > 0 ? question.answerLines : 5 }).map((_, index) => (
+        question.answerLines > 0 && <div className="exam-print-essay-lines">
+          {Array.from({ length: question.answerLines }).map((_, index) => (
             <div key={index} className="exam-print-essay-line" />
           ))}
+        </div>
+      )}
+
+      {question.questionType === "verdadeiro_falso" && (
+        <div className="exam-print-vf-row">
+          <span className="exam-print-vf-option"><span className="exam-print-vf-box" /> Verdadeiro</span>
+          <span className="exam-print-vf-option"><span className="exam-print-vf-box" /> Falso</span>
+        </div>
+      )}
+
+      {question.questionType === "numerica" && (
+        <div className="exam-print-numeric-answer">
+          <span>Resposta numérica:</span>
+          <span className="exam-print-numeric-line" />
         </div>
       )}
     </div>
@@ -274,24 +288,23 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           const fullNode = fullMeasureRefs.current[question.measureKey];
           const hasTable = getStatementIsFullWidth(question.statementHtml);
           const isTableQuestion = hasTable;
+          const layout = payload.questionLayouts[question.questionType];
 
           if (isTableQuestion && columnNode && fullNode) {
             const measureTable = columnNode.querySelector("table");
             const naturalTableWidth = Math.ceil(
               measureTable?.getBoundingClientRect().width ?? measureTable?.scrollWidth ?? 0,
             );
-            const decision = decideEssayTableLayout({
-              tableNaturalWidth: naturalTableWidth,
-              columnWidth: pageMetrics.columnWidth,
-              fullWidth: pageMetrics.fullWidth,
-            });
+            const selectedWidth = layout === "column" ? pageMetrics.columnWidth : pageMetrics.fullWidth;
+            const tableScale = naturalTableWidth > 0
+              ? Math.max(MIN_ESSAY_TABLE_SCALE, Math.min(selectedWidth / naturalTableWidth, 1))
+              : 1;
 
-            columnNode.style.setProperty("--essay-table-scale", `${decision.tableScale}`);
-            fullNode.style.setProperty("--essay-table-scale", `${decision.tableScale}`);
+            columnNode.style.setProperty("--essay-table-scale", `${tableScale}`);
+            fullNode.style.setProperty("--essay-table-scale", `${tableScale}`);
 
-            const layout: "column" | "full" = decision.layout;
             questionRenderPrefs[question.measureKey] = {
-              tableScale: decision.tableScale,
+              tableScale,
               adaptiveTable: true,
             };
 
@@ -304,8 +317,6 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
             };
           }
 
-          const forceFullWidth =
-            question.questionType === "dissertativa" || !!(columnNode && columnNode.scrollWidth > columnNode.clientWidth + 1);
           questionRenderPrefs[question.measureKey] = {
             tableScale: 1,
             adaptiveTable: isTableQuestion,
@@ -314,7 +325,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           return {
             id: question.id,
             displayNumber: question.displayNumber,
-            layout: forceFullWidth ? "full" : "column",
+            layout,
             columnHeight: Math.ceil(columnNode?.offsetHeight ?? fullNode?.offsetHeight ?? 0),
             fullHeight: Math.ceil(fullNode?.offsetHeight ?? columnNode?.offsetHeight ?? 0),
           };
@@ -394,7 +405,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
     return () => {
       active = false;
     };
-  }, [displaySets, metrics, mode, payload.answerKeyUrl, payload.answerKeyWidthPt, setId]);
+  }, [displaySets, metrics, mode, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.questionLayouts, setId]);
 
   return (
     <div className="exam-print-shell">

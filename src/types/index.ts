@@ -1,6 +1,8 @@
 export type ID = number;
 
 export type QuestionType = "objetiva" | "verdadeiro_falso" | "dissertativa" | "numerica";
+export type QuestionLayout = "column" | "full";
+export type ExamQuestionLayouts = Record<QuestionType, QuestionLayout>;
 
 export interface Discipline {
   id: ID;
@@ -55,6 +57,7 @@ export interface Exam {
   disciplineId: ID;
   institution: string;
   answerKeyWidthPt: number;
+  questionLayouts: ExamQuestionLayouts;
   sets: ExamSet[];
   createdAt: string;
 }

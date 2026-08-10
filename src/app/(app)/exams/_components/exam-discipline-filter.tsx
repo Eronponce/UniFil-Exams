@@ -22,12 +22,22 @@ export function ExamDisciplineFilter({
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
+  function clearQuantityParams(params: URLSearchParams) {
+    params.delete("numObjetivas");
+    params.delete("numVF");
+    params.delete("numNumericas");
+    params.delete("numDissertativas");
+  }
+
   function navigate(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value);
     else params.delete(key);
     // When discipline changes, reset area
-    if (key === "discipline") params.delete("area");
+    if (key === "discipline") {
+      params.delete("area");
+      clearQuantityParams(params);
+    }
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
@@ -36,6 +46,7 @@ export function ExamDisciplineFilter({
   function setAreas(nextAreas: string[]) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("area");
+    clearQuantityParams(params);
     for (const area of nextAreas) params.append("area", area);
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
