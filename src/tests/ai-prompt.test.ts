@@ -13,6 +13,18 @@ describe("buildPrompt", () => {
 });
 
 describe("buildImportPrompt", () => {
+  it("anchors every rule to the professor-provided topic", () => {
+    const prompt = buildImportPrompt("Engenharia de Software — requisitos");
+    expect(prompt).toContain("ASSUNTO/TEMA DA PROVA (preenchido pelo professor): Engenharia de Software — requisitos");
+    expect(prompt).toContain('Quando este prompt mencionar "tema", "assunto" ou "conteúdo"');
+    expect(prompt).toContain("Todas as questões, enunciados, evidências, alternativas, explicações e áreas temáticas");
+    expect(prompt).toContain("Não troque o assunto por um tema genérico");
+  });
+
+  it("shows an explicit placeholder when no topic is supplied", () => {
+    expect(buildImportPrompt()).toContain("[PREENCHA AQUI O ASSUNTO/TEMA DA PROVA]");
+  });
+
   it("preserves the template envelope and exact question fields", () => {
     const prompt = buildImportPrompt();
     expect(prompt).toContain('"version": 1');
@@ -46,6 +58,10 @@ describe("buildImportPrompt", () => {
     expect(prompt).toContain("Múltiplos critérios, integração de conceitos");
     expect(prompt).toContain("o JSON está sintaticamente válido");
     expect(prompt).toContain("Retorne somente o JSON final");
+    expect(prompt).toContain("DENSIDADE E PROFUNDIDADE DO ENUNCIADO");
+    expect(prompt).toContain("TESTE DO CONTEXTO");
+    expect(prompt).toContain("FIDELIDADE AOS MATERIAIS");
+    expect(prompt).toContain("DISTRATORES E PISTAS");
   });
 
   it("keeps the type-specific constraints", () => {

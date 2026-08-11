@@ -118,8 +118,6 @@ const TEMPLATE_CSV = [
   "Explique o conceito de herança na POO e apresente um exemplo prático.,dissertativa,medium,,,,,,0,Programação Orientada a Objetos,8,Espera-se que o aluno descreva reutilização de código e hierarquia de classes.,",
 ].join("\n");
 
-const IMPORT_AI_PROMPT = buildImportPrompt();
-
 function downloadTemplate(format: "json" | "csv") {
   const content = format === "json" ? TEMPLATE_JSON : TEMPLATE_CSV;
   const mimeType = format === "json" ? "application/json" : "text/csv;charset=utf-8";
@@ -155,11 +153,14 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
   const [saving, startSaving] = useTransition();
   const [copied, setCopied] = useState<"json" | "csv" | null>(null);
   const [promptCopied, setPromptCopied] = useState(false);
+  const [topic, setTopic] = useState("");
   const { pushToast, updateToast } = useToast();
+
+  const importAiPrompt = buildImportPrompt(topic);
 
   async function handlePromptCopy() {
     try {
-      await navigator.clipboard.writeText(IMPORT_AI_PROMPT);
+      await navigator.clipboard.writeText(importAiPrompt);
       setPromptCopied(true);
       setTimeout(() => setPromptCopied(false), 2500);
     } catch { /* ignore */ }
@@ -455,8 +456,25 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
             {promptCopied ? "✓ Copiado!" : "⎘ Copiar prompt"}
           </button>
         </div>
+        <div style={{ marginBottom: "0.9rem" }}>
+          <label className="form-label" htmlFor="import-topic">Assunto/tema das questões *</label>
+          <input
+            id="import-topic"
+            className="form-input"
+            value={topic}
+            onChange={(event) => setTopic(event.target.value)}
+            placeholder="Ex.: Engenharia de Software — requisitos e arquitetura"
+            aria-describedby="import-topic-help"
+          />
+          <p id="import-topic-help" style={{ fontSize: "0.78rem", color: "#7f1d1d", margin: "0.35rem 0 0", lineHeight: 1.45 }}>
+            O assunto será repetido no escopo do prompt e usado como referência para todas as regras, questões e áreas temáticas.
+          </p>
+        </div>
         <p style={{ fontSize: "0.8rem", color: "#7f1d1d", marginBottom: "0.75rem", lineHeight: 1.5 }}>
           Copie o prompt abaixo, anexe o template JSON ou CSV baixado acima e envie para a IA de sua escolha.
+        </p>
+        <p style={{ fontSize: "0.78rem", color: "#7f1d1d", marginBottom: "0.75rem", lineHeight: 1.5 }}>
+          Recomendação: use <strong>JSON</strong> para geração por LLM (preserva arrays, índices e tipos); use CSV principalmente para edição em planilha.
         </p>
         <p style={{ fontSize: "0.78rem", color: "#7f1d1d", marginBottom: "0.75rem", lineHeight: 1.5 }}>
           HTML aceito no <code>statement</code>: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}. {RICH_TEXT_BLOCKED_FEATURES_LABEL}.
@@ -475,7 +493,7 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
           padding: "1rem",
           userSelect: "all",
         }}>
-          {IMPORT_AI_PROMPT}
+          {importAiPrompt}
         </pre>
       </div>
 

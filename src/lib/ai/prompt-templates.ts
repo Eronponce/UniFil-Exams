@@ -314,10 +314,74 @@ function buildImportFinalReviewRules(): string {
   ].join("\n");
 }
 
-export function buildImportPrompt(): string {
+function buildImportTopicRules(topic: string): string {
+  const normalizedTopic = topic.trim() || "[PREENCHA AQUI O ASSUNTO/TEMA DA PROVA]";
+  return `ASSUNTO/TEMA DA PROVA (preenchido pelo professor): ${normalizedTopic}
+
+ESCOPO TEMÁTICO OBRIGATÓRIO
+- Todas as questões, enunciados, evidências, alternativas, explicações e áreas temáticas devem ser pertinentes ao ASSUNTO/TEMA DA PROVA acima.
+- Quando este prompt mencionar "tema", "assunto" ou "conteúdo", a referência é sempre o ASSUNTO/TEMA DA PROVA preenchido pelo professor.
+- Use o assunto como eixo comum do conjunto, mas distribua subtemas e habilidades diferentes em "thematicArea".
+- Não troque o assunto por um tema genérico, não invente um assunto alternativo e não produza questões fora do escopo.
+- Se o marcador ainda estiver preenchido, substitua-o pelo assunto real antes de gerar as questões.`;
+}
+
+function buildImportExtendedRules(): string {
+  return `PRINCÍPIO DE CONSTRUÇÃO
+Não comece diretamente pelo enunciado. Para cada questão sobre o ASSUNTO/TEMA DA PROVA, determine internamente:
+conteúdo → recorte específico → habilidade avaliada → dificuldade → contexto → problema → evidências ou dados → restrições → decisão/resposta esperada → alternativa correta → erros que originarão os distratores.
+
+Sempre que possível, crie questões aplicadas. Avalie a capacidade de aplicar, interpretar, analisar, diagnosticar, comparar, avaliar, selecionar, justificar ou propor uma solução. Evite memorização quando o assunto permitir aplicação prática.
+
+ESTRUTURA DO ENUNCIADO
+- Quando adequado, organize o statement como contexto → situação → problema → evidências → restrições → objetivo → decisão solicitada.
+- O contexto deve ser funcional ao ASSUNTO/TEMA DA PROVA; não crie histórias decorativas.
+- Cada dado, métrica, código, tabela, requisito, sintoma, log, regra, diagrama, equação ou limitação deve ajudar a resolver a questão.
+
+DENSIDADE E PROFUNDIDADE DO ENUNCIADO
+- Questões aplicadas normalmente precisam de contexto, pelo menos duas informações relevantes, restrições, objetivo e decisão; não aumente o texto artificialmente.
+
+TESTE DO CONTEXTO
+- Remova mentalmente o contexto: se a resposta continuar igual por depender apenas de uma definição, torne o contexto relevante ou reduza a pretensão de aplicação.
+
+CONTROLE DE DIFICULDADE PELO RACIOCÍNIO
+- easy: conceito principal, poucas variáveis, cenário curto, aplicação direta e evidência dominante.
+- medium: combinação de pelo menos duas informações, regras, evidências ou restrições; pode envolver comparação, consequência, relação entre conceitos ou trade-off.
+- hard: análise conjunta de múltiplos elementos, evidências, restrições, integração de conceitos, priorização, arquitetura/estratégia e distratores próximos; não pode ser resolvida por uma definição ou frase-chave.
+- Não use ambiguidade, informação escondida ou vocabulário artificial para aumentar a dificuldade.
+
+TENSÃO DECISÓRIA E RESPOSTA CORRETA
+- Quando adequado, especialmente em medium/hard, concilie desempenho versus custo, segurança versus disponibilidade, simplicidade versus escalabilidade, precisão versus explicabilidade, consistência versus disponibilidade, memória versus processamento, velocidade versus qualidade, manutenção versus complexidade ou automação versus supervisão humana.
+- A alternativa correta deve ser a melhor resposta para o cenário: tecnicamente correta, compatível com evidências, restrições, problema e objetivo, sem consequências incompatíveis e proporcional à situação.
+- Não use como correta apenas uma afirmação verdadeira fora do contexto.
+
+DISTRATORES E PISTAS
+- Cada distrator deve representar um erro possível: solução parcial, conceito correto mal aplicado, generalização indevida, solução desproporcional, causa confundida com sintoma, restrição ignorada ou trade-off mal priorizado.
+- Não use distratores absurdos, vazios ou elimináveis sem conhecimento do ASSUNTO/TEMA DA PROVA.
+- Equilibre tamanho e detalhamento das alternativas. Não denuncie a correta por ser muito maior, mais técnica ou gramaticalmente diferente; evite palavras absolutas apenas nas incorretas.
+
+DIVERSIDADE TEMÁTICA
+- Questões sobre o mesmo ASSUNTO/TEMA DA PROVA são permitidas quando avaliarem habilidades ou subtemas diferentes.
+- Não repita fato, conclusão, problema, raciocínio, nomes, números ou contexto superficialmente; não crie pistas involuntárias entre questões.
+- Antes de finalizar, pergunte: "Se o aluno descobrir a resposta desta questão, isso ajuda diretamente a descobrir o gabarito de outra?". Se sim, reescreva uma delas.
+
+FIDELIDADE AOS MATERIAIS
+- Quando houver material fornecido, preserve sua terminologia e conteúdo técnico; não invente conceitos, não altere significado e não trate informação incerta como fato.
+- Cenários fictícios são permitidos para aplicar o ASSUNTO/TEMA DA PROVA, mas o conhecimento necessário deve permanecer compatível com o material.
+
+VALIDAÇÃO DE JSON E HTML
+- statement, thematicArea e explanation devem ser strings não vazias; answerLines deve ser inteiro.
+- Escape aspas internas como \\\" e não use vírgulas finais inválidas.
+- No statement, use somente HTML sanitizado permitido pelo template; nunca use script, iframe, object, embed, form, class, id, atributos iniciados por on ou URLs em style.
+- Quando HTML não for necessário, prefira texto simples.`;
+}
+
+export function buildImportPrompt(topic = ""): string {
   return `Você receberá um arquivo de template em anexo com o formato de questões esperado.
 
 Gere questões estritamente nesse formato JSON, respeitando todas as regras abaixo.
+
+${buildImportTopicRules(topic)}
 
 FORMATO SUPERIOR OBRIGATÓRIO
 Mantenha exatamente esta estrutura superior do template fornecido:
@@ -341,6 +405,8 @@ Mantenha exatamente esta estrutura superior do template fornecido:
 
 REGRAS GERAIS
 ${buildImportFormatRules()}
+
+${buildImportExtendedRules()}
 
 CONSTRUÇÃO DAS QUESTÕES
 ${buildImportConstructionRules()}
