@@ -25,6 +25,31 @@ describe("buildImportPrompt", () => {
     expect(buildImportPrompt()).toContain("[PREENCHA AQUI O ASSUNTO/TEMA DA PROVA]");
   });
 
+  it("includes the requested quantity for every question type", () => {
+    const prompt = buildImportPrompt("Arquitetura de Software", {
+      objetiva: 8,
+      verdadeiro_falso: 3,
+      numerica: 2,
+      dissertativa: 4,
+    });
+    expect(prompt).toContain("Objetivas: 8");
+    expect(prompt).toContain("Verdadeiro ou falso: 3");
+    expect(prompt).toContain("Numéricas: 2");
+    expect(prompt).toContain("Dissertativas: 4");
+    expect(prompt).toContain("Gere exatamente as quantidades informadas acima");
+    expect(prompt).toContain("TEMPLATE JSON COMPLETO");
+  });
+
+  it("places a complete four-type JSON template at the end", () => {
+    const prompt = buildImportPrompt("Banco de Dados", { objetiva: 1, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 });
+    expect(prompt.lastIndexOf('"version": 1')).toBeGreaterThan(prompt.lastIndexOf("REVISÃO FINAL"));
+    expect(prompt).toContain('"questionType": "objetiva"');
+    expect(prompt).toContain('"questionType": "verdadeiro_falso"');
+    expect(prompt).toContain('"questionType": "numerica"');
+    expect(prompt).toContain('"questionType": "dissertativa"');
+    expect(prompt).toContain('"correctAnswer": "1 2 4 7"');
+  });
+
   it("preserves the template envelope and exact question fields", () => {
     const prompt = buildImportPrompt();
     expect(prompt).toContain('"version": 1');

@@ -14,9 +14,17 @@ import {
   RICH_TEXT_ALLOWED_TAGS_LABEL,
   RICH_TEXT_BLOCKED_FEATURES_LABEL,
 } from "@/lib/html/rich-text";
-import { buildImportPrompt } from "@/lib/ai/prompt-templates";
+import { buildImportPrompt, type ImportQuestionCounts } from "@/lib/ai/prompt-templates";
+import type { QuestionType } from "@/types";
 
 interface Discipline { id: number; name: string }
+
+const QUESTION_COUNT_FIELDS: Array<{ type: QuestionType; label: string }> = [
+  { type: "objetiva", label: "Objetivas" },
+  { type: "verdadeiro_falso", label: "Verdadeiro ou falso" },
+  { type: "numerica", label: "Numéricas" },
+  { type: "dissertativa", label: "Dissertativas" },
+];
 
 const TYPE_LABEL: Record<string, string> = { objetiva: "Objetiva", verdadeiro_falso: "V/F", dissertativa: "Dissertativa", numerica: "Numérica" };
 const TYPE_COLOR: Record<string, string> = { objetiva: "#dbeafe", verdadeiro_falso: "#fef9c3", dissertativa: "#f3e8ff", numerica: "#dcfce7" };
@@ -132,6 +140,13 @@ function downloadTemplate(format: "json" | "csv") {
   URL.revokeObjectURL(url);
 }
 
+function parsePromptCount(value: string): number | undefined {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  return Math.max(0, Math.floor(parsed));
+}
+
 async function copyTemplate(format: "json" | "csv"): Promise<boolean> {
   const content = format === "json" ? TEMPLATE_JSON : TEMPLATE_CSV;
   try {
@@ -154,9 +169,18 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
   const [copied, setCopied] = useState<"json" | "csv" | null>(null);
   const [promptCopied, setPromptCopied] = useState(false);
   const [topic, setTopic] = useState("");
+  const [questionCounts, setQuestionCounts] = useState<Record<QuestionType, string>>({
+    objetiva: "",
+    verdadeiro_falso: "",
+    numerica: "",
+    dissertativa: "",
+  });
   const { pushToast, updateToast } = useToast();
 
-  const importAiPrompt = buildImportPrompt(topic);
+  const importPromptCounts: ImportQuestionCounts = Object.fromEntries(
+    QUESTION_COUNT_FIELDS.map(({ type }) => [type, parsePromptCount(questionCounts[type])]),
+  );
+  const importAiPrompt = buildImportPrompt(topic, importPromptCounts);
 
   async function handlePromptCopy() {
     try {
@@ -468,6 +492,32 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
           />
           <p id="import-topic-help" style={{ fontSize: "0.78rem", color: "#7f1d1d", margin: "0.35rem 0 0", lineHeight: 1.45 }}>
             O assunto será repetido no escopo do prompt e usado como referência para todas as regras, questões e áreas temáticas.
+          </p>
+        </div>
+        <div style={{ marginBottom: "0.9rem" }}>
+          <span className="form-label">Quantidade por tipo *</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.65rem" }}>
+            {QUESTION_COUNT_FIELDS.map(({ type, label }) => (
+              <label key={type} htmlFor={`import-count-${type}`} style={{ fontSize: "0.78rem", color: "#7f1d1d" }}>
+                {label}
+                <input
+                  id={`import-count-${type}`}
+                  className="form-input"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  inputMode="numeric"
+                  value={questionCounts[type]}
+                  onChange={(event) => setQuestionCounts((current) => ({ ...current, [type]: event.target.value }))}
+                  placeholder="0"
+                  style={{ marginTop: "0.25rem" }}
+                />
+              </label>
+            ))}
+          </div>
+          <p style={{ fontSize: "0.78rem", color: "#7f1d1d", margin: "0.35rem 0 0", lineHeight: 1.45 }}>
+            Informe quantas questões de cada tipo a LLM deve gerar. Use 0 para não gerar aquele tipo.
           </p>
         </div>
         <p style={{ fontSize: "0.8rem", color: "#7f1d1d", marginBottom: "0.75rem", lineHeight: 1.5 }}>

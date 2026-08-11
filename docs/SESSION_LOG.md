@@ -570,3 +570,9 @@
 - O prompt incorporou estrutura/densidade de enunciado, teste do contexto, dificuldade por raciocínio, fidelidade a materiais e controle de pistas nos distratores.
 - JSON foi documentado como formato preferencial para LLMs; CSV permanece indicado para edição tabular.
 - Validação: 20 arquivos, 116 testes; typecheck, lint e build passaram.
+
+## 2026-08-11 - Quantidades e template completo no prompt
+
+- O importador ganhou quatro campos de quantidade: objetivas, verdadeiro/falso, numéricas e dissertativas; `0` desativa o tipo.
+- O prompt copiado agora inclui essas metas e termina com o JSON completo de exemplo contendo os quatro tipos, sem adicionar campos ao contrato de importação.
+- Validação: 20 arquivos, 118 testes; typecheck, lint e build passaram.

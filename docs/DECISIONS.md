@@ -193,3 +193,9 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: `/questions/importar` asks for an explicit subject/topic and injects it into the centralized LLM prompt as `ASSUNTO/TEMA DA PROVA`.
 - Reason: a named topic prevents the model from drifting outside the requested scope while still allowing different subtopics and skills in the same question set.
 - Impact: the topic is referenced by the scope, construction, difficulty, distractor, diversity and source-fidelity rules; JSON is recommended for LLM generation, while CSV remains available for spreadsheet editing.
+
+## 2026-08-11 - Import prompt carries requested type counts and the full JSON template
+
+- Decision: let the professor enter objective, true/false, numeric and discursive quantities; copy those counts into the prompt and append the complete four-type JSON template at the end.
+- Reason: one copied Markdown prompt should contain the subject, exact generation target, all constraints and the output shape needed by the LLM.
+- Impact: counts are instructions only and never become extra JSON fields; `0` means no questions of that type, and the downloaded/imported schema remains unchanged.

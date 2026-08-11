@@ -314,6 +314,8 @@ function buildImportFinalReviewRules(): string {
   ].join("\n");
 }
 
+export type ImportQuestionCounts = Partial<Record<QuestionType, number>>;
+
 function buildImportTopicRules(topic: string): string {
   const normalizedTopic = topic.trim() || "[PREENCHA AQUI O ASSUNTO/TEMA DA PROVA]";
   return `ASSUNTO/TEMA DA PROVA (preenchido pelo professor): ${normalizedTopic}
@@ -325,6 +327,75 @@ ESCOPO TEMÁTICO OBRIGATÓRIO
 - Não troque o assunto por um tema genérico, não invente um assunto alternativo e não produza questões fora do escopo.
 - Se o marcador ainda estiver preenchido, substitua-o pelo assunto real antes de gerar as questões.`;
 }
+
+function buildImportQuantityRules(counts: ImportQuestionCounts): string {
+  const count = (questionType: QuestionType) =>
+    counts[questionType] == null ? "[PREENCHA A QUANTIDADE]" : String(counts[questionType]);
+
+  return `QUANTIDADE DE QUESTÕES (preenchida pelo professor)
+- Objetivas: ${count("objetiva")}
+- Verdadeiro ou falso: ${count("verdadeiro_falso")}
+- Numéricas: ${count("numerica")}
+- Dissertativas: ${count("dissertativa")}
+
+REGRAS DE QUANTIDADE
+- Gere exatamente as quantidades informadas acima, sem acrescentar ou remover questões.
+- O valor 0 significa que não deve ser gerada nenhuma questão daquele tipo.
+- Distribua as questões em "questions" e mantenha o questionType correto em cada item.
+- Não crie campos de contagem no JSON: a quantidade é uma instrução de geração, não um campo do template.
+  - Se algum valor ainda estiver marcado como [PREENCHA A QUANTIDADE], o professor deve preenchê-lo antes de enviar o prompt à LLM.`;
+}
+
+const IMPORT_TEMPLATE_JSON = `{
+  "version": 1,
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "questions": [
+    {
+      "statement": "Qual linguagem é utilizada para estilizar páginas web?",
+      "questionType": "objetiva",
+      "options": ["HTML", "CSS", "JavaScript", "Python", "Java"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "thematicArea": "Desenvolvimento Web",
+      "explanation": "CSS controla a apresentação visual de páginas HTML; as demais opções têm outras funções.",
+      "answerLines": 0,
+      "correctAnswer": ""
+    },
+    {
+      "statement": "O protocolo HTTP não mantém estado entre requisições consecutivas.",
+      "questionType": "verdadeiro_falso",
+      "options": ["Verdadeiro", "Falso"],
+      "correctIndex": 0,
+      "difficulty": "medium",
+      "thematicArea": "Redes de Computadores",
+      "explanation": "HTTP é stateless: cada requisição é independente e não há sessão automática entre elas.",
+      "answerLines": 0,
+      "correctAnswer": ""
+    },
+    {
+      "statement": "Coloque em ordem crescente os valores: 4, 2, 7, 1.",
+      "questionType": "numerica",
+      "options": [],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "thematicArea": "Lógica",
+      "explanation": "A ordem crescente correta é 1 2 4 7.",
+      "answerLines": 0,
+      "correctAnswer": "1 2 4 7"
+    },
+    {
+      "statement": "Explique o conceito de herança na programação orientada a objetos e apresente um exemplo prático.",
+      "questionType": "dissertativa",
+      "options": [],
+      "correctIndex": 0,
+      "difficulty": "medium",
+      "thematicArea": "Programação Orientada a Objetos",
+      "explanation": "Espera-se que a resposta descreva reutilização de código por hierarquia de classes e um exemplo coerente.",
+      "answerLines": 8,
+      "correctAnswer": ""
+    }
+  ]
+}`;
 
 function buildImportExtendedRules(): string {
   return `PRINCÍPIO DE CONSTRUÇÃO
@@ -380,12 +451,14 @@ VALIDAÇÃO DE JSON E HTML
 - Quando HTML não for necessário, prefira texto simples.`;
 }
 
-export function buildImportPrompt(topic = ""): string {
+export function buildImportPrompt(topic = "", counts: ImportQuestionCounts = {}): string {
   return `Você receberá um arquivo de template em anexo com o formato de questões esperado.
 
 Gere questões estritamente nesse formato JSON, respeitando todas as regras abaixo.
 
 ${buildImportTopicRules(topic)}
+
+${buildImportQuantityRules(counts)}
 
 FORMATO SUPERIOR OBRIGATÓRIO
 Mantenha exatamente esta estrutura superior do template fornecido:
@@ -437,7 +510,12 @@ CONTROLE DE DIFICULDADE
 ${buildImportDifficultyRules()}
 
 REVISÃO FINAL
-${buildImportFinalReviewRules()}`;
+${buildImportFinalReviewRules()}
+
+TEMPLATE JSON COMPLETO (referência para o formato; adapte os valores ao ASSUNTO/TEMA DA PROVA)
+
+${IMPORT_TEMPLATE_JSON}
+`;
 }
 
 export function buildSingleQuestionPrompt(
