@@ -373,6 +373,10 @@ VALIDAÇÃO DE JSON E HTML
 - statement, thematicArea e explanation devem ser strings não vazias; answerLines deve ser inteiro.
 - Escape aspas internas como \\\" e não use vírgulas finais inválidas.
 - No statement, use somente HTML sanitizado permitido pelo template; nunca use script, iframe, object, embed, form, class, id, atributos iniciados por on ou URLs em style.
+- Em objetivas, nenhuma alternativa pode estar vazia ou duplicada; cada alternativa deve ser uma string.
+- Em verdadeiro/falso, não use afirmações ambíguas ou parcialmente verdadeiras; explique por que a afirmação é verdadeira ou falsa.
+- Em dissertativas, evite comandos genéricos como "fale sobre"; delimite claramente o que deve ser explicado, analisado, comparado, justificado ou proposto.
+- Em numéricas, a solução deve ser determinística e deve informar unidades quando forem necessárias.
 - Quando HTML não for necessário, prefira texto simples.`;
 }
 
