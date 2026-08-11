@@ -95,4 +95,118 @@ describe("paginateQuestionsWithReservedLastPage", () => {
       "5-right",
     ]);
   });
+
+  it("keeps split metadata atomic when the opt-in flag is absent", () => {
+    const pages = paginateQuestionsWithReservedLastPage(
+      [{
+        id: 23,
+        displayNumber: 23,
+        layout: "full",
+        columnHeight: 500,
+        fullHeight: 500,
+        split: {
+          optionCount: 5,
+          firstHeights: [0, 180, 240, 300, 400, 500],
+          continuationHeights: [
+            [],
+            [0, 0, 100, 180, 260, 340],
+            [0, 0, 0, 100, 180, 260],
+            [0, 0, 0, 0, 100, 180],
+            [0, 0, 0, 0, 0, 100],
+            [],
+          ],
+        },
+      }],
+      320,
+      320,
+    );
+
+    expect(pages).toHaveLength(1);
+    expect(pages[0].placed).toEqual([{
+      id: 23,
+      displayNumber: 23,
+      layout: "full",
+      top: 0,
+      height: 500,
+    }]);
+  });
+
+  it("splits objective option ranges at a boundary without interleaving the next question", () => {
+    const pages = paginateQuestionsWithReservedLastPage(
+      [
+        {
+          id: 23,
+          displayNumber: 23,
+          layout: "full",
+          columnHeight: 500,
+          fullHeight: 500,
+          split: {
+            optionCount: 5,
+            firstHeights: [0, 180, 240, 300, 400, 500],
+            continuationHeights: [
+              [],
+              [0, 0, 100, 180, 260, 340],
+              [0, 0, 0, 100, 180, 260],
+              [0, 0, 0, 0, 100, 180],
+              [0, 0, 0, 0, 0, 100],
+              [],
+            ],
+          },
+        },
+        { id: 24, displayNumber: 24, layout: "full", columnHeight: 100, fullHeight: 100 },
+      ],
+      320,
+      320,
+      true,
+    );
+
+    expect(pages[0].placed.map((item) => [item.id, item.optionStart, item.optionEnd, item.continuation])).toEqual([
+      [23, 0, 3, false],
+    ]);
+    expect(pages[1].placed.map((item) => [item.id, item.optionStart, item.optionEnd, item.continuation])).toEqual([
+      [23, 3, 5, true],
+      [24, undefined, undefined, undefined],
+    ]);
+
+    const optionIndexes = pages
+      .flatMap((page) => page.placed)
+      .filter((item) => item.id === 23)
+      .flatMap((item) => Array.from({ length: item.optionEnd! - item.optionStart! }, (_, index) => item.optionStart! + index));
+    expect(optionIndexes).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("uses the next column for a continuation before opening a page", () => {
+    const pages = paginateQuestionsWithReservedLastPage(
+      [{
+        id: 7,
+        displayNumber: 7,
+        layout: "column",
+        columnHeight: 400,
+        fullHeight: 400,
+        split: {
+          optionCount: 5,
+          firstHeights: [0, 150, 220, 290, 360, 430],
+          continuationHeights: [
+            [],
+            [0, 0, 90, 150, 210, 270],
+            [0, 0, 0, 90, 150, 210],
+            [0, 0, 0, 0, 90, 350],
+            [0, 0, 0, 0, 0, 90],
+            [],
+          ],
+        },
+      }],
+      300,
+      300,
+      { allowQuestionSplit: true },
+    );
+
+    expect(pages[0].placed.map((item) => `${item.id}:${item.column}:${item.optionStart}-${item.optionEnd}`)).toEqual([
+      "7:left:0-3",
+      "7:right:3-4",
+    ]);
+    expect(pages[1].placed.map((item) => `${item.id}:${item.column}:${item.optionStart}-${item.optionEnd}`)).toEqual([
+      "7:left:4-5",
+    ]);
+  });
 });

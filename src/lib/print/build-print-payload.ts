@@ -25,6 +25,7 @@ export interface PrintExamPayload {
   title: string;
   institution: string;
   answerKeyWidthPt: number;
+  allowQuestionSplit: boolean;
   questionLayouts: ExamQuestionLayouts;
   logoUrl: string | null;
   answerKeyUrl: string | null;
@@ -91,6 +92,7 @@ export function buildPrintExamPayload(exam: Exam): PrintExamPayload {
     title: exam.title,
     institution: exam.institution,
     answerKeyWidthPt: exam.answerKeyWidthPt,
+    allowQuestionSplit: exam.allowQuestionSplit,
     questionLayouts: exam.questionLayouts,
     logoUrl: getLogoUrl(),
     answerKeyUrl: getAnswerKeyUrl(exam.id),

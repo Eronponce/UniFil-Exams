@@ -8,6 +8,7 @@ interface ExamRow {
   discipline_id: number;
   title: string;
   institution: string;
+  allow_question_split: number | null;
   answer_key_width_pt: number | null;
   layout_objetiva: string | null;
   layout_verdadeiro_falso: string | null;
@@ -59,6 +60,7 @@ function examToModel(er: ExamRow, sets: ExamSet[]): Exam {
     disciplineId: er.discipline_id,
     title: er.title,
     institution: er.institution ?? DEFAULT_INSTITUTION,
+    allowQuestionSplit: Number(er.allow_question_split) === 1,
     answerKeyWidthPt: clampAnswerKeyWidth(er.answer_key_width_pt ?? ANSWER_KEY_DEFAULT_WIDTH_PT),
     questionLayouts: normalizeExamQuestionLayouts({
       objetiva: er.layout_objetiva,
@@ -105,6 +107,7 @@ export function createExam(data: {
   disciplineId: number;
   title: string;
   institution?: string;
+  allowQuestionSplit?: boolean;
   questionIds: number[];
   questionLayouts?: Partial<ExamQuestionLayouts>;
 }): Exam {
@@ -112,13 +115,14 @@ export function createExam(data: {
   const layouts = normalizeExamQuestionLayouts(data.questionLayouts);
   const result = db
     .prepare(`INSERT INTO exams (
-      discipline_id, title, institution, answer_key_width_pt,
+      discipline_id, title, institution, allow_question_split, answer_key_width_pt,
       layout_objetiva, layout_verdadeiro_falso, layout_numerica, layout_dissertativa
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(
       data.disciplineId,
       data.title,
       data.institution ?? DEFAULT_INSTITUTION,
+      data.allowQuestionSplit ? 1 : 0,
       ANSWER_KEY_DEFAULT_WIDTH_PT,
       layouts.objetiva,
       layouts.verdadeiro_falso,

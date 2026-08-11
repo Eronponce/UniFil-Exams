@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { normalizeQuestionLayout } from "@/lib/exam/layout";
 import { useWorkspaceStore } from "@/lib/state/workspace-store";
 
@@ -16,6 +16,7 @@ interface ExamDraftFieldsProps {
   initialLayoutVF: string;
   initialLayoutNumerica: string;
   initialLayoutDissertativa: string;
+  initialAllowQuestionSplit?: string;
   availabilityKey: string;
   typeCounts: {
     objetiva: number;
@@ -37,6 +38,7 @@ export function ExamDraftFields({
   initialLayoutVF,
   initialLayoutNumerica,
   initialLayoutDissertativa,
+  initialAllowQuestionSplit = "",
   availabilityKey,
   typeCounts,
 }: ExamDraftFieldsProps) {
@@ -44,6 +46,13 @@ export function ExamDraftFields({
   const previousAvailabilityKey = useRef(availabilityKey);
   const hasInitializedAvailability = useRef(false);
   const seededInitialLayoutKey = useRef<string | null>(null);
+  const initialAllowQuestionSplitValue = initialAllowQuestionSplit === "1"
+    ? true
+    : initialAllowQuestionSplit === "0"
+      ? false
+      : undefined;
+  const [allowQuestionSplitOverride, setAllowQuestionSplitOverride] = useState<boolean | null>(() => initialAllowQuestionSplitValue ?? null);
+  const allowQuestionSplit = allowQuestionSplitOverride ?? Boolean(exam.allowQuestionSplit);
   const draft = {
     title: initialTitle || exam.title,
     institution: initialInstitution || exam.institution,
@@ -56,6 +65,7 @@ export function ExamDraftFields({
     layoutVF: normalizeQuestionLayout(exam.layoutVF, "column"),
     layoutNumerica: normalizeQuestionLayout(exam.layoutNumerica, "column"),
     layoutDissertativa: normalizeQuestionLayout(exam.layoutDissertativa, "full"),
+    allowQuestionSplit,
   };
 
   useEffect(() => {
@@ -71,6 +81,11 @@ export function ExamDraftFields({
       layoutDissertativa: normalizeQuestionLayout(initialLayoutDissertativa, "full"),
     });
   }, [initialLayoutDissertativa, initialLayoutNumerica, initialLayoutObjetiva, initialLayoutVF, updateExam]);
+
+  useEffect(() => {
+    if (initialAllowQuestionSplitValue === undefined) return;
+    updateExam({ allowQuestionSplit: initialAllowQuestionSplitValue });
+  }, [initialAllowQuestionSplitValue, updateExam]);
 
   useEffect(() => {
     const hasExplicitQuantities = [initialNumObjetivas, initialNumVF, initialNumNumericas, initialNumDissertativas].some(Boolean);
@@ -235,9 +250,39 @@ export function ExamDraftFields({
             </label>
           ))}
         </div>
+        <input type="hidden" name="allowQuestionSplit" value={draft.allowQuestionSplit ? "1" : "0"} />
+        <label
+          htmlFor="allow-question-split"
+          style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", marginTop: "1rem", fontSize: "0.875rem" }}
+        >
+          <input
+            id="allow-question-split"
+            type="checkbox"
+            checked={draft.allowQuestionSplit}
+            onChange={(event) => {
+              const value = event.target.checked;
+              setAllowQuestionSplitOverride(value);
+              updateExam({ allowQuestionSplit: value });
+            }}
+          />
+          <span>
+            <strong>Permitir quebra de questões objetivas longas entre colunas/páginas</strong>
+            <span style={{ display: "block", marginTop: "0.2rem", color: "var(--muted)", fontSize: "0.78rem" }}>
+              Mantém cada alternativa inteira e identifica as continuações; desmarcado preserva o comportamento indivisível.
+            </span>
+          </span>
+        </label>
       </div>
 
-      <button type="button" className="btn btn-ghost" style={{ marginBottom: "1rem" }} onClick={resetExam}>
+      <button
+        type="button"
+        className="btn btn-ghost"
+        style={{ marginBottom: "1rem" }}
+        onClick={() => {
+          setAllowQuestionSplitOverride(null);
+          resetExam();
+        }}
+      >
         Limpar rascunho
       </button>
     </>

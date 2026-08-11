@@ -57,6 +57,7 @@ export interface Exam {
   disciplineId: ID;
   institution: string;
   answerKeyWidthPt: number;
+  allowQuestionSplit: boolean;
   questionLayouts: ExamQuestionLayouts;
   sets: ExamSet[];
   createdAt: string;

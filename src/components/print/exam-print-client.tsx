@@ -8,6 +8,7 @@ import {
   paginateQuestionsWithReservedLastPage,
   type PrintQuestionLayoutInput,
   type PrintQuestionPageLayout,
+  type PrintQuestionSplitLayoutInput,
 } from "@/lib/print/pagination";
 import type { PrintExamPayload, PrintQuestionPayload, PrintSetPayload } from "@/lib/print/build-print-payload";
 import { getAnswerKeyWidthRatio } from "@/lib/pdf/answer-key-layout";
@@ -77,6 +78,25 @@ function getStatementIsFullWidth(html: string): boolean {
   return richTextHasTable(html);
 }
 
+function canSplitObjectiveQuestion(question: DisplayQuestion): boolean {
+  if (question.questionType !== "objetiva" || question.shuffledOptions.length < 2) return false;
+  if (getStatementIsFullWidth(question.statementHtml)) return false;
+  return question.shuffledOptions.every((originalIndex) => {
+    const text = question.options[originalIndex]?.text;
+    return typeof text === "string" && text.trim().length > 0 && !/<\/?[a-z][^>]*>/i.test(text);
+  });
+}
+
+function getFragmentMeasureKey(
+  measureKey: string,
+  layout: "column" | "full",
+  continuation: boolean,
+  start: number,
+  end: number,
+): string {
+  return `${measureKey}-${layout}-${continuation ? "continuation" : "first"}-${start}-${end}`;
+}
+
 async function waitForImages(root: HTMLElement | null): Promise<void> {
   if (!root) return;
   const images = Array.from(root.querySelectorAll("img"));
@@ -113,11 +133,19 @@ export function QuestionBlock({
   question,
   tableScale = 1,
   adaptiveTable = false,
+  optionStart = 0,
+  optionEnd,
+  continuation = false,
 }: {
   question: DisplayQuestion;
   tableScale?: number;
   adaptiveTable?: boolean;
+  optionStart?: number;
+  optionEnd?: number;
+  continuation?: boolean;
 }) {
+  const firstOption = Math.max(0, optionStart);
+  const lastOption = Math.min(question.shuffledOptions.length, optionEnd ?? question.shuffledOptions.length);
   const className = `exam-print-question${adaptiveTable ? " exam-print-question--adaptive-table" : ""}`;
   const style = adaptiveTable
     ? ({
@@ -127,30 +155,40 @@ export function QuestionBlock({
 
   return (
     <div className={className} style={style}>
-      <div className="exam-print-question-header">
-        <div className="exam-print-question-number">{question.displayNumber}.</div>
-        <div className="exam-print-question-statement">
-          <StatementHtml html={question.statementHtml} />
-        </div>
-      </div>
+      {continuation ? (
+        <div className="exam-print-question-continuation">{question.displayNumber}. (continuação)</div>
+      ) : (
+        <>
+          <div className="exam-print-question-header">
+            <div className="exam-print-question-number">{question.displayNumber}.</div>
+            <div className="exam-print-question-statement">
+              <StatementHtml html={question.statementHtml} />
+            </div>
+          </div>
 
-      {question.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={question.imageUrl} alt="" className="exam-print-question-image" />
+          {question.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={question.imageUrl} alt="" className="exam-print-question-image" />
+          )}
+        </>
       )}
 
       {question.questionType === "objetiva" && (
         <div className="exam-print-options">
-          {question.shuffledOptions.map((originalIndex, position) => (
-            <div key={position} className="exam-print-option">
-              <span className="exam-print-option-letter">{LETTERS[position]})</span>
-              <span>{question.options[originalIndex]?.text ?? ""}</span>
-            </div>
-          ))}
+          {question.shuffledOptions.slice(firstOption, lastOption).map((originalIndex, offset) => {
+            const position = firstOption + offset;
+            return (
+              <div key={position} className="exam-print-option">
+                <span className="exam-print-option-letter">{LETTERS[position]})</span>
+                <span>{question.options[originalIndex]?.text ?? ""}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {question.questionType === "dissertativa" && (
+
+        {question.questionType === "dissertativa" && (
         question.answerLines > 0 && <div className="exam-print-essay-lines">
           {Array.from({ length: question.answerLines }).map((_, index) => (
             <div key={index} className="exam-print-essay-line" />
@@ -220,6 +258,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
   const measurementRootRef = useRef<HTMLDivElement | null>(null);
   const columnMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fullMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const fragmentMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     let active = true;
@@ -322,12 +361,37 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
             adaptiveTable: isTableQuestion,
           };
 
+          let split: PrintQuestionSplitLayoutInput | undefined;
+          if (payload.allowQuestionSplit && canSplitObjectiveQuestion(question)) {
+            const optionCount = question.shuffledOptions.length;
+            const firstHeights = Array.from({ length: optionCount + 1 }, (_, end) => {
+              if (end === 0) return 0;
+              const node = fragmentMeasureRefs.current[getFragmentMeasureKey(question.measureKey, layout, false, 0, end)];
+              return node ? Math.ceil(node.offsetHeight) : Number.NaN;
+            });
+            const continuationHeights = Array.from({ length: optionCount + 1 }, (_, start) =>
+              Array.from({ length: optionCount + 1 }, (_, end) => {
+                if (start === 0 || end <= start) return 0;
+                const node = fragmentMeasureRefs.current[getFragmentMeasureKey(question.measureKey, layout, true, start, end)];
+                return node ? Math.ceil(node.offsetHeight) : Number.NaN;
+              }),
+            );
+            const hasAllMeasurements = firstHeights.slice(1).every(Number.isFinite)
+              && continuationHeights.slice(1).every((heights, start) =>
+                heights.slice(start + 2).every(Number.isFinite),
+              );
+            if (hasAllMeasurements) {
+              split = { optionCount, firstHeights, continuationHeights };
+            }
+          }
+
           return {
             id: question.id,
             displayNumber: question.displayNumber,
             layout,
             columnHeight: Math.ceil(columnNode?.offsetHeight ?? fullNode?.offsetHeight ?? 0),
             fullHeight: Math.ceil(fullNode?.offsetHeight ?? columnNode?.offsetHeight ?? 0),
+            split,
           };
         });
 
@@ -335,12 +399,14 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           layoutInputs,
           pageMetrics.fullHeight,
           pageMetrics.fullHeight,
+          payload.allowQuestionSplit,
         );
         const inlineQuestionPages = hasAnswerKey
           ? paginateQuestionsWithReservedLastPage(
               layoutInputs,
               pageMetrics.fullHeight,
               reservedLastPageQuestionAreaHeight,
+              payload.allowQuestionSplit,
             )
           : null;
         const inlineTotalPages =
@@ -405,7 +471,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
     return () => {
       active = false;
     };
-  }, [displaySets, metrics, mode, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.questionLayouts, setId]);
+  }, [displaySets, metrics, mode, payload.allowQuestionSplit, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.questionLayouts, setId]);
 
   return (
     <div className="exam-print-shell">
@@ -450,7 +516,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                   logoUrl={payload.logoUrl}
                 />
                 <div className="exam-print-body">
-                  {page.kind === "content" && page.page?.placed.map((placed) => {
+                  {page.kind === "content" && page.page?.placed.map((placed, placedIndex) => {
                     const question = set.questions.find((item) => item.id === placed.id && item.displayNumber === placed.displayNumber);
                     if (!question || !metrics) return null;
                     const style =
@@ -466,13 +532,25 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                             width: `${metrics.columnWidth}px`,
                           };
                     const renderPrefs = renderState.questionRenderPrefs[question.measureKey];
+                    const fragmentProps = placed.optionStart !== undefined && placed.optionEnd !== undefined
+                      ? {
+                          optionStart: placed.optionStart,
+                          optionEnd: placed.optionEnd,
+                          continuation: placed.continuation ?? false,
+                        }
+                      : undefined;
 
                     return (
-                      <div key={`${placed.id}-${placed.displayNumber}`} className="exam-print-placed" style={style}>
+                      <div
+                        key={`${placed.id}-${placed.displayNumber}-${placed.optionStart ?? "all"}-${placed.optionEnd ?? "all"}-${placedIndex}`}
+                        className="exam-print-placed"
+                        style={style}
+                      >
                         <QuestionBlock
                           question={question}
                           tableScale={renderPrefs?.tableScale ?? 1}
                           adaptiveTable={renderPrefs?.adaptiveTable ?? false}
+                          {...fragmentProps}
                         />
                       </div>
                     );
@@ -534,6 +612,51 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                       adaptiveTable={getStatementIsFullWidth(question.statementHtml)}
                     />
                   </div>
+                  {payload.allowQuestionSplit && canSplitObjectiveQuestion(question) && (["column", "full"] as const).map((layout) => (
+                    <div key={`${question.measureKey}-${layout}-fragments`}>
+                      {Array.from({ length: question.shuffledOptions.length }, (_, index) => index + 1).map((end) => {
+                        const measureKey = getFragmentMeasureKey(question.measureKey, layout, false, 0, end);
+                        return (
+                          <div
+                            key={measureKey}
+                            ref={(node) => {
+                              fragmentMeasureRefs.current[measureKey] = node;
+                            }}
+                            className="exam-print-measure-box"
+                            style={{ width: `${layout === "column" ? metrics.columnWidth : metrics.fullWidth}px` }}
+                          >
+                            <QuestionBlock
+                              question={question}
+                              optionStart={0}
+                              optionEnd={end}
+                            />
+                          </div>
+                        );
+                      })}
+                      {Array.from({ length: Math.max(0, question.shuffledOptions.length - 1) }, (_, startIndex) => startIndex + 1).flatMap((start) =>
+                        Array.from({ length: question.shuffledOptions.length - start }, (_, endIndex) => start + endIndex + 1).map((end) => {
+                          const measureKey = getFragmentMeasureKey(question.measureKey, layout, true, start, end);
+                          return (
+                            <div
+                              key={measureKey}
+                              ref={(node) => {
+                                fragmentMeasureRefs.current[measureKey] = node;
+                              }}
+                              className="exam-print-measure-box"
+                              style={{ width: `${layout === "column" ? metrics.columnWidth : metrics.fullWidth}px` }}
+                            >
+                              <QuestionBlock
+                                question={question}
+                                optionStart={start}
+                                optionEnd={end}
+                                continuation
+                              />
+                            </div>
+                          );
+                        }),
+                      )}
+                    </div>
+                  ))}
                 </div>
               )),
             )}

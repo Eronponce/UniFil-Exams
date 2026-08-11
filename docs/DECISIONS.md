@@ -169,3 +169,9 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Defaults: objective, true/false, and numeric questions use `column`; discursive questions use `full`.
 - Reason: automatic width promotion made long objective questions consume full-page pagination and prevented teachers from deliberately using compact discursive layouts.
 - Impact: print measurement and pagination honor the saved type preference; rich tables adapt inside that chosen width instead of changing the width. Legacy/malformed rows normalize to the same defaults.
+
+## 2026-08-11 - Objective question splitting is explicit and opt-in
+
+- Decision: persist `allowQuestionSplit` per exam, defaulting to false; only objective questions with ordinary text alternatives may split at alternative boundaries.
+- Reason: long objective questions can otherwise waste a large region, while existing exams must retain indivisible rendering unless a teacher chooses the denser behavior.
+- Impact: the DOM-measured paginator can emit identified continuation fragments in the next column/page; non-objective, table, and other unsupported structures remain atomic, and answer-key page balancing uses the same split-aware counts.

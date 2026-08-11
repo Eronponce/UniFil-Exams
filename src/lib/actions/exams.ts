@@ -35,6 +35,7 @@ export async function createExamAction(formData: FormData) {
   const numVFRaw = (formData.get("numVF") as string | null) ?? "";
   const numDissertativasRaw = (formData.get("numDissertativas") as string | null) ?? "";
   const numNumericasRaw = (formData.get("numNumericas") as string | null) ?? "";
+  const allowQuestionSplit = formData.get("allowQuestionSplit") === "1";
   const questionLayouts = normalizeExamQuestionLayouts({
     objetiva: formData.get("layoutObjetiva"),
     verdadeiro_falso: formData.get("layoutVF"),
@@ -58,6 +59,7 @@ export async function createExamAction(formData: FormData) {
     params.set("layoutVF", questionLayouts.verdadeiro_falso);
     params.set("layoutNumerica", questionLayouts.numerica);
     params.set("layoutDissertativa", questionLayouts.dissertativa);
+    params.set("allowQuestionSplit", allowQuestionSplit ? "1" : "0");
     return params;
   }
 
@@ -101,6 +103,7 @@ export async function createExamAction(formData: FormData) {
     disciplineId,
     title,
     institution,
+    allowQuestionSplit,
     questionIds: selectedQuestionInfos.map((q) => q.id),
     questionLayouts,
   });

@@ -34,6 +34,7 @@ export interface ExamDraft {
   layoutVF: QuestionLayout;
   layoutNumerica: QuestionLayout;
   layoutDissertativa: QuestionLayout;
+  allowQuestionSplit: boolean;
 }
 
 export interface QuestionDraft {
@@ -110,6 +111,7 @@ export function makeExamDraft(): ExamDraft {
     layoutVF: "column",
     layoutNumerica: "column",
     layoutDissertativa: "full",
+    allowQuestionSplit: false,
   };
 }
 

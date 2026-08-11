@@ -56,3 +56,9 @@ status: active
 - Do not add an icon dependency; use `Icon`.
 - Keep documentation Obsidian-friendly with frontmatter and `[[wikilinks]]`.
 - Prefix useful shell commands with `rtk`.
+
+## Print fragmentation caution
+
+- `Exam.allowQuestionSplit` is persisted per exam and defaults false for legacy/new rows.
+- The official HTML print path remains a JS-measured absolute paginator: opt-in splitting measures contiguous objective option ranges, preserves shuffled letters/order, and keeps V/F, numeric, discursive, table, and unsupported structures atomic.
+- Keep answer-key reserved-last-page and uniform-page calculations on the same split-aware pagination path.

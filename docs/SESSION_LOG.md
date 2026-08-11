@@ -1,5 +1,11 @@
 # Session Log
 
+## 2026-08-11
+
+- Added the persisted per-exam `allowQuestionSplit` preference with a Portuguese controlled checkbox and validation-redirect preservation.
+- Added opt-in JS-measured objective fragments that keep statement/image plus whole alternatives in the first fragment and render compact continuation markers in the next column/page.
+- Verified focused split/persistence/form coverage: 3 files, 23 tests passed; typecheck and lint passed.
+
 ## 2026-04-22
 - Created initial project scaffold for empty repository.
 - Confirmed repository has no remote `origin`.

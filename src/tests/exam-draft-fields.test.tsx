@@ -13,6 +13,7 @@ const examDraft = {
   layoutVF: "column" as const,
   layoutNumerica: "column" as const,
   layoutDissertativa: "full" as const,
+  allowQuestionSplit: false,
 };
 const originalExamDraft = { ...examDraft };
 const updateExam = vi.fn((patch) => Object.assign(examDraft, patch));
@@ -45,6 +46,7 @@ const baseProps = {
   initialLayoutVF: "",
   initialLayoutNumerica: "",
   initialLayoutDissertativa: "",
+  initialAllowQuestionSplit: "",
 };
 
 describe("ExamDraftFields availability synchronization", () => {
@@ -143,5 +145,23 @@ describe("ExamDraftFields availability synchronization", () => {
     expect(document.querySelector('input[name="layoutObjetiva"]')).toHaveValue("full");
     expect(document.querySelector('input[name="layoutDissertativa"]')).toHaveValue("column");
     expect(updateExam).not.toHaveBeenCalledWith(expect.objectContaining({ layoutObjetiva: "column" }));
+  });
+
+  it("uses the validation flag in the controlled checkbox and hidden form value", async () => {
+    render(
+      <ExamDraftFields
+        {...baseProps}
+        initialAllowQuestionSplit="1"
+        availabilityKey="availability-a"
+        typeCounts={{ objetiva: 1, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 }}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /Permitir quebra de questões objetivas longas entre colunas\/páginas/ });
+    await waitFor(() => expect(checkbox).toBeChecked());
+    expect(document.querySelector('input[name="allowQuestionSplit"]')).toHaveValue("1");
+
+    fireEvent.click(checkbox);
+    expect(updateExam).toHaveBeenCalledWith({ allowQuestionSplit: false });
   });
 });
