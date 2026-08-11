@@ -514,8 +514,7 @@ ${buildImportFinalReviewRules()}
 
 TEMPLATE JSON COMPLETO (referência para o formato; adapte os valores ao ASSUNTO/TEMA DA PROVA)
 
-${IMPORT_TEMPLATE_JSON}
-`;
+` + "```json\n" + IMPORT_TEMPLATE_JSON + "\n```";
 }
 
 export function buildSingleQuestionPrompt(
