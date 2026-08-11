@@ -90,6 +90,7 @@ Notas:
 - PDF com seções contínuas, tentando aproveitar a sobra da página anterior
 - PDFs de sets com mesma quantidade par de páginas por lote, com páginas vazias antes do gabarito quando necessário
 - CSV de gabarito por set
+- Mapa de rastreabilidade por prova/set/posição para cruzar resultados do EvalBee com IDs do banco
 - Upload de logo institucional e imagem de gabarito/EvalBee
 
 | Rota | Descrição |
@@ -100,8 +101,9 @@ Notas:
 | `/audit` | Auditar questões antes de usar em provas |
 | `/ai` | Gerar questão única com IA |
 | `/ai/import` | Importar múltiplas questões via IA a partir de texto |
+| `/questions/importar` | Importar JSON/CSV revisado e copiar prompt com assunto, quantidades e template completo |
 | `/exams` | Montar provas com randomização de alternativas |
-| `/exports` | Exportar provas em PDF e gabarito em CSV |
+| `/exports` | Exportar provas em PDF, gabarito e mapa de rastreabilidade CSV |
 | `/settings` | Visualizar configuração de provedores IA |
 
 ## Outros comandos

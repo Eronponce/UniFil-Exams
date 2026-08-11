@@ -53,6 +53,14 @@ V1 usa IA para sugerir questoes objetivas. Nada gerado por IA entra no banco sem
 - `verdadeiro_falso`: `correctIndex` 0 = Verdadeiro, 1 = Falso, `explanation`.
 - `dissertativa`: `answerLines` (linhas em branco para resposta), `explanation` = gabarito esperado.
 
+## Importação em lote por prompt (2026-08-11)
+
+- O fluxo completo está documentado em [[IMPORT_QUESTIONS|Importação de questões e prompt para LLM]].
+- `/questions/importar` pede o `ASSUNTO/TEMA DA PROVA` e quatro quantidades: objetiva, verdadeiro/falso, numérica e dissertativa.
+- O prompt exige exatamente as quantidades informadas; `0` desativa um tipo e as quantidades não entram como campos extras no JSON.
+- JSON é o formato recomendado para saída de LLM; CSV fica indicado para edição tabular.
+- O prompt copiado termina com o template JSON completo contendo os quatro tipos de questão.
+
 ## Fila de geracao em background (2026-04-24)
 - `/ai` usa `enqueueSingleAiGenerationAction` para gerar uma questao individual em background.
 - `/ai/import` usa `enqueueAiGenerationAction` para gerar lotes em background.

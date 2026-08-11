@@ -41,9 +41,29 @@ O sistema gera prova para impressao e gabarito separado. A correcao acontece for
 - Colunas: `Questão`, `Resposta`, `Enunciado`.
 - Questao objetiva usa letra final ja randomizada (`A`-`E`).
 - Verdadeiro/falso usa `V` ou `F`.
-- Dissertativa usa `Dissertativa`.
+- Dissertativa usa `-`.
 - Filename: `gabarito-{safe-title}-set-{label}.csv` (slug a partir do título da prova; portável em Linux).
 - Encoding: UTF-8 sem BOM; `Content-Disposition: attachment`.
+
+## Mapa de rastreabilidade
+
+Na tela `/exports`, o botão **Mapa de rastreabilidade** baixa `/api/csv/exam/[examId]/trace` sem alterar os CSVs de gabarito existentes.
+
+O arquivo é longo, com uma linha por questão impressa em cada set. A chave `examId:setLabel:position` permite cruzar a versão e o número da questão do EvalBee com a questão original do banco.
+
+Campos principais:
+
+- `chave_rastreabilidade`
+- `id_prova`, `titulo_prova`, `id_set`, `versao_set`
+- `posicao_exibida` (base 1)
+- `id_questao_banco`
+- `tipo_questao`, `area_tematica`
+- `resposta_correta_exibida`
+- `indice_correto_original`
+- `ordem_original_alternativas_embaralhadas`
+- `enunciado_resumido`
+
+Para validar resultados do EvalBee: use `versao_set` + `posicao_exibida` como chave de junção, leia `id_questao_banco` e compare a resposta do aluno com `resposta_correta_exibida`. A ordem embaralhada fica no mesmo arquivo para auditoria posterior.
 
 ## Exportacao de banco de questoes
 - JSON e CSV de questoes ficam em `/api/export/questions`.
@@ -59,6 +79,7 @@ flowchart TD
     Shuffle --> Key[Calcular gabarito do set]
     Key --> PDF[Gerar PDF com imagem EvalBee final]
     Key --> CSV[Gerar CSV do gabarito]
+    Key --> Trace[Gerar mapa posição → ID do banco]
 ```
 
 ## Cuidados
