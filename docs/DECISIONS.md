@@ -199,3 +199,9 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: let the professor enter objective, true/false, numeric and discursive quantities; copy those counts into the prompt and append the complete four-type JSON template at the end.
 - Reason: one copied Markdown prompt should contain the subject, exact generation target, all constraints and the output shape needed by the LLM.
 - Impact: counts are instructions only and never become extra JSON fields; `0` means no questions of that type, and the downloaded/imported schema remains unchanged.
+
+## 2026-08-11 - Commented answer keys export as versioned PNGs
+
+- Decision: export one high-resolution commented answer-key PNG per exam set through `/api/png/[setId]`, with optional `?version=N`.
+- Reason: teachers need a polished image artifact to attach to external class/assessment systems without converting the HTML page manually.
+- Impact: each image preserves the selected set order and shuffled objective letter, writes V/F answers as `True`/`False`, includes the bank question ID and justification, and reads immutable snapshot content for historical versions.

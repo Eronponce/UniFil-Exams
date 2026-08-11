@@ -5,6 +5,9 @@
 - Added the persisted per-exam `allowQuestionSplit` preference with a Portuguese controlled checkbox and validation-redirect preservation.
 - Added opt-in JS-measured objective fragments that keep statement/image plus whole alternatives in the first fragment and render compact continuation markers in the next column/page.
 - Verified focused split/persistence/form coverage: 3 files, 23 tests passed; typecheck and lint passed.
+- Added a high-resolution “PNG comentado” download per set on `/exports`, containing the exact displayed answer and each question's justification.
+- PNG generation supports immutable historical versions, uses `True`/`False` for V/F, and visually identifies set, version, position and source bank ID.
+- Validation: synthetic visual render inspected; 26 test files/140 tests, typecheck, lint and production build passed. The pre-existing NFT warning remains unchanged.
 
 ## 2026-04-22
 - Created initial project scaffold for empty repository.
