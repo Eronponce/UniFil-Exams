@@ -67,3 +67,87 @@ export function buildAnswerKeyMatrixCsv(exam: Exam): string {
 
   return rows.join("\n");
 }
+
+const TRACE_HEADERS = [
+  "chave_rastreabilidade",
+  "id_prova",
+  "titulo_prova",
+  "id_set",
+  "versao_set",
+  "posicao_exibida",
+  "id_questao_banco",
+  "tipo_questao",
+  "area_tematica",
+  "resposta_correta_exibida",
+  "indice_correto_original",
+  "ordem_original_alternativas_embaralhadas",
+  "enunciado_resumido",
+];
+
+function escapeCsvCell(value: string | number | null | undefined): string {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function buildCsvRow(values: Array<string | number | null | undefined>): string {
+  return values.map(escapeCsvCell).join(",");
+}
+
+function compareSetOrder(a: ExamSet, b: ExamSet): number {
+  return a.label.localeCompare(b.label, "pt-BR") || a.id - b.id;
+}
+
+function resolveTraceAnswer(
+  sq: { shuffledOptions: number[]; correctShuffledIndex: number },
+  questionType: string,
+  correctAnswer: string,
+): string {
+  if (questionType === "dissertativa") return "";
+  if (questionType === "numerica") return correctAnswer;
+  if (questionType === "verdadeiro_falso") {
+    const originalIndex = sq.shuffledOptions[sq.correctShuffledIndex];
+    if (originalIndex === 0) return "V";
+    if (originalIndex === 1) return "F";
+    return "";
+  }
+  return LETTERS[sq.correctShuffledIndex] ?? "";
+}
+
+/** Builds the long-form CSV used to cross printed EvalBee positions with DB IDs. */
+export function buildExamTraceCsv(exam: Exam): string {
+  const rows = [buildCsvRow(TRACE_HEADERS)];
+  const sets = [...exam.sets].sort(compareSetOrder);
+
+  for (const set of sets) {
+    const questions = [...set.questions].sort((a, b) => a.position - b.position || a.questionId - b.questionId);
+    questions.forEach((sq, index) => {
+      const displayedPosition = Number.isFinite(sq.position) ? sq.position + 1 : index + 1;
+      const question = getQuestion(sq.questionId);
+      const statement = question
+        ? truncateRichTextPlain(question.statement, 160)
+        : `[Questão ausente no banco: ID ${sq.questionId}]`;
+      const questionType = question?.questionType ?? "ausente";
+      const thematicArea = question?.thematicArea ?? "";
+      const answer = question
+        ? resolveTraceAnswer(sq, question.questionType, question.correctAnswer)
+        : "";
+
+      rows.push(buildCsvRow([
+        `${exam.id}:${set.label}:${displayedPosition}`,
+        exam.id,
+        exam.title,
+        set.id,
+        set.label,
+        displayedPosition,
+        sq.questionId,
+        questionType,
+        thematicArea,
+        answer,
+        question?.correctIndex ?? "",
+        Array.isArray(sq.shuffledOptions) ? JSON.stringify(sq.shuffledOptions) : "",
+        statement,
+      ]));
+    });
+  }
+
+  return rows.join("\r\n");
+}

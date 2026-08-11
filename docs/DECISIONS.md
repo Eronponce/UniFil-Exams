@@ -175,3 +175,15 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: persist `allowQuestionSplit` per exam, defaulting to false; only objective questions with ordinary text alternatives may split at alternative boundaries.
 - Reason: long objective questions can otherwise waste a large region, while existing exams must retain indivisible rendering unless a teacher chooses the denser behavior.
 - Impact: the DOM-measured paginator can emit identified continuation fragments in the next column/page; non-objective, table, and other unsupported structures remain atomic, and answer-key page balancing uses the same split-aware counts.
+
+## 2026-08-11 - Import prompt is a single complete source of truth
+
+- Decision: `buildImportPrompt()` owns the complete import specification, including the template envelope, nine question fields, applied construction, diversity, type constraints, HTML sanitization, difficulty and final review.
+- Reason: the copied prompt must match the actual importer contract without a stale client fallback.
+- Impact: `/questions/importar` copies and displays the centralized prompt, whose HTML rules continue to derive from the runtime sanitizer labels.
+
+## 2026-08-11 - EvalBee trace export is a separate long-form CSV
+
+- Decision: add `/api/csv/exam/[examId]/trace` as a separate UTF-8 CSV with one row per printed question and the stable key `examId:setLabel:position`.
+- Reason: EvalBee version/position must be cross-referenced with the persisted question ID without changing existing answer-key CSVs.
+- Impact: rows are ordered by set label and displayed position, preserve the original shuffle/index data, leave dissertative answers blank intentionally, and keep missing question rows traceable instead of dropping them.

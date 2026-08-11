@@ -118,45 +118,7 @@ const TEMPLATE_CSV = [
   "Explique o conceito de herança na POO e apresente um exemplo prático.,dissertativa,medium,,,,,,0,Programação Orientada a Objetos,8,Espera-se que o aluno descreva reutilização de código e hierarquia de classes.,",
 ].join("\n");
 
-const AI_PROMPT = `Você receberá um arquivo de template em anexo com o formato de questões esperado. Gere questões estritamente nesse formato JSON, respeitando todas as regras abaixo.
-
-REGRAS GERAIS
-• Use exatamente os campos do template: statement, questionType, options, correctIndex, difficulty, thematicArea, explanation, answerLines, correctAnswer.
-• Valores válidos — questionType: "objetiva" | "verdadeiro_falso" | "numerica" | "dissertativa". difficulty: "easy" | "medium" | "hard".
-• Retorne apenas o JSON válido, sem texto fora do objeto.
-• O campo statement pode conter HTML sanitizado.
-• Tags permitidas no statement: ${RICH_TEXT_ALLOWED_TAGS_LABEL}.
-• Atributos permitidos no statement: ${RICH_TEXT_ALLOWED_ATTRIBUTE_LABEL}.
-• Styles permitidos no statement: ${RICH_TEXT_ALLOWED_STYLE_LABEL}.
-• ${RICH_TEXT_BLOCKED_FEATURES_LABEL}.
-
-QUESTÕES OBJETIVAS (questionType: "objetiva")
-• Sempre exatamente 5 alternativas (options com 5 itens).
-• Apenas UMA alternativa correta; correctIndex indica o índice (base 0).
-• As alternativas incorretas devem ser plausíveis, tecnicamente relacionadas ao tema e não trivialmente diferentes da correta.
-• Evite alternativas absurdas ou visivelmente erradas sem análise.
-• Proibido usar palavras absolutas no enunciado ou nas alternativas: "sempre", "nunca", "somente", "todos", "nenhum", "jamais", "absolutamente", "apenas".
-
-QUESTÕES VERDADEIRO OU FALSO (questionType: "verdadeiro_falso")
-• options deve ter exatamente 2 itens: ["Verdadeiro", "Falso"].
-• correctIndex: 0 para Verdadeiro, 1 para Falso.
-• O enunciado deve ser uma afirmação factual, clara e sem ambiguidade — deve ser inequivocamente verdadeira ou falsa, sem espaço para interpretação.
-
-QUESTÕES NUMÉRICAS (questionType: "numerica")
-• options deve ser um array vazio: [].
-• correctIndex deve ser 0.
-• O enunciado deve exigir do aluno uma sequência numérica como resposta (ex: ordenação, cálculo, resultado).
-• correctAnswer deve conter somente dígitos, espaços ou vírgulas (ex: "42" ou "3 1 4 2" ou "1,2,3").
-• answerLines deve ser 0.
-
-QUESTÕES DISSERTATIVAS (questionType: "dissertativa")
-• options deve ser um array vazio: [].
-• correctIndex deve ser 0.
-• O enunciado deve ser objetivo e direto, pedindo uma resposta específica e delimitada.
-• explanation deve conter o gabarito esperado de forma resumida (máximo 3 frases curtas).
-• answerLines: número de linhas em branco no PDF — use entre 4 e 12, proporcional à complexidade da resposta esperada.`;
-
-const IMPORT_AI_PROMPT = buildImportPrompt() || AI_PROMPT;
+const IMPORT_AI_PROMPT = buildImportPrompt();
 
 function downloadTemplate(format: "json" | "csv") {
   const content = format === "json" ? TEMPLATE_JSON : TEMPLATE_CSV;

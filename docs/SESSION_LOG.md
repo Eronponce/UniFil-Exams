@@ -556,3 +556,10 @@
 - A montagem de prova passou a persistir largura `column`/`full` independentemente para objetiva, V/F, numérica e dissertativa; provas anteriores recebem defaults compatíveis.
 - Mudanças de disciplina ou área removem quantidades antigas da URL e sincronizam todos os quatro campos com o pool auditado atual, inclusive `0`; switches de largura permanecem inalterados.
 - A impressão agora respeita o layout salvo para cada tipo, mantém tabelas contidas nessa largura, renderiza V/F com escolhas desmarcadas, numérica com campo rotulado e não cria linhas para dissertativa com `answerLines=0`.
+
+## 2026-08-11 - Prompt de importação e mapa de rastreabilidade
+
+- `buildImportPrompt()` passou a refletir integralmente o prompt-fonte anexado, mantendo a estrutura `{version, exportedAt, questions:[...]}` e os nove campos exatos por questão; o fallback duplicado do client foi removido.
+- Criado `buildExamTraceCsv()` e a rota `/api/csv/exam/[examId]/trace`, com uma linha por questão impressa em cada set, resposta após embaralhamento, ordem original e ID da questão; questão ausente continua registrada.
+- `/exports` ganhou o botão “Mapa de rastreabilidade” e a explicação curta do cruzamento EvalBee ↔ banco.
+- Validação focada inicial foi bloqueada por ausência de dependências; o junction local para `node_modules` foi criado depois, sem instalação ou acesso externo.

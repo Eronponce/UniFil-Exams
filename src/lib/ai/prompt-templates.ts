@@ -179,24 +179,195 @@ function buildBatchExtraRules(questionType: QuestionType, variant: PromptVariant
   ].join("\n");
 }
 
+function buildImportFormatRules(): string {
+  return [
+    "- Retorne apenas JSON válido, sem markdown e sem texto fora do objeto.",
+    '- Use exatamente os nove campos por questão: "statement", "questionType", "options", "correctIndex", "difficulty", "thematicArea", "explanation", "answerLines", "correctAnswer".',
+    '- Não adicione campos extras em nenhum nível da resposta.',
+    '- difficulty deve ser "easy", "medium" ou "hard".',
+    '- questionType deve ser "objetiva", "verdadeiro_falso", "dissertativa" ou "numerica".',
+    "- Preserve exatamente a estrutura superior do template fornecido: um objeto com {version, exportedAt, questions:[...]}.",
+    '- Mantenha os campos superiores "version" e "exportedAt" e a propriedade "questions"; não renomeie, remova ou acrescente propriedades superiores.',
+    "- Cada item de questions deve conter somente os nove campos exatos descritos acima.",
+    buildHtmlRules(),
+  ].join("\n");
+}
+
+function buildImportConstructionRules(): string {
+  return [
+    "Antes de criar cada questão, defina internamente:",
+    "conteúdo → recorte específico → habilidade que será avaliada → contexto → problema → evidências ou dados → restrições → resposta esperada",
+    "- Sempre que possível, crie questões aplicadas.",
+    "- Uma boa questão deve apresentar uma situação em que o aluno precise usar o conteúdo para analisar, aplicar, avaliar, diagnosticar, escolher ou propor uma solução.",
+    "- Evite questões baseadas apenas em memorização de definição quando o conteúdo permitir aplicação.",
+    "- O contexto deve influenciar a resposta. Não crie histórias decorativas.",
+    "- Podem ser utilizados dados, métricas, código, tabelas, sintomas, requisitos, resultados, logs, regras, diagramas ou restrições.",
+  ].join("\n");
+}
+
+function buildImportTradeoffRules(): string {
+  return [
+    "Sempre que adequado, apresente mais de um critério relevante ou algum trade-off.",
+    "Exemplos: desempenho versus custo; segurança versus disponibilidade; precisão versus explicabilidade; simplicidade versus escalabilidade; consistência versus disponibilidade.",
+    "A resposta correta deve ser aquela que melhor atende ao conjunto do cenário.",
+  ].join("\n");
+}
+
+function buildImportDiversityRules(): string {
+  return [
+    "Antes de criar uma nova questão, considere todas as questões já produzidas.",
+    "Não crie duas questões que permitam ao aluno descobrir diretamente a resposta de uma pela outra.",
+    "É proibido criar:",
+    "- uma questão que seja a inversão de outra;",
+    "- uma afirmação verdadeira em uma questão e sua negação em outra;",
+    "- duas questões com o mesmo fato central perguntado de formas diferentes;",
+    "- duas questões cuja resposta correta revele diretamente a resposta da outra;",
+    "- uma questão objetiva e outra verdadeiro ou falso sobre exatamente a mesma conclusão;",
+    "- questões que reutilizem o mesmo raciocínio mudando apenas nomes, números ou contexto superficial;",
+    "- questões que funcionem como pista ou gabarito indireto para outra questão.",
+    "- Questões podem abordar conteúdos próximos ou o mesmo tema, desde que avaliem aspectos diferentes e não permitam inferir diretamente os gabaritos umas das outras.",
+    "Exemplo aceitável: uma questão pergunta qual estrutura de dados atende melhor determinado cenário; outra pergunta sobre a complexidade de uma operação diferente, desde que conhecer a resposta da primeira não revele automaticamente a segunda.",
+    "Exemplo proibido: uma questão afirma que tabela hash possui busca média O(1) e outra pergunta se é falso afirmar que tabela hash possui busca média O(1); responder uma praticamente responde a outra.",
+  ].join("\n");
+}
+
+function buildImportQuestionTypeRules(questionType: QuestionType): string {
+  if (questionType === "verdadeiro_falso") {
+    return [
+      '- "options" deve ser exatamente ["Verdadeiro", "Falso"].',
+      '- "correctIndex" deve ser 0 para Verdadeiro e 1 para Falso.',
+      "- O statement deve ser uma afirmação factual, clara e sem ambiguidade.",
+      "- Misture afirmações verdadeiras e falsas quando houver várias questões.",
+      "- Não transforme diretamente uma questão objetiva já criada em verdadeiro ou falso.",
+      "- Não utilize a negação de uma afirmação já avaliada em outra questão.",
+      '- "answerLines" deve ser 0.',
+    ].join("\n");
+  }
+
+  if (questionType === "dissertativa") {
+    return [
+      '- "options" deve ser [].',
+      '- "correctIndex" deve ser 0.',
+      "- O statement deve pedir uma resposta aberta, específica e delimitada.",
+      '- "explanation" deve conter o gabarito esperado em até 3 frases curtas.',
+      '- "answerLines" deve ficar entre 4 e 12.',
+      '- "correctAnswer" deve ser "".',
+    ].join("\n");
+  }
+
+  if (questionType === "numerica") {
+    return [
+      '- "options" deve ser [].',
+      '- "correctIndex" deve ser 0.',
+      "- O statement deve exigir uma sequência numérica.",
+      "- Todos os dados necessários devem estar no enunciado.",
+      '- "correctAnswer" deve conter somente dígitos, espaços ou vírgulas.',
+      '- "answerLines" deve ser 0.',
+      '- "explanation" deve explicar como chegar ao resultado.',
+    ].join("\n");
+  }
+
+  return [
+    '- "options" deve ter exatamente 5 alternativas.',
+    '- Não use prefixos como A), B), C), D) ou E).',
+    "- Apenas uma alternativa pode ser correta.",
+    '- "correctIndex" deve variar entre 0 e 4 ao longo do conjunto.',
+    "- Evite padrões previsíveis de gabarito.",
+    "- Crie 4 distratores plausíveis e tecnicamente relacionados.",
+    "- Não crie alternativas absurdas ou obviamente erradas sem análise.",
+    '- "answerLines" deve ser 0.',
+    '- "explanation" deve justificar a correta e explicar o erro das incorretas.',
+    "Os distratores devem preferencialmente representar:",
+    "- solução parcialmente correta;",
+    "- conceito correto aplicado no contexto errado;",
+    "- generalização indevida;",
+    "- solução desproporcional;",
+    "- erro de causa e efeito;",
+    "- restrição ignorada;",
+    "- trade-off mal priorizado.",
+  ].join("\n");
+}
+
+function buildImportDifficultyRules(): string {
+  return [
+    "easy",
+    "Aplicação direta, poucas variáveis e um conceito principal.",
+    "medium",
+    "Combinação de critérios, interpretação de contexto ou algum trade-off.",
+    "hard",
+    "Múltiplos critérios, integração de conceitos, interpretação de evidências e distratores próximos da resposta correta.",
+  ].join("\n");
+}
+
+function buildImportFinalReviewRules(): string {
+  return [
+    "Antes de finalizar, revise o conjunto inteiro e confirme internamente que:",
+    "- nenhuma questão é duplicada;",
+    "- nenhuma questão é inversão de outra;",
+    "- nenhuma questão entrega a resposta de outra;",
+    "- nenhuma questão é apenas uma paráfrase de outra;",
+    "- questões do mesmo tema avaliam habilidades ou aspectos diferentes;",
+    "- existe apenas uma resposta correta em cada questão objetiva;",
+    "- o JSON está sintaticamente válido;",
+    "- todos os campos seguem exatamente o template.",
+    "Retorne somente o JSON final.",
+  ].join("\n");
+}
+
 export function buildImportPrompt(): string {
-  return `Voce recebera um arquivo de template em anexo com o formato de questoes esperado. Gere questoes estritamente nesse formato JSON, respeitando todas as regras abaixo.
+  return `Você receberá um arquivo de template em anexo com o formato de questões esperado.
+
+Gere questões estritamente nesse formato JSON, respeitando todas as regras abaixo.
+
+FORMATO SUPERIOR OBRIGATÓRIO
+Mantenha exatamente esta estrutura superior do template fornecido:
+{
+  "version": 1,
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "questions": [
+    {
+      "statement": "Enunciado",
+      "questionType": "objetiva",
+      "options": ["Alternativa 1", "Alternativa 2", "Alternativa 3", "Alternativa 4", "Alternativa 5"],
+      "correctIndex": 0,
+      "difficulty": "medium",
+      "thematicArea": "Subtema específico",
+      "explanation": "Justificativa",
+      "answerLines": 0,
+      "correctAnswer": ""
+    }
+  ]
+}
 
 REGRAS GERAIS
-${buildGeneralRules("objetiva").replace('questionType deve ser "objetiva".\n', "")}
-- questionType pode ser "objetiva", "verdadeiro_falso", "dissertativa" ou "numerica".
+${buildImportFormatRules()}
 
-QUESTOES OBJETIVAS (questionType: "objetiva")
-${buildQuestionTypeRules("objetiva")}
+CONSTRUÇÃO DAS QUESTÕES
+${buildImportConstructionRules()}
 
-QUESTOES VERDADEIRO OU FALSO (questionType: "verdadeiro_falso")
-${buildQuestionTypeRules("verdadeiro_falso")}
+QUESTÕES MÉDIAS E DIFÍCEIS
+${buildImportTradeoffRules()}
 
-QUESTOES DISSERTATIVAS (questionType: "dissertativa")
-${buildQuestionTypeRules("dissertativa")}
+DIVERSIDADE ENTRE QUESTÕES
+${buildImportDiversityRules()}
 
-QUESTOES NUMERICAS (questionType: "numerica")
-${buildQuestionTypeRules("numerica")}`;
+QUESTÕES OBJETIVAS (questionType: "objetiva")
+${buildImportQuestionTypeRules("objetiva")}
+
+QUESTÕES VERDADEIRO OU FALSO (questionType: "verdadeiro_falso")
+${buildImportQuestionTypeRules("verdadeiro_falso")}
+
+QUESTÕES DISSERTATIVAS (questionType: "dissertativa")
+${buildImportQuestionTypeRules("dissertativa")}
+
+QUESTÕES NUMÉRICAS (questionType: "numerica")
+${buildImportQuestionTypeRules("numerica")}
+
+CONTROLE DE DIFICULDADE
+${buildImportDifficultyRules()}
+
+REVISÃO FINAL
+${buildImportFinalReviewRules()}`;
 }
 
 export function buildSingleQuestionPrompt(

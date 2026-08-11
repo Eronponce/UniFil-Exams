@@ -107,10 +107,16 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                 </div>
 
                 <div className="card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
                     <h3 style={{ fontWeight: 600, margin: 0 }}>Gabarito Rápido por Set (CSV)</h3>
-                    <a href={`/api/csv/exam/${selectedExam.id}`} className="btn btn-ghost btn-sm" download>⬇ Todos os Sets</a>
+                    <div className="actions-row">
+                      <a href={`/api/csv/exam/${selectedExam.id}`} className="btn btn-ghost btn-sm" download>⬇ Todos os Sets</a>
+                      <a href={`/api/csv/exam/${selectedExam.id}/trace`} className="btn btn-ghost btn-sm" download>↔ Mapa de rastreabilidade</a>
+                    </div>
                   </div>
+                  <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.9rem" }}>
+                    Cruze a versão + número da questão do EvalBee com o ID no banco.
+                  </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                     {selectedExam.sets.map((set) => (
                       <div key={set.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

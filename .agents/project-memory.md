@@ -62,3 +62,9 @@ status: active
 - `Exam.allowQuestionSplit` is persisted per exam and defaults false for legacy/new rows.
 - The official HTML print path remains a JS-measured absolute paginator: opt-in splitting measures contiguous objective option ranges, preserves shuffled letters/order, and keeps V/F, numeric, discursive, table, and unsupported structures atomic.
 - Keep answer-key reserved-last-page and uniform-page calculations on the same split-aware pagination path.
+
+## Import and EvalBee trace continuity
+
+- `buildImportPrompt()` is the sole source for the copied import prompt; keep its nine-field question contract and dynamic HTML sanitizer labels aligned with `src/lib/html/rich-text.ts`.
+- The long-form trace export is `src/app/api/csv/exam/[examId]/trace/route.ts` backed by `buildExamTraceCsv()`; its stable key is `examId:setLabel:position`, and its row order is set label then stored position (base 1).
+- Existing answer-key CSV routes are compatibility-sensitive and must remain separate from the trace export.
