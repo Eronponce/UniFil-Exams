@@ -46,6 +46,12 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 
+# Local Google Drive backup artifacts and narrow SQLite staging directory
+.backups/
+data/.unifil-exams-backup/
+ops/backup/*.env
+!ops/backup/*.env.example
+
 # Uploads (tracked via .gitkeep only)
 public/uploads/*
 !public/uploads/.gitkeep

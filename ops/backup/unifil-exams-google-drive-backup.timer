@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily UniFil Exams Google Drive backup timer
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 America/Sao_Paulo
+Persistent=true
+AccuracySec=1min
+Unit=unifil-exams-google-drive-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=UniFil Exams Google Drive backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment="PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=%h/.config/unifil-exams/google-drive-backup.env
+ExecStart=%h/.local/libexec/unifil-exams/backup-google-drive.sh
