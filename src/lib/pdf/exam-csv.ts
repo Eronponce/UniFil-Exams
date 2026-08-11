@@ -10,7 +10,7 @@ function resolveAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: nu
   if (questionType === "verdadeiro_falso") {
     // shuffledOptions[correctShuffledIndex] gives the original index: 0=Verdadeiro, 1=Falso
     const origIdx = sq.shuffledOptions[sq.correctShuffledIndex];
-    return origIdx === 0 ? "V" : "F";
+    return origIdx === 0 ? "True" : "False";
   }
   return LETTERS[sq.correctShuffledIndex] ?? "?";
 }
@@ -105,8 +105,8 @@ function resolveTraceAnswer(
   if (questionType === "numerica") return correctAnswer;
   if (questionType === "verdadeiro_falso") {
     const originalIndex = sq.shuffledOptions[sq.correctShuffledIndex];
-    if (originalIndex === 0) return "V";
-    if (originalIndex === 1) return "F";
+    if (originalIndex === 0) return "True";
+    if (originalIndex === 1) return "False";
     return "";
   }
   return LETTERS[sq.correctShuffledIndex] ?? "";

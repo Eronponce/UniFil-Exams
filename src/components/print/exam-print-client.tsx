@@ -35,6 +35,7 @@ interface DisplaySet extends PrintSetPayload {
 interface PageMetrics {
   fullWidth: number;
   fullHeight: number;
+  firstPageHeight: number;
   columnWidth: number;
   leftColumnLeft: number;
   rightColumnLeft: number;
@@ -129,6 +130,19 @@ function StatementHtml({ html }: { html: string }) {
   return <div className="rich-content" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+function InstructionsBlock({ instructions }: { instructions: string }) {
+  return (
+    <div className="exam-print-instructions" data-testid="exam-print-instructions">
+      <div className="exam-print-instructions-title">Instruções</div>
+      <div className="exam-print-instructions-copy">
+        {instructions.split(/\r?\n/).map((line, index) => (
+          <p key={`${index}-${line}`}>{line}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function QuestionBlock({
   question,
   tableScale = 1,
@@ -218,11 +232,15 @@ function PrintPageHeader({
   institution,
   setLabel,
   logoUrl,
+  instructions,
+  showInstructions,
 }: {
   title: string;
   institution: string;
   setLabel: string;
   logoUrl: string | null;
+  instructions?: string;
+  showInstructions?: boolean;
 }) {
   return (
     <>
@@ -240,6 +258,7 @@ function PrintPageHeader({
           <div className="exam-print-subtitle">Set {setLabel}</div>
         </div>
       </div>
+      {showInstructions && instructions && <InstructionsBlock instructions={instructions} />}
     </>
   );
 }
@@ -253,6 +272,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
   const [metrics, setMetrics] = useState<PageMetrics | null>(null);
   const [renderState, setRenderState] = useState<RenderState | null>(null);
   const prototypeBodyRef = useRef<HTMLDivElement | null>(null);
+  const prototypeFirstBodyRef = useRef<HTMLDivElement | null>(null);
   const prototypeColumnLeftRef = useRef<HTMLDivElement | null>(null);
   const prototypeColumnRightRef = useRef<HTMLDivElement | null>(null);
   const measurementRootRef = useRef<HTMLDivElement | null>(null);
@@ -266,17 +286,20 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
     async function measurePrototype() {
       await document.fonts.ready.catch(() => null);
       const body = prototypeBodyRef.current;
+      const firstBody = prototypeFirstBodyRef.current;
       const left = prototypeColumnLeftRef.current;
       const right = prototypeColumnRightRef.current;
-      if (!active || !body || !left || !right) return;
+      if (!active || !body || !firstBody || !left || !right) return;
 
       const bodyRect = body.getBoundingClientRect();
+      const firstBodyRect = firstBody.getBoundingClientRect();
       const leftRect = left.getBoundingClientRect();
       const rightRect = right.getBoundingClientRect();
 
       setMetrics({
         fullWidth: bodyRect.width,
         fullHeight: bodyRect.height,
+        firstPageHeight: firstBodyRect.height,
         columnWidth: leftRect.width,
         leftColumnLeft: leftRect.left - bodyRect.left,
         rightColumnLeft: rightRect.left - bodyRect.left,
@@ -327,7 +350,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           const fullNode = fullMeasureRefs.current[question.measureKey];
           const hasTable = getStatementIsFullWidth(question.statementHtml);
           const isTableQuestion = hasTable;
-          const layout = payload.questionLayouts[question.questionType];
+          const layout = question.layout ?? payload.questionLayouts[question.questionType];
 
           if (isTableQuestion && columnNode && fullNode) {
             const measureTable = columnNode.querySelector("table");
@@ -399,14 +422,14 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           layoutInputs,
           pageMetrics.fullHeight,
           pageMetrics.fullHeight,
-          payload.allowQuestionSplit,
+          { allowQuestionSplit: payload.allowQuestionSplit, firstPageQuestionAreaHeight: pageMetrics.firstPageHeight },
         );
         const inlineQuestionPages = hasAnswerKey
           ? paginateQuestionsWithReservedLastPage(
               layoutInputs,
               pageMetrics.fullHeight,
               reservedLastPageQuestionAreaHeight,
-              payload.allowQuestionSplit,
+              { allowQuestionSplit: payload.allowQuestionSplit, firstPageQuestionAreaHeight: pageMetrics.firstPageHeight },
             )
           : null;
         const inlineTotalPages =
@@ -471,7 +494,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
     return () => {
       active = false;
     };
-  }, [displaySets, metrics, mode, payload.allowQuestionSplit, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.questionLayouts, setId]);
+  }, [displaySets, metrics, mode, payload.allowQuestionSplit, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.instructions, payload.questionLayouts, setId]);
 
   return (
     <div className="exam-print-shell">
@@ -480,14 +503,15 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           <strong>{payload.title}</strong>
           <div className="exam-print-toolbar-copy">
             {mode === "exam" ? "Prova completa" : `Set ${displaySets.find((set) => set.id === setId)?.label ?? ""}`} · formato A4
+            {payload.versionNumber ? ` · versão ${payload.versionNumber}` : ""}
             {renderState ? ` · ${renderState.targetTotalPages} página(s) por set` : ""}
           </div>
         </div>
         <div className="actions-row">
-          <Link href={`/exports?exam=${payload.examId}`} className="btn btn-ghost" replace>
+          <Link href={`/exports?exam=${payload.examId}${payload.versionNumber ? `&version=${payload.versionNumber}` : ""}`} className="btn btn-ghost" replace>
             Voltar
           </Link>
-          <a href={mode === "exam" ? `/api/pdf/exam/${payload.examId}` : `/api/pdf/${setId}`} className="btn btn-ghost">
+          <a href={mode === "exam" ? `/api/pdf/exam/${payload.examId}${payload.versionNumber ? `?version=${payload.versionNumber}` : ""}` : `/api/pdf/${setId}`} className="btn btn-ghost">
             PDF direto
           </a>
           <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={!renderState}>
@@ -514,6 +538,8 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                   institution={payload.institution}
                   setLabel={set.label}
                   logoUrl={payload.logoUrl}
+                  instructions={payload.instructions}
+                  showInstructions={pageIndex === 0}
                 />
                 <div className="exam-print-body">
                   {page.kind === "content" && page.page?.placed.map((placed, placedIndex) => {
@@ -570,6 +596,18 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
       </div>
 
       <div className="exam-print-measurements" aria-hidden="true">
+        <section className="exam-print-page">
+          <PrintPageHeader
+            title={payload.title}
+            institution={payload.institution}
+            setLabel={displaySets[0]?.label ?? "A"}
+            logoUrl={payload.logoUrl}
+            instructions={payload.instructions}
+            showInstructions
+          />
+          <div className="exam-print-body" ref={prototypeFirstBodyRef} />
+        </section>
+
         <section className="exam-print-page">
           <PrintPageHeader
             title={payload.title}

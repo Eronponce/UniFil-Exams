@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useWorkspaceStore } from "@/lib/state/workspace-store";
 import { truncateRichTextPlain } from "@/lib/html/rich-text";
+import { RichText } from "@/components/rich-text";
+import type { QuestionOption } from "@/types";
 
 const TYPE_ORDER: Record<string, number> = { objetiva: 0, verdadeiro_falso: 1, numerica: 2, dissertativa: 3 };
 const TYPE_LABEL: Record<string, string> = { objetiva: "Objetiva", verdadeiro_falso: "V/F", numerica: "Numérica", dissertativa: "Dissertativa" };
@@ -20,6 +22,8 @@ export interface AuditedQuestion {
   correctIndex: number;
   answerLines?: number;
   correctAnswer?: string;
+  imageUrl?: string | null;
+  options?: QuestionOption[];
 }
 
 interface Props {
@@ -82,11 +86,11 @@ export function AuditedQuestionsSelector({ questions, areas = [] }: Props) {
       <label className="form-label">
         Questões auditadas — {questions.length} disponíveis{areas.length ? ` (${areas.length} área(s) selecionada(s))` : ""} · {selectedIds.size} selecionadas
       </label>
-      <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6, padding: "0.5rem" }}>
+      <div className="exam-question-selector-list">
         {sorted.map((q) => (
           <label
             key={q.id}
-            style={{ display: "flex", gap: "0.5rem", padding: "0.4rem 0.25rem", fontSize: "0.875rem", cursor: "pointer", alignItems: "flex-start", borderBottom: "1px solid #f3f4f6" }}
+            className="exam-question-selector-card"
           >
             <input
               type="checkbox"
@@ -95,31 +99,49 @@ export function AuditedQuestionsSelector({ questions, areas = [] }: Props) {
               checked={selectedIds.has(q.id)}
               onChange={() => toggle(q.id)}
               aria-label={`Selecionar questão ${q.id}`}
-              style={{ marginTop: "0.15rem", flexShrink: 0 }}
+              className="exam-question-selector-checkbox"
             />
-            <span style={{ flex: 1 }}>
-              {truncateRichTextPlain(q.statement, 90)}
-              <span style={{ display: "flex", gap: "0.3rem", marginTop: "0.2rem", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: TYPE_BG[q.questionType] ?? "#f3f4f6" }}>
+            <span className="exam-question-selector-content">
+              <span className="exam-question-selector-heading">
+                <strong>Questão {q.id}</strong>
+                <span className="exam-question-selector-badges">
+                  <span className="exam-question-selector-badge" style={{ background: TYPE_BG[q.questionType] ?? "#f3f4f6" }}>
                   {TYPE_LABEL[q.questionType] ?? q.questionType}
-                </span>
-                <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: DIFF_COLOR[q.difficulty] ?? "#f3f4f6" }}>
-                  {DIFF_LABEL[q.difficulty]}
-                </span>
-                {q.thematicArea && (
-                  <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.35rem", borderRadius: 99, background: "#e0e7ff", color: "#3730a3" }}>
-                    {q.thematicArea}
                   </span>
-                )}
-                <span style={{ fontSize: "0.7rem", color: "#888" }}>
-                  {q.questionType === "objetiva"
-                    ? `[${LETTERS[q.correctIndex] ?? "?"}]`
-                    : q.questionType === "verdadeiro_falso"
-                      ? `[${q.correctIndex === 0 ? "V" : "F"}]`
-                      : q.questionType === "numerica"
-                        ? `[${q.correctAnswer || "?"}]`
-                        : `[${q.answerLines ?? 0} linhas]`}
+                  <span className="exam-question-selector-badge" style={{ background: DIFF_COLOR[q.difficulty] ?? "#f3f4f6" }}>
+                  {DIFF_LABEL[q.difficulty]}
+                  </span>
+                  {q.thematicArea && (
+                    <span className="exam-question-selector-badge" style={{ background: "#e0e7ff", color: "#3730a3" }}>
+                    {q.thematicArea}
+                    </span>
+                  )}
                 </span>
+              </span>
+              <div className="exam-question-selector-statement">
+                <RichText html={q.statement} />
+              </div>
+              {q.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={q.imageUrl} alt="" className="exam-question-selector-image" />
+              )}
+              {q.questionType === "objetiva" && q.options && (
+                <div className="exam-question-selector-options">
+                  {q.options.map((option, index) => (
+                    <span key={option.index} className="exam-question-selector-option">
+                      <strong>{LETTERS[index] ?? "?"})</strong> {option.text}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <span className="exam-question-selector-detail">
+                {q.questionType === "verdadeiro_falso"
+                  ? "Resposta: Verdadeiro ou Falso"
+                  : q.questionType === "numerica"
+                    ? `Resposta numérica: ${q.correctAnswer || "não informada"}`
+                    : q.questionType === "dissertativa"
+                      ? `${q.answerLines ?? 0} linha(s) de resposta`
+                      : "Cinco alternativas"}
               </span>
             </span>
           </label>

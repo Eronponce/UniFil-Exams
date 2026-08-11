@@ -42,6 +42,8 @@ function makeExam(sets: ExamSet[], overrides: Partial<Exam> = {}): Exam {
     title: "Prova de rastreabilidade",
     disciplineId: 1,
     institution: "UniFil",
+    instructions: "Instruções",
+    active: true,
     answerKeyWidthPt: 350,
     allowQuestionSplit: false,
     questionLayouts: {
@@ -50,6 +52,7 @@ function makeExam(sets: ExamSet[], overrides: Partial<Exam> = {}): Exam {
       numerica: "column",
       dissertativa: "full",
     },
+    questionLayoutOverrides: {},
     sets,
     createdAt: "2026-04-22",
     ...overrides,
@@ -78,7 +81,7 @@ describe("buildAnswerKeyCsv — objetivas", () => {
 });
 
 describe("buildAnswerKeyCsv — V/F and dissertativa", () => {
-  it("V/F question outputs V when shuffledOptions[correctShuffledIndex]=0", async () => {
+  it("V/F question outputs True/False, never V/F", async () => {
     mockGetQuestion.mockReturnValue(makeQuestion({ questionType: "verdadeiro_falso", options: [{ index: 0, text: "Verdadeiro" }, { index: 1, text: "Falso" }], correctIndex: 0 }));
 
     const set: ExamSet = {
@@ -90,8 +93,10 @@ describe("buildAnswerKeyCsv — V/F and dissertativa", () => {
     };
 
     const csv = buildAnswerKeyCsv("Prova VF", set);
-    expect(csv).toContain("1,V");
-    expect(csv).toContain("2,F");
+    expect(csv).toContain("1,True");
+    expect(csv).toContain("2,False");
+    expect(csv).not.toContain(",V,");
+    expect(csv).not.toContain(",F,");
   });
 
   it("dissertativa outputs '-'", async () => {
@@ -142,7 +147,8 @@ describe("buildExamTraceCsv", () => {
     const rows = buildExamTraceCsv(exam).split("\r\n");
     expect(rows[1]).toContain('"7:A:1"');
     expect(rows[1]).toContain('"10","A","1","12","verdadeiro_falso"');
-    expect(rows[1]).toContain('"V"');
+    expect(rows[1]).toContain('"True"');
+    expect(rows[1]).not.toContain('"V"');
     expect(rows[2]).toContain('"7:A:2"');
     expect(rows[2]).toContain('"11","objetiva"');
     expect(rows[2]).toContain('"B"');

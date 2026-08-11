@@ -209,4 +209,20 @@ describe("paginateQuestionsWithReservedLastPage", () => {
       "7:left:4-5",
     ]);
   });
+
+  it("reserves the measured first-page instructions area and uses the stricter one-page capacity", () => {
+    const pages = paginateQuestionsWithReservedLastPage(
+      [
+        { id: 1, displayNumber: 1, layout: "full", columnHeight: 60, fullHeight: 60 },
+        { id: 2, displayNumber: 2, layout: "full", columnHeight: 20, fullHeight: 20 },
+      ],
+      100,
+      100,
+      { firstPageQuestionAreaHeight: 60 },
+    );
+
+    expect(pages).toHaveLength(2);
+    expect(pages[0].placed.map((item) => item.displayNumber)).toEqual([1]);
+    expect(pages[1].placed.map((item) => item.displayNumber)).toEqual([2]);
+  });
 });

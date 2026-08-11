@@ -6,19 +6,26 @@ import { ExamDraftFields } from "./_components/exam-draft-fields";
 import { AuditedQuestionsSelector } from "./_components/audited-questions-selector";
 import { listQuestionsFiltered } from "@/lib/db/questions-filter";
 import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
-import { listExams } from "@/lib/db/exams";
-import { createExamAction, deleteExamAction } from "@/lib/actions/exams";
+import { listExams, type ExamStatusFilter } from "@/lib/db/exams";
+import { createExamAction, deleteExamAction, reactivateExamAction } from "@/lib/actions/exams";
 import { ConfirmButton } from "@/components/confirm-button";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icon";
 
 
-export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string; layoutObjetiva?: string; layoutVF?: string; layoutNumerica?: string; layoutDissertativa?: string; allowQuestionSplit?: string }> }) {
+export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; status?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string; layoutObjetiva?: string; layoutVF?: string; layoutNumerica?: string; layoutDissertativa?: string; allowQuestionSplit?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
-  const exams = listExams();
+  const status: ExamStatusFilter = sp.status === "inativas" || sp.status === "todas" ? sp.status : "ativas";
+  const exams = listExams(status);
   const selectedDisciplineId = sp.discipline ? Number(sp.discipline) : undefined;
   const selectedAreas = normalizeThematicAreas(sp.area);
+  const statusHref = (nextStatus: ExamStatusFilter) => {
+    const params = new URLSearchParams({ status: nextStatus });
+    if (selectedDisciplineId) params.set("discipline", String(selectedDisciplineId));
+    for (const area of selectedAreas) params.append("area", area);
+    return `/exams?${params.toString()}`;
+  };
 
   const auditedQuestions = selectedDisciplineId
     ? listQuestionsFiltered({ audited: true, disciplineId: selectedDisciplineId, thematicAreas: selectedAreas })
@@ -108,28 +115,53 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
         </div>
 
         <div>
-          <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1rem" }}>Provas Existentes</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 600, margin: 0 }}>Provas Existentes</h2>
+            <nav aria-label="Filtro de provas" className="actions-row">
+              {(["ativas", "inativas", "todas"] as const).map((value) => (
+                <Link
+                  key={value}
+                  href={statusHref(value)}
+                  className={`btn btn-sm ${status === value ? "btn-primary" : "btn-ghost"}`}
+                  aria-current={status === value ? "page" : undefined}
+                >
+                  {value === "ativas" ? "Ativas" : value === "inativas" ? "Inativas" : "Todas"}
+                </Link>
+              ))}
+            </nav>
+          </div>
           {exams.length === 0 ? (
             <EmptyState title="Nenhuma prova criada ainda" description="Quando o banco estiver auditado, sua próxima avaliação aparecerá aqui." action={<Link href="/audit" className="btn btn-ghost">Ver auditoria</Link>} icon="clipboard" />
           ) : (
             exams.map((exam) => (
               <div key={exam.id} className="card" style={{ marginBottom: "0.75rem" }}>
-                <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>{exam.title}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", fontWeight: 600, marginBottom: "0.25rem" }}>
+                  <span>{exam.title}</span>
+                  <span className={`badge ${exam.active ? "badge-success" : "badge-warning"}`}>{exam.active ? "Ativa" : "Inativa"}</span>
+                </div>
                 <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
                   {exam.sets.length} set(s) · {exam.sets[0]?.questions.length ?? 0} questões por set
                 </div>
                 <div className="actions-row">
                   <Link href={`/exports?exam=${exam.id}`} className="btn btn-sm btn-ghost">Exportar →</Link>
-                  <form action={deleteExamAction}>
-                    <input type="hidden" name="id" value={exam.id} />
-                    <ConfirmButton
-                      type="submit"
-                      className="btn btn-sm btn-danger"
-                      confirm={`Excluir a prova "${exam.title}"? Esta ação remove a prova e seus sets, mas preserva as questões.`}
-                    >
-                      Excluir
-                    </ConfirmButton>
-                  </form>
+                  <Link href={`/exams/${exam.id}/edit`} className="btn btn-sm btn-ghost">Editar</Link>
+                  {exam.active ? (
+                    <form action={deleteExamAction}>
+                      <input type="hidden" name="id" value={exam.id} />
+                      <ConfirmButton
+                        type="submit"
+                        className="btn btn-sm btn-danger"
+                        confirm={`Inativar a prova "${exam.title}"? Histórico, sets e arquivos continuarão preservados.`}
+                      >
+                        Inativar
+                      </ConfirmButton>
+                    </form>
+                  ) : (
+                    <form action={reactivateExamAction}>
+                      <input type="hidden" name="id" value={exam.id} />
+                      <button type="submit" className="btn btn-sm btn-primary">Reativar</button>
+                    </form>
+                  )}
                 </div>
               </div>
             ))

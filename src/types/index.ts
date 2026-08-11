@@ -56,9 +56,13 @@ export interface Exam {
   title: string;
   disciplineId: ID;
   institution: string;
+  instructions: string;
+  active: boolean;
   answerKeyWidthPt: number;
   allowQuestionSplit: boolean;
   questionLayouts: ExamQuestionLayouts;
+  /** Only explicit per-question overrides are stored. Missing keys inherit by type. */
+  questionLayoutOverrides: Record<number, QuestionLayout>;
   sets: ExamSet[];
   createdAt: string;
 }

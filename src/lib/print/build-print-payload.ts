@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
-import type { Exam, ExamQuestionLayouts, ExamSet, QuestionOption, QuestionType } from "@/types";
+import type { Exam, ExamQuestionLayouts, ExamSet, QuestionLayout, QuestionOption, QuestionType } from "@/types";
 import { getQuestion } from "@/lib/db/questions";
 import { sanitizeRichText } from "@/lib/html/rich-text";
+import type { ExamVersion } from "@/lib/exam/version";
 
 export interface PrintQuestionPayload {
   id: number;
@@ -12,6 +13,10 @@ export interface PrintQuestionPayload {
   shuffledOptions: number[];
   questionType: QuestionType;
   answerLines: number;
+  sourceQuestionId?: number;
+  layoutOverride?: QuestionLayout | null;
+  /** Resolved override first, then the persisted per-type layout. */
+  layout?: QuestionLayout;
 }
 
 export interface PrintSetPayload {
@@ -24,12 +29,14 @@ export interface PrintExamPayload {
   examId: number;
   title: string;
   institution: string;
+  instructions: string;
   answerKeyWidthPt: number;
   allowQuestionSplit: boolean;
   questionLayouts: ExamQuestionLayouts;
   logoUrl: string | null;
   answerKeyUrl: string | null;
   sets: PrintSetPayload[];
+  versionNumber?: number;
 }
 
 function existingPublicAsset(fileNames: string[]): string | null {
@@ -57,7 +64,7 @@ function getAnswerKeyUrl(examId: number): string | null {
     : null;
 }
 
-function buildPrintSet(set: ExamSet): PrintSetPayload {
+function buildPrintSet(set: ExamSet, exam: Exam): PrintSetPayload {
   const questions = [...set.questions]
     .sort((a, b) => a.position - b.position)
     .map((sq) => {
@@ -65,12 +72,15 @@ function buildPrintSet(set: ExamSet): PrintSetPayload {
       if (!question) return null;
       return {
         id: question.id,
+        sourceQuestionId: question.id,
         statementHtml: sanitizeRichText(question.statement),
         imageUrl: question.imageUrl,
         options: question.options,
         shuffledOptions: sq.shuffledOptions,
         questionType: question.questionType,
         answerLines: question.answerLines,
+        layoutOverride: exam.questionLayoutOverrides[question.id] ?? null,
+        layout: exam.questionLayoutOverrides[question.id] ?? exam.questionLayouts[question.questionType],
       };
     })
     .filter(Boolean) as PrintQuestionPayload[];
@@ -82,20 +92,47 @@ function buildPrintSet(set: ExamSet): PrintSetPayload {
   };
 }
 
-export function buildPrintExamPayload(exam: Exam): PrintExamPayload {
+function buildPrintSetFromSnapshot(set: ExamVersion["snapshot"]["sets"][number]): PrintSetPayload {
+  return {
+    id: set.sourceSetId,
+    label: set.label,
+    questions: [...set.questions]
+      .sort((a, b) => a.position - b.position)
+      .map((question) => ({
+        id: question.sourceQuestionId,
+        sourceQuestionId: question.sourceQuestionId,
+        statementHtml: sanitizeRichText(question.statementHtml),
+        imageUrl: question.imageUrl,
+        options: question.options.map((option) => ({ ...option })),
+        shuffledOptions: [...question.shuffledOptions],
+        questionType: question.questionType,
+        answerLines: question.answerLines,
+        layoutOverride: question.layoutOverride,
+        layout: question.layout,
+      })),
+  };
+}
+
+export function buildPrintExamPayload(exam: Exam, version?: ExamVersion | null): PrintExamPayload {
+  const snapshot = version?.snapshot;
   const sets = [...exam.sets]
     .sort((a, b) => a.label.localeCompare(b.label))
-    .map(buildPrintSet);
+    .map((set) => buildPrintSet(set, exam));
+  const snapshotSets = snapshot
+    ? [...snapshot.sets].sort((a, b) => a.label.localeCompare(b.label, "pt-BR", { numeric: true })).map(buildPrintSetFromSnapshot)
+    : sets;
 
   return {
     examId: exam.id,
-    title: exam.title,
-    institution: exam.institution,
-    answerKeyWidthPt: exam.answerKeyWidthPt,
-    allowQuestionSplit: exam.allowQuestionSplit,
-    questionLayouts: exam.questionLayouts,
+    title: snapshot?.title ?? exam.title,
+    institution: snapshot?.institution ?? exam.institution,
+    instructions: snapshot?.instructions ?? exam.instructions,
+    answerKeyWidthPt: snapshot?.answerKeyWidthPt ?? exam.answerKeyWidthPt,
+    allowQuestionSplit: snapshot?.allowQuestionSplit ?? exam.allowQuestionSplit,
+    questionLayouts: snapshot?.questionLayouts ?? exam.questionLayouts,
     logoUrl: getLogoUrl(),
     answerKeyUrl: getAnswerKeyUrl(exam.id),
-    sets,
+    sets: snapshotSets,
+    versionNumber: version?.versionNumber,
   };
 }

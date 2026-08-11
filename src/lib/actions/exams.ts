@@ -1,31 +1,25 @@
 "use server";
 
-import fs from "node:fs";
-import path from "node:path";
 import { revalidatePath } from "next/cache";
-import { createExam, createExamSet, deleteExam } from "@/lib/db/exams";
+import {
+  createExam,
+  createExamSet,
+  createExamVersion,
+  deactivateExam,
+  reactivateExam,
+  restoreExamVersion,
+  saveExamVersion,
+  type ExamVersionEditorInput,
+} from "@/lib/db/exams";
 import { getQuestion } from "@/lib/db/questions";
 import { buildSets, type QuestionInfo } from "@/lib/exam/randomize";
 import { normalizeExamSelectionRequest, pickQuestionsForExam } from "@/lib/exam/select-questions";
 import { redirectWithToast } from "@/lib/toast";
 import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import { normalizeExamQuestionLayouts } from "@/lib/exam/layout";
+import { normalizeExamInstructions } from "@/lib/exam/instructions";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
-const GABARITO_EXTENSIONS = ["png", "jpg", "jpeg"] as const;
-
-function removeExamFiles(examId: number) {
-  const directory = path.join(process.cwd(), "public", "gabaritos");
-  for (const extension of GABARITO_EXTENSIONS) {
-    const filePath = path.join(directory, `${examId}.${extension}`);
-    try {
-      fs.unlinkSync(filePath);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-  }
-}
-
 export async function createExamAction(formData: FormData) {
   const disciplineId = Number(formData.get("disciplineId"));
   const title = (formData.get("title") as string | null)?.trim() ?? "";
@@ -36,6 +30,7 @@ export async function createExamAction(formData: FormData) {
   const numDissertativasRaw = (formData.get("numDissertativas") as string | null) ?? "";
   const numNumericasRaw = (formData.get("numNumericas") as string | null) ?? "";
   const allowQuestionSplit = formData.get("allowQuestionSplit") === "1";
+  const instructions = normalizeExamInstructions(formData.get("instructions"));
   const questionLayouts = normalizeExamQuestionLayouts({
     objetiva: formData.get("layoutObjetiva"),
     verdadeiro_falso: formData.get("layoutVF"),
@@ -103,6 +98,7 @@ export async function createExamAction(formData: FormData) {
     disciplineId,
     title,
     institution,
+    instructions,
     allowQuestionSplit,
     questionIds: selectedQuestionInfos.map((q) => q.id),
     questionLayouts,
@@ -117,6 +113,8 @@ export async function createExamAction(formData: FormData) {
       correctShuffledIndices: s.correctShuffledIndices,
     });
   }
+
+  createExamVersion(exam.id, "Versão inicial");
 
   revalidatePath("/exams");
   revalidatePath("/exports");
@@ -138,8 +136,8 @@ export async function deleteExamAction(formData: FormData) {
     });
   }
 
-  const deleted = deleteExam(examId);
-  if (!deleted) {
+  const deactivated = deactivateExam(examId);
+  if (!deactivated) {
     redirectWithToast("/exams", {
       type: "error",
       title: "Prova não encontrada",
@@ -147,13 +145,131 @@ export async function deleteExamAction(formData: FormData) {
     });
   }
 
-  removeExamFiles(examId);
   revalidatePath("/exams");
   revalidatePath("/exports");
   revalidatePath("/");
   redirectWithToast("/exams", {
     type: "success",
-    title: "Prova excluída",
-    description: `A prova "${deleted.title}" e seus conjuntos foram removidos.`,
+    title: "Prova inativada",
+    description: `A prova "${deactivated.title}" foi ocultada das provas ativas. Histórico, sets e arquivos foram preservados.`,
   });
+}
+
+export async function reactivateExamAction(formData: FormData) {
+  const examId = Number(formData.get("id"));
+  if (!Number.isInteger(examId) || examId <= 0) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Prova inválida",
+      description: "Não foi possível identificar a prova para reativação.",
+    });
+  }
+
+  const reactivated = reactivateExam(examId);
+  if (!reactivated) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Prova não encontrada",
+      description: "A prova não existe mais.",
+    });
+  }
+
+  revalidatePath("/exams");
+  revalidatePath("/exports");
+  revalidatePath("/");
+  redirectWithToast("/exams?status=ativas", {
+    type: "success",
+    title: "Prova reativada",
+    description: `A prova "${reactivated.title}" voltou para a lista de provas ativas.`,
+  });
+}
+
+function readEditorInput(formData: FormData): { examId: number; input: ExamVersionEditorInput } {
+  const examId = Number(formData.get("examId"));
+  const formText = (value: FormDataEntryValue | null): string => typeof value === "string" ? value : "";
+  const questionLayoutOverrides: Record<number, "column" | "full" | null> = {};
+  for (const [name, value] of formData.entries()) {
+    const match = /^layoutOverride-(\d+)$/.exec(name);
+    if (!match) continue;
+    const normalized = typeof value === "string" ? value : "";
+    questionLayoutOverrides[Number(match[1])] = normalized === "column" || normalized === "full" ? normalized : null;
+  }
+  return {
+    examId,
+    input: {
+      title: formText(formData.get("title")).trim(),
+      institution: formText(formData.get("institution")).trim(),
+      instructions: normalizeExamInstructions(formData.get("instructions")),
+      allowQuestionSplit: formData.get("allowQuestionSplit") === "1",
+      questionLayouts: {
+        objetiva: formText(formData.get("layoutObjetiva")),
+        verdadeiro_falso: formText(formData.get("layoutVF")),
+        numerica: formText(formData.get("layoutNumerica")),
+        dissertativa: formText(formData.get("layoutDissertativa")),
+      },
+      questionLayoutOverrides,
+      changeNote: formText(formData.get("changeNote")).trim(),
+    },
+  };
+}
+
+export async function saveExamVersionAction(formData: FormData) {
+  const { examId, input } = readEditorInput(formData);
+  if (!Number.isInteger(examId) || examId <= 0) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Prova inválida",
+      description: "Não foi possível identificar a prova para edição.",
+    });
+  }
+
+  try {
+    const version = saveExamVersion(examId, input);
+    revalidatePath(`/exams/${examId}/edit`);
+    revalidatePath("/exams");
+    revalidatePath("/exports");
+    revalidatePath(`/print/exam/${examId}`);
+    redirectWithToast(`/exams/${examId}/edit?version=${version.versionNumber}`, {
+      type: "success",
+      title: "Nova versão salva",
+      description: `Versão ${version.versionNumber} criada sem alterar o histórico anterior.`,
+    });
+  } catch (error) {
+    redirectWithToast(`/exams/${examId}/edit`, {
+      type: "error",
+      title: "Não foi possível salvar",
+      description: error instanceof Error ? error.message : "Erro inesperado ao salvar a versão.",
+    });
+  }
+}
+
+export async function restoreExamVersionAction(formData: FormData) {
+  const examId = Number(formData.get("examId"));
+  const versionNumber = Number(formData.get("versionNumber"));
+  if (!Number.isInteger(examId) || examId <= 0 || !Number.isInteger(versionNumber) || versionNumber <= 0) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Versão inválida",
+      description: "Não foi possível identificar a versão para restauração.",
+    });
+  }
+
+  try {
+    const version = restoreExamVersion(examId, versionNumber);
+    revalidatePath(`/exams/${examId}/edit`);
+    revalidatePath("/exams");
+    revalidatePath("/exports");
+    revalidatePath(`/print/exam/${examId}`);
+    redirectWithToast(`/exams/${examId}/edit?version=${version.versionNumber}`, {
+      type: "success",
+      title: "Versão restaurada",
+      description: `A versão ${versionNumber} foi restaurada como a nova versão ${version.versionNumber}.`,
+    });
+  } catch (error) {
+    redirectWithToast(`/exams/${examId}/edit`, {
+      type: "error",
+      title: "Não foi possível restaurar",
+      description: error instanceof Error ? error.message : "Erro inesperado ao restaurar a versão.",
+    });
+  }
 }

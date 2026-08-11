@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { listExams } from "@/lib/db/exams";
+import { notFound } from "next/navigation";
+import { getExam, getExamVersion, hasExamVersions, listExamVersions, listExams } from "@/lib/db/exams";
 import { listDisciplines } from "@/lib/db/disciplines";
 import { getQuestion } from "@/lib/db/questions";
 import type { Question } from "@/types";
@@ -9,41 +10,129 @@ import { GabaritoUpload, LogoUpload } from "./upload-panel";
 import { RichText } from "@/components/rich-text";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { getExamQuestionIdsInSetAOrder, getExamReferenceSet, getQuestionOptionsInSetOrder } from "@/lib/exam/reference-set";
+import type { ExamVersionSnapshotQuestion } from "@/lib/exam/version";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 const DIFF_LABEL: Record<string, string> = { easy: "Fácil", medium: "Médio", hard: "Difícil" };
 const DIFF_COLOR: Record<string, string> = { easy: "#bbf7d0", medium: "#fef08a", hard: "#fecaca" };
 
-function quickAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, q: Question | undefined): string {
+interface ExportQuestion {
+  id: number;
+  disciplineId: number;
+  statement: string;
+  imageUrl: string | null;
+  options: Question["options"];
+  correctIndex: number;
+  difficulty: Question["difficulty"];
+  thematicArea: string | null;
+  explanation: string;
+  questionType: Question["questionType"];
+  answerLines: number;
+  correctAnswer: string;
+}
+
+function quickAnswer(sq: { shuffledOptions: number[]; correctShuffledIndex: number }, q: ExportQuestion | undefined): string {
   if (!q) return "?";
   if (q.questionType === "dissertativa") return "-";
   if (q.questionType === "numerica") return q.correctAnswer || "-";
-  if (q.questionType === "verdadeiro_falso") return (sq.shuffledOptions[sq.correctShuffledIndex] === 0) ? "V" : "F";
+  if (q.questionType === "verdadeiro_falso") return (sq.shuffledOptions[sq.correctShuffledIndex] === 0) ? "True" : "False";
   return LETTERS[sq.correctShuffledIndex] ?? "?";
 }
 
-export default async function ExportsPage({ searchParams }: { searchParams: Promise<{ exam?: string; new?: string }> }) {
+function snapshotQuestionToExport(question: ExamVersionSnapshotQuestion, disciplineId: number): ExportQuestion {
+  return {
+    id: question.sourceQuestionId,
+    disciplineId,
+    statement: question.statementHtml,
+    imageUrl: question.imageUrl,
+    options: question.options,
+    correctIndex: question.correctIndex,
+    difficulty: question.difficulty,
+    thematicArea: question.thematicArea,
+    explanation: question.explanation,
+    questionType: question.questionType,
+    answerLines: question.answerLines,
+    correctAnswer: question.correctAnswer,
+  };
+}
+
+function optionsInSetOrder(question: ExportQuestion, setQuestion: { shuffledOptions: number[] } | undefined) {
+  const byIndex = new Map(question.options.map((option) => [option.index, option]));
+  const indices = setQuestion?.shuffledOptions?.length === question.options.length
+    ? setQuestion.shuffledOptions
+    : question.options.map((option) => option.index);
+  return indices.map((originalIndex, position) => ({
+    originalIndex,
+    letter: String.fromCharCode(65 + position),
+    text: byIndex.get(originalIndex)?.text ?? "",
+    isCorrect: originalIndex === question.correctIndex,
+  }));
+}
+
+export default async function ExportsPage({ searchParams }: { searchParams: Promise<{ exam?: string; new?: string; version?: string }> }) {
   const sp = await searchParams;
-  const exams = listExams();
+  const exams = listExams("ativas");
   const disciplines = listDisciplines();
   const discMap = Object.fromEntries(disciplines.map((d) => [d.id, d.name]));
 
-  const selectedExam = sp.exam ? exams.find((e) => e.id === Number(sp.exam)) : exams[0];
+  const explicitExam = sp.exam ? getExam(Number(sp.exam)) : undefined;
+  if (sp.exam && !explicitExam) notFound();
+  const selectedExam = explicitExam ?? exams[0];
   const isNew = sp.new === "1";
 
+  const versions = selectedExam ? listExamVersions(selectedExam.id) : [];
+  const hasStoredVersions = selectedExam ? hasExamVersions(selectedExam.id) : false;
+  let selectedVersion = selectedExam ? getExamVersion(selectedExam.id) : undefined;
+  if (sp.version !== undefined) {
+    const versionNumber = /^\d+$/.test(sp.version) ? Number(sp.version) : NaN;
+    selectedVersion = Number.isSafeInteger(versionNumber) && versionNumber > 0
+      ? getExamVersion(selectedExam?.id ?? 0, versionNumber)
+      : undefined;
+  }
+  if ((sp.version !== undefined && (!selectedExam || !selectedVersion)) || (sp.version === undefined && hasStoredVersions && !selectedVersion)) notFound();
+  const sidebarExams = selectedExam && !selectedExam.active
+    ? [selectedExam, ...exams.filter((exam) => exam.id !== selectedExam.id)]
+    : exams;
+  const displayTitle = selectedVersion?.snapshot.title ?? selectedExam?.title ?? "";
+  const displayInstitution = selectedVersion?.snapshot.institution ?? selectedExam?.institution ?? "";
+  const displayAnswerKeyWidth = selectedVersion?.snapshot.answerKeyWidthPt ?? selectedExam?.answerKeyWidthPt ?? 350;
+  const displaySets = selectedVersion
+    ? selectedVersion.snapshot.sets.map((set) => ({
+        id: set.sourceSetId,
+        examId: selectedExam?.id ?? 0,
+        label: set.label,
+        evalBeeImageUrl: set.evalBeeImageUrl,
+        createdAt: "",
+        questions: set.questions.map((question) => ({
+          questionId: question.sourceQuestionId,
+          position: question.position,
+          shuffledOptions: question.shuffledOptions,
+          correctShuffledIndex: question.correctShuffledIndex,
+        })),
+      }))
+    : (selectedExam?.sets ?? []);
+
   const selectedExamQuestionIds = selectedExam
-    ? getExamQuestionIdsInSetAOrder(selectedExam.sets)
+    ? getExamQuestionIdsInSetAOrder(displaySets)
     : [];
-  const selectedExamQuestions = selectedExamQuestionIds
-    .map((id) => getQuestion(id))
-    .filter((q): q is NonNullable<typeof q> => q != null);
+  const snapshotQuestionMap = new Map(
+    selectedVersion?.snapshot.sets.flatMap((set) => set.questions.map((question) => [
+      question.sourceQuestionId,
+      snapshotQuestionToExport(question, selectedExam?.disciplineId ?? 0),
+    ] as const)) ?? [],
+  );
+  const selectedExamQuestions: ExportQuestion[] = selectedVersion
+    ? selectedExamQuestionIds.map((id) => snapshotQuestionMap.get(id)).filter((q): q is ExportQuestion => q != null)
+    : selectedExamQuestionIds.map((id) => getQuestion(id)).filter((q): q is NonNullable<typeof q> => q != null);
   const qMap = Object.fromEntries(selectedExamQuestions.map((q) => [q.id, q]));
-  const referenceSet = selectedExam ? getExamReferenceSet(selectedExam.sets) : undefined;
+  const referenceSet = selectedExam ? getExamReferenceSet(displaySets) : undefined;
   const referenceSetLabel = referenceSet?.label ?? "A";
   const referenceQuestionMap = new Map(referenceSet?.questions.map((question) => [question.questionId, question]) ?? []);
   const referenceOptionsMap = new Map(selectedExamQuestions.map((question) => [
     question.id,
-    getQuestionOptionsInSetOrder(question, referenceQuestionMap.get(question.id)),
+    selectedVersion
+      ? optionsInSetOrder(question, referenceQuestionMap.get(question.id))
+      : getQuestionOptionsInSetOrder(question as Question, referenceQuestionMap.get(question.id)),
   ]));
 
   return (
@@ -58,14 +147,14 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
             {/* Sidebar */}
             <div>
               <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.5rem" }}>Provas</p>
-              {exams.map((e) => (
+              {sidebarExams.map((e) => (
                 <Link
                   key={e.id}
                   href={`/exports?exam=${e.id}`}
                   className="btn btn-ghost"
                   style={{ display: "block", marginBottom: "0.4rem", textAlign: "left", background: selectedExam?.id === e.id ? "#f3f4f6" : "transparent" }}
                 >
-                  {e.title}
+                  {e.title}{!e.active ? " · inativa" : ""}
                 </Link>
               ))}
 
@@ -78,26 +167,56 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
             {/* Per-exam: PDF + CSV + gabarito upload */}
             {selectedExam && (
               <div>
-                <h2 style={{ fontWeight: 700, marginBottom: "0.25rem" }}>{selectedExam.title}</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
+                  <h2 style={{ fontWeight: 700, margin: 0 }}>{displayTitle}</h2>
+                  {!selectedExam.active && <span className="badge badge-warning">Prova inativa · acesso preservado</span>}
+                </div>
                 <p style={{ color: "var(--muted)", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
-                  {discMap[selectedExam.disciplineId]} · {selectedExam.institution}
+                  {discMap[selectedExam.disciplineId]} · {displayInstitution}
                 </p>
                 <p style={{ color: "var(--muted)", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
-                  {selectedExam.sets.length} set(s) · {selectedExam.sets[0]?.questions.length ?? 0} questões por set
+                  {displaySets.length} set(s) · {displaySets[0]?.questions.length ?? 0} questões por set
+                  {selectedVersion ? ` · versão ${selectedVersion.versionNumber}` : ""}
                 </p>
 
-                <GabaritoUpload key={selectedExam.id} examId={selectedExam.id} answerKeyWidthPt={selectedExam.answerKeyWidthPt} isNew={isNew} />
+                <GabaritoUpload key={selectedExam.id} examId={selectedExam.id} answerKeyWidthPt={displayAnswerKeyWidth} isNew={isNew} />
+
+                <div className="card" style={{ marginBottom: "1.25rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                    <div>
+                      <h3 style={{ fontWeight: 600, marginBottom: "0.25rem" }}>Histórico de versões</h3>
+                      <p style={{ fontSize: "0.8rem", color: "var(--muted)", margin: 0 }}>A versão mais recente é usada por padrão; versões antigas continuam imprimíveis.</p>
+                    </div>
+                    <Link href={`/exams/${selectedExam.id}/edit`} className="btn btn-ghost btn-sm">Editar prova</Link>
+                  </div>
+                  {versions.length > 0 ? (
+                    <form method="get" className="actions-row" style={{ marginTop: "0.85rem" }}>
+                      <input type="hidden" name="exam" value={selectedExam.id} />
+                      <label className="form-label" htmlFor="exports-version" style={{ margin: 0 }}>Versão</label>
+                      <select id="exports-version" name="version" className="form-select" defaultValue={selectedVersion?.versionNumber ?? versions[0]?.versionNumber}>
+                        {versions.map((version) => (
+                          <option key={version.id} value={version.versionNumber}>
+                            Versão {version.versionNumber}{version.changeNote ? ` · ${version.changeNote}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="submit" className="btn btn-ghost btn-sm">Abrir versão</button>
+                    </form>
+                  ) : (
+                    <p style={{ marginTop: "0.85rem", fontSize: "0.78rem", color: "var(--muted)" }}>Prova legada sem versões; a primeira edição criará um baseline e uma nova versão.</p>
+                  )}
+                </div>
 
                 <div className="card" style={{ marginBottom: "1.25rem" }}>
                   <h3 style={{ fontWeight: 600, marginBottom: "0.75rem" }}>Prova em HTML A4</h3>
                   <p style={{ fontSize: "0.875rem", color: "var(--muted)", marginBottom: "1rem" }}>
-                    Todos os sets ({selectedExam.sets.map((s) => `Set ${s.label}`).join(", ")}) em página fake A4, com preview na mesma aba e PDF direto gerado do mesmo HTML.
+                    Todos os sets ({displaySets.map((s) => `Set ${s.label}`).join(", ")}) em página fake A4, com preview na mesma aba e PDF direto gerado do mesmo HTML.
                   </p>
                   <div className="actions-row">
-                    <Link href={`/print/exam/${selectedExam.id}`} className="btn btn-primary">
+                    <Link href={`/print/exam/${selectedExam.id}${selectedVersion ? `?version=${selectedVersion.versionNumber}` : ""}`} className="btn btn-primary">
                       ⬇ Abrir Preview
                     </Link>
-                    <a href={`/api/pdf/exam/${selectedExam.id}`} className="btn btn-ghost">
+                    <a href={`/api/pdf/exam/${selectedExam.id}${selectedVersion ? `?version=${selectedVersion.versionNumber}` : ""}`} className="btn btn-ghost">
                       PDF direto
                     </a>
                     <a href={`/api/zip/exam/${selectedExam.id}`} className="btn btn-ghost" download>
@@ -118,7 +237,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                     Cruze a versão + número da questão do EvalBee com o ID no banco.
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    {selectedExam.sets.map((set) => (
+                    {displaySets.map((set) => (
                       <div key={set.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>
                           <strong>Set {set.label}</strong>

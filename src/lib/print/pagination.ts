@@ -36,6 +36,12 @@ export interface UniformAnswerKeyCandidate {
   separateTotalPages: number;
 }
 
+export interface PrintPaginationOptions {
+  allowQuestionSplit?: boolean;
+  /** Measured question area available after the first-page instructions block. */
+  firstPageQuestionAreaHeight?: number;
+}
+
 export function computeUniformTargetTotalPages(totals: number[]): number {
   const max = Math.max(...totals, 1);
   return max % 2 === 0 ? max : max + 1;
@@ -427,17 +433,21 @@ function attemptSplitLayout(
   return pages;
 }
 
-function resolveAllowQuestionSplit(options: boolean | { allowQuestionSplit?: boolean }): boolean {
-  return typeof options === "boolean" ? options : options.allowQuestionSplit === true;
+function resolvePaginationOptions(options: boolean | PrintPaginationOptions): PrintPaginationOptions {
+  return typeof options === "boolean" ? { allowQuestionSplit: options } : options;
 }
 
 export function paginateQuestionsWithReservedLastPage(
   questions: PrintQuestionLayoutInput[],
   questionAreaHeight: number,
   lastPageQuestionAreaHeight: number,
-  options: boolean | { allowQuestionSplit?: boolean } = false,
+  options: boolean | PrintPaginationOptions = false,
 ): PrintQuestionPageLayout[] {
-  const allowQuestionSplit = resolveAllowQuestionSplit(options);
+  const paginationOptions = resolvePaginationOptions(options);
+  const allowQuestionSplit = paginationOptions.allowQuestionSplit === true;
+  const firstPageCapacity = Number.isFinite(paginationOptions.firstPageQuestionAreaHeight)
+    ? Math.max(0, paginationOptions.firstPageQuestionAreaHeight as number)
+    : questionAreaHeight;
   const maxSplitFragments = questions.reduce(
     (total, question) => total + (hasValidSplitLayout(question) ? question.split!.optionCount : 1),
     0,
@@ -447,9 +457,11 @@ export function paginateQuestionsWithReservedLastPage(
     : Math.max(1, questions.length * 2 + 4);
 
   for (let pageCount = 1; pageCount <= maxPageCount; pageCount++) {
-    const capacities = Array.from({ length: pageCount }, (_, index) =>
-      index === pageCount - 1 ? lastPageQuestionAreaHeight : questionAreaHeight,
-    );
+    const capacities = Array.from({ length: pageCount }, (_, index) => {
+      if (pageCount === 1) return Math.min(firstPageCapacity, lastPageQuestionAreaHeight);
+      if (index === 0) return firstPageCapacity;
+      return index === pageCount - 1 ? lastPageQuestionAreaHeight : questionAreaHeight;
+    });
     const pages = allowQuestionSplit
       ? attemptSplitLayout(questions, capacities)
       : attemptAtomicLayout(questions, capacities);
