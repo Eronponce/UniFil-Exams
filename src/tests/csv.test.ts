@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Exam, ExamSet, Question } from "@/types";
-import { buildAnswerKeyCsv, buildExamTraceCsv } from "@/lib/pdf/exam-csv";
+import type { ExamVersionSnapshot } from "@/lib/exam/version";
+import {
+  buildAnswerKeyCsv,
+  buildAnswerKeyCsvFromSnapshot,
+  buildAnswerKeyMatrixCsvFromSnapshot,
+  buildExamTraceCsv,
+  buildExamTraceCsvFromSnapshot,
+} from "@/lib/pdf/exam-csv";
 
 const mockGetQuestion = vi.fn<(id: number) => Question | undefined>();
 
@@ -56,6 +63,56 @@ function makeExam(sets: ExamSet[], overrides: Partial<Exam> = {}): Exam {
     sets,
     createdAt: "2026-04-22",
     ...overrides,
+  };
+}
+
+function makeSnapshot(): ExamVersionSnapshot {
+  const makeVfQuestion = (sourceQuestionId: number, position: number, shuffledOptions: number[], correctShuffledIndex: number): ExamVersionSnapshot["sets"][number]["questions"][number] => ({
+    sourceQuestionId,
+    sourceSetId: 90,
+    position,
+    statementHtml: `<p>Enunciado histórico ${sourceQuestionId}</p>`,
+    imageUrl: `/uploads/questions/historico-${sourceQuestionId}.png`,
+    options: [
+      { index: 0, text: "Verdadeiro" },
+      { index: 1, text: "Falso" },
+    ],
+    shuffledOptions,
+    correctShuffledIndex,
+    questionType: "verdadeiro_falso",
+    answerLines: 0,
+    layoutOverride: null,
+    layout: "column",
+    difficulty: "medium",
+    thematicArea: "Área histórica",
+    correctIndex: shuffledOptions[correctShuffledIndex] ?? 0,
+    correctAnswer: "",
+    explanation: "Explicação histórica",
+  });
+
+  return {
+    schemaVersion: 1,
+    sourceExamId: 7,
+    title: "Prova histórica",
+    institution: "UniFil",
+    instructions: "Instruções históricas",
+    answerKeyWidthPt: 350,
+    allowQuestionSplit: false,
+    questionLayouts: {
+      objetiva: "column",
+      verdadeiro_falso: "column",
+      numerica: "column",
+      dissertativa: "full",
+    },
+    sets: [{
+      sourceSetId: 90,
+      label: "B",
+      evalBeeImageUrl: "/uploads/sets/historico.png",
+      questions: [
+        makeVfQuestion(701, 0, [0, 1], 0),
+        makeVfQuestion(702, 1, [1, 0], 0),
+      ],
+    }],
   };
 }
 
@@ -185,5 +242,38 @@ describe("buildExamTraceCsv", () => {
     expect(csv).toContain('"[Questão ausente no banco: ID 404]"');
     expect(csv).toContain('"ausente"');
     expect(csv).toContain("\r\n");
+  });
+});
+
+describe("versioned CSV builders", () => {
+  it("uses only the immutable snapshot and emits True/False for both V/F answers", () => {
+    mockGetQuestion.mockReturnValue(makeQuestion({
+      id: 701,
+      statement: "Enunciado atual que não pertence à versão",
+      questionType: "verdadeiro_falso",
+      options: [{ index: 0, text: "Verdadeiro" }, { index: 1, text: "Falso" }],
+    }));
+    const snapshot = makeSnapshot();
+    const set = snapshot.sets[0]!;
+
+    const singleSet = buildAnswerKeyCsvFromSnapshot(snapshot.title, set);
+    const matrix = buildAnswerKeyMatrixCsvFromSnapshot(snapshot);
+    const trace = buildExamTraceCsvFromSnapshot(snapshot);
+
+    expect(singleSet).toContain("1,True");
+    expect(singleSet).toContain("2,False");
+    expect(singleSet).toContain("Enunciado histórico 701");
+    expect(singleSet).not.toContain("Enunciado atual");
+    expect(singleSet).not.toContain(",V,");
+    expect(singleSet).not.toContain(",F,");
+    expect(matrix).toContain('"True"');
+    expect(matrix).toContain('"False"');
+    expect(trace).toContain('"701"');
+    expect(trace).toContain('"702"');
+    expect(trace).toContain('"True"');
+    expect(trace).toContain('"False"');
+    expect(trace).toContain('"90"');
+    expect(trace).not.toContain('"V"');
+    expect(trace).not.toContain('"F"');
   });
 });

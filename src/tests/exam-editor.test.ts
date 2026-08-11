@@ -8,10 +8,10 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const redirectWithToastMock = vi.hoisted(() => vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`); }));
 vi.mock("@/lib/toast", () => ({ redirectWithToast: redirectWithToastMock }));
 
-import { createExam, createExamSet, createExamVersion, getExam, listExamVersions } from "@/lib/db/exams";
+import { createExam, createExamSet, createExamVersion, getExam, listExamVersions, listExams } from "@/lib/db/exams";
 import { createQuestion } from "@/lib/db/questions";
 import { migrate } from "@/lib/db/schema";
-import { saveExamVersionAction } from "@/lib/actions/exams";
+import { createExamAction, saveExamVersionAction } from "@/lib/actions/exams";
 
 beforeEach(() => {
   db = new Database(":memory:");
@@ -53,4 +53,34 @@ it("saves editor fields as a new immutable version with only selected overrides"
   expect(getExam(exam.id)?.allowQuestionSplit).toBe(true);
   expect(getExam(exam.id)?.questionLayoutOverrides).toEqual({ [question.id]: "full" });
   expect(listExamVersions(exam.id)[1]?.snapshot.title).toBe("Antes");
+});
+
+it("filters initial full-width IDs after quantity selection and ignores invalid or non-selected IDs", async () => {
+  const first = createQuestion({ disciplineId: 1, statement: "<p>Primeira</p>", options: ["A", "B", "C", "D", "E"], correctIndex: 0 });
+  const second = createQuestion({ disciplineId: 1, statement: "<p>Segunda</p>", options: ["A", "B", "C", "D", "E"], correctIndex: 0 });
+  const random = vi.spyOn(Math, "random").mockReturnValue(0.99);
+  const formData = new FormData();
+  formData.set("disciplineId", "1");
+  formData.set("title", "Montagem inicial");
+  formData.set("quantitySets", "1");
+  formData.set("numObjetivas", "1");
+  formData.set("numVF", "0");
+  formData.set("numNumericas", "0");
+  formData.set("numDissertativas", "0");
+  formData.append("questionIds", String(first.id));
+  formData.append("questionIds", String(second.id));
+  formData.append("fullWidthQuestionIds", String(second.id));
+  formData.append("fullWidthQuestionIds", "0");
+  formData.append("fullWidthQuestionIds", "not-an-id");
+
+  try {
+    await expect(createExamAction(formData)).rejects.toThrow("REDIRECT");
+  } finally {
+    random.mockRestore();
+  }
+
+  const exam = listExams("todas")[0]!;
+  expect(exam.sets[0]?.questions.map((question) => question.questionId)).toEqual([first.id]);
+  expect(exam.questionLayoutOverrides).toEqual({});
+  expect(listExamVersions(exam.id)[0]?.snapshot.sets[0]?.questions[0]?.layout).toBe("column");
 });

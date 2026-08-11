@@ -56,6 +56,33 @@ describe("exam versions", () => {
     expect(version.snapshot.sets[0]?.questions[0]?.sourceSetId).toBeGreaterThan(0);
   });
 
+  it("persists only selected initial width overrides into exam_questions and version 1", () => {
+    const selected = addQuestion("<p>Selecionada</p>");
+    const notSelected = addQuestion("<p>Fora da prova</p>");
+    const exam = createExam({
+      disciplineId: 1,
+      title: "Com largura inicial",
+      questionIds: [selected.id],
+      questionLayoutOverrides: {
+        [selected.id]: "full",
+        [notSelected.id]: "full",
+        999999: "full",
+      },
+    });
+    createExamSet(exam.id, {
+      label: "A",
+      questionOrder: [selected.id],
+      shuffledOptions: [[0, 1, 2, 3, 4]],
+      correctShuffledIndices: [0],
+    });
+    const version = createExamVersion(exam.id);
+
+    expect(getExam(exam.id)?.questionLayoutOverrides).toEqual({ [selected.id]: "full" });
+    expect(version.snapshot.sets[0]?.questions[0]?.layout).toBe("full");
+    expect(buildPrintExamPayload(getExam(exam.id)!).sets[0]?.questions[0]?.layout).toBe("full");
+    expect(db.prepare("SELECT layout_override FROM exam_questions WHERE exam_id = ? AND question_id = ?").get(exam.id, selected.id)).toEqual({ layout_override: "full" });
+  });
+
   it("keeps the old printable payload immutable after a bank edit", () => {
     const { exam, question } = addExam();
     const version = getExamVersion(exam.id, 1)!;

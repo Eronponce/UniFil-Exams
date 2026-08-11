@@ -1,6 +1,7 @@
 import type { Exam, ExamSet } from "@/types";
 import { getQuestion } from "@/lib/db/questions";
 import { truncateRichTextPlain } from "@/lib/html/rich-text";
+import type { ExamVersionSnapshot, ExamVersionSnapshotSet } from "@/lib/exam/version";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -24,6 +25,21 @@ export function buildAnswerKeyCsv(examTitle: string, set: ExamSet): string {
     const q = getQuestion(sq.questionId);
     const answer = q ? resolveAnswer(sq, q.questionType, q.correctAnswer) : "?";
     const stmt = q ? `"${truncateRichTextPlain(q.statement, 60).replace(/"/g, '""')}"` : `"Q${sq.questionId}"`;
+    rows.push(`${idx + 1},${answer},${stmt}`);
+  });
+
+  return rows.join("\n");
+}
+
+/** Builds one set's answer key from an immutable version snapshot. */
+export function buildAnswerKeyCsvFromSnapshot(examTitle: string, set: ExamVersionSnapshotSet): string {
+  const rows: string[] = [`"Prova","${examTitle} — Set ${set.label}"`];
+  rows.push(`"Questão","Resposta","Enunciado"`);
+
+  const sorted = [...set.questions].sort((a, b) => a.position - b.position || a.sourceQuestionId - b.sourceQuestionId);
+  sorted.forEach((question, idx) => {
+    const answer = resolveAnswer(question, question.questionType, question.correctAnswer);
+    const stmt = `"${truncateRichTextPlain(question.statementHtml, 60).replace(/"/g, '""')}"`;
     rows.push(`${idx + 1},${answer},${stmt}`);
   });
 
@@ -60,6 +76,34 @@ export function buildAnswerKeyMatrixCsv(exam: Exam): string {
       if (!sq) { cells.push(`""`); continue; }
       const q = getQuestion(sq.questionId);
       const answer = q ? resolveAnswerMatrix(sq, q.questionType, q.correctAnswer) : "";
+      cells.push(`"${answer}"`);
+    }
+    rows.push(cells.join(","));
+  }
+
+  return rows.join("\n");
+}
+
+/** Builds the combined answer-key matrix without consulting current question rows. */
+export function buildAnswerKeyMatrixCsvFromSnapshot(snapshot: ExamVersionSnapshot): string {
+  if (snapshot.sets.length === 0) return "";
+
+  const sortedSets = snapshot.sets;
+  const questionLists = sortedSets.map((set) => [...set.questions].sort((a, b) => a.position - b.position || a.sourceQuestionId - b.sourceQuestionId));
+  const numQuestions = questionLists[0]?.length ?? 0;
+  const header = [
+    `"Núm. P"`,
+    ...sortedSets.map((set) => `"Tipo de prova ${set.label}"`),
+  ].join(",");
+  const rows: string[] = [header];
+
+  for (let pos = 0; pos < numQuestions; pos++) {
+    const cells: string[] = [`"${pos + 1}"`];
+    for (const questions of questionLists) {
+      const question = questions[pos];
+      const answer = question
+        ? resolveAnswerMatrix(question, question.questionType, question.correctAnswer)
+        : "";
       cells.push(`"${answer}"`);
     }
     rows.push(cells.join(","));
@@ -145,6 +189,37 @@ export function buildExamTraceCsv(exam: Exam): string {
         question?.correctIndex ?? "",
         Array.isArray(sq.shuffledOptions) ? JSON.stringify(sq.shuffledOptions) : "",
         statement,
+      ]));
+    });
+  }
+
+  return rows.join("\r\n");
+}
+
+/** Builds the traceability map from the immutable snapshot, including its source IDs and order. */
+export function buildExamTraceCsvFromSnapshot(snapshot: ExamVersionSnapshot): string {
+  const rows = [buildCsvRow(TRACE_HEADERS)];
+  const sets = [...snapshot.sets].sort((a, b) => a.label.localeCompare(b.label, "pt-BR") || a.sourceSetId - b.sourceSetId);
+
+  for (const set of sets) {
+    const questions = [...set.questions].sort((a, b) => a.position - b.position || a.sourceQuestionId - b.sourceQuestionId);
+    questions.forEach((question, index) => {
+      const displayedPosition = Number.isFinite(question.position) ? question.position + 1 : index + 1;
+      const answer = resolveTraceAnswer(question, question.questionType, question.correctAnswer);
+      rows.push(buildCsvRow([
+        `${snapshot.sourceExamId}:${set.label}:${displayedPosition}`,
+        snapshot.sourceExamId,
+        snapshot.title,
+        set.sourceSetId,
+        set.label,
+        displayedPosition,
+        question.sourceQuestionId,
+        question.questionType,
+        question.thematicArea ?? "",
+        answer,
+        question.correctIndex,
+        JSON.stringify(question.shuffledOptions),
+        truncateRichTextPlain(question.statementHtml, 160),
       ]));
     });
   }

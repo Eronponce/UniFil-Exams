@@ -134,12 +134,13 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
       ? optionsInSetOrder(question, referenceQuestionMap.get(question.id))
       : getQuestionOptionsInSetOrder(question as Question, referenceQuestionMap.get(question.id)),
   ]));
+  const csvVersionQuery = selectedVersion ? `?version=${selectedVersion.versionNumber}` : "";
 
   return (
     <>
       <PageHeader eyebrow="Avaliações · Entregar" title="Exportações" description="Confira cada conjunto e gere o preview A4, PDF direto, CSV de gabarito ou ZIP." actions={<Link href="/exams" className="btn btn-ghost">← Montar prova</Link>} />
 
-      {exams.length === 0 ? (
+      {!selectedExam ? (
         <EmptyState title="Nenhuma avaliação criada" description="Monte uma prova para liberar os arquivos de entrega." action={<Link href="/exams" className="btn btn-primary">Montar prova</Link>} icon="file-text" />
       ) : (
         <>
@@ -229,8 +230,8 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
                     <h3 style={{ fontWeight: 600, margin: 0 }}>Gabarito Rápido por Set (CSV)</h3>
                     <div className="actions-row">
-                      <a href={`/api/csv/exam/${selectedExam.id}`} className="btn btn-ghost btn-sm" download>⬇ Todos os Sets</a>
-                      <a href={`/api/csv/exam/${selectedExam.id}/trace`} className="btn btn-ghost btn-sm" download>↔ Mapa de rastreabilidade</a>
+                      <a href={`/api/csv/exam/${selectedExam.id}${csvVersionQuery}`} className="btn btn-ghost btn-sm" download>⬇ Todos os Sets</a>
+                      <a href={`/api/csv/exam/${selectedExam.id}/trace${csvVersionQuery}`} className="btn btn-ghost btn-sm" download>↔ Mapa de rastreabilidade</a>
                     </div>
                   </div>
                   <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.9rem" }}>
@@ -247,7 +248,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                             ).join("  ")}
                           </span>
                         </div>
-                        <a href={`/api/csv/${set.id}`} className="btn btn-ghost btn-sm" download>⬇ CSV</a>
+                        <a href={`/api/csv/${set.id}${csvVersionQuery}`} className="btn btn-ghost btn-sm" download>⬇ CSV</a>
                       </div>
                     ))}
                   </div>

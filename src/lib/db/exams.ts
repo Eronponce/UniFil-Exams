@@ -156,29 +156,42 @@ export function createExam(data: {
   allowQuestionSplit?: boolean;
   questionIds: number[];
   questionLayouts?: Partial<ExamQuestionLayouts>;
+  questionLayoutOverrides?: Record<number, QuestionLayout | null>;
 }): Exam {
   const db = getDb();
   const layouts = normalizeExamQuestionLayouts(data.questionLayouts);
-  const result = db
-    .prepare(`INSERT INTO exams (
-      discipline_id, title, institution, allow_question_split, answer_key_width_pt,
-      instructions, layout_objetiva, layout_verdadeiro_falso, layout_numerica, layout_dissertativa
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(
-      data.disciplineId,
-      data.title,
-      data.institution ?? DEFAULT_INSTITUTION,
-      data.allowQuestionSplit ? 1 : 0,
-      ANSWER_KEY_DEFAULT_WIDTH_PT,
-      normalizeExamInstructions(data.instructions),
-      layouts.objetiva,
-      layouts.verdadeiro_falso,
-      layouts.numerica,
-      layouts.dissertativa,
-    );
-  const examId = result.lastInsertRowid as number;
-  const insertQ = db.prepare("INSERT INTO exam_questions (exam_id, question_id, position, layout_override) VALUES (?, ?, ?, NULL)");
-  data.questionIds.forEach((qid, pos) => insertQ.run(examId, qid, pos));
+  const selectedQuestionIds = new Set(data.questionIds);
+  const overrides = new Map<number, QuestionLayout>();
+  for (const [rawQuestionId, layout] of Object.entries(data.questionLayoutOverrides ?? {})) {
+    const questionId = Number(rawQuestionId);
+    if (!selectedQuestionIds.has(questionId)) continue;
+    if (layout === "column" || layout === "full") overrides.set(questionId, layout);
+  }
+
+  let examId = 0;
+  const create = db.transaction(() => {
+    const result = db
+      .prepare(`INSERT INTO exams (
+        discipline_id, title, institution, allow_question_split, answer_key_width_pt,
+        instructions, layout_objetiva, layout_verdadeiro_falso, layout_numerica, layout_dissertativa
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(
+        data.disciplineId,
+        data.title,
+        data.institution ?? DEFAULT_INSTITUTION,
+        data.allowQuestionSplit ? 1 : 0,
+        ANSWER_KEY_DEFAULT_WIDTH_PT,
+        normalizeExamInstructions(data.instructions),
+        layouts.objetiva,
+        layouts.verdadeiro_falso,
+        layouts.numerica,
+        layouts.dissertativa,
+      );
+    examId = result.lastInsertRowid as number;
+    const insertQ = db.prepare("INSERT INTO exam_questions (exam_id, question_id, position, layout_override) VALUES (?, ?, ?, ?)");
+    data.questionIds.forEach((qid, pos) => insertQ.run(examId, qid, pos, overrides.get(qid) ?? null));
+  });
+  create();
   return getExam(examId)!;
 }
 

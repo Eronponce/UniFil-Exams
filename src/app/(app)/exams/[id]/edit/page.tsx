@@ -69,7 +69,7 @@ export default async function ExamEditPage({
           <div className="form-group">
             <label className="form-label" htmlFor="exam-instructions">Instruções da primeira página</label>
             <textarea id="exam-instructions" name="instructions" className="form-textarea exam-editor-instructions" defaultValue={exam.instructions} required />
-            <p className="form-help">Este bloco aparece e é medido no primeiro page de cada set.</p>
+            <p className="form-help">Este bloco aparece e é medido na primeira página de cada set.</p>
           </div>
 
           <section className="exam-editor-section">

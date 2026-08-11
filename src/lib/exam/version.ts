@@ -5,6 +5,14 @@ import { normalizeExamQuestionLayouts, normalizeQuestionLayout } from "./layout"
 
 export const EXAM_VERSION_SNAPSHOT_SCHEMA_VERSION = 1 as const;
 
+/** Returns the requested version number, or a stable sentinel for malformed input. */
+export function parseExamVersionNumber(value: string | null): number | "invalid" | undefined {
+  if (value === null) return undefined;
+  if (!/^\d+$/.test(value)) return "invalid";
+  const versionNumber = Number(value);
+  return Number.isSafeInteger(versionNumber) && versionNumber > 0 ? versionNumber : "invalid";
+}
+
 export interface ExamVersionSnapshotQuestion {
   sourceQuestionId: number;
   sourceSetId: number;

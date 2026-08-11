@@ -53,6 +53,7 @@ export function AuditedQuestionsSelector({ questions, areas = [] }: Props) {
   });
   const allQuestionIds = useMemo(() => new Set(sorted.map((question) => question.id)), [sorted]);
   const [selection, setSelection] = useState(() => ({ key: selectionKey, ids: new Set(sorted.map((q) => q.id)) }));
+  const [fullWidthIds, setFullWidthIds] = useState<Set<number>>(() => new Set());
 
   // A changed filtered pool deliberately starts fully selected by policy. The
   // parent gives this component a pool key, so a changed area set mounts a
@@ -88,11 +89,12 @@ export function AuditedQuestionsSelector({ questions, areas = [] }: Props) {
       </label>
       <div className="exam-question-selector-list">
         {sorted.map((q) => (
-          <label
+          <div
             key={q.id}
             className="exam-question-selector-card"
           >
             <input
+              id={`select-question-${q.id}`}
               type="checkbox"
               name="questionIds"
               value={q.id}
@@ -101,9 +103,9 @@ export function AuditedQuestionsSelector({ questions, areas = [] }: Props) {
               aria-label={`Selecionar questão ${q.id}`}
               className="exam-question-selector-checkbox"
             />
-            <span className="exam-question-selector-content">
+            <div className="exam-question-selector-content">
               <span className="exam-question-selector-heading">
-                <strong>Questão {q.id}</strong>
+                <label htmlFor={`select-question-${q.id}`} className="exam-question-selector-select-label">Questão {q.id}</label>
                 <span className="exam-question-selector-badges">
                   <span className="exam-question-selector-badge" style={{ background: TYPE_BG[q.questionType] ?? "#f3f4f6" }}>
                   {TYPE_LABEL[q.questionType] ?? q.questionType}
@@ -143,8 +145,26 @@ export function AuditedQuestionsSelector({ questions, areas = [] }: Props) {
                       ? `${q.answerLines ?? 0} linha(s) de resposta`
                       : "Cinco alternativas"}
               </span>
-            </span>
-          </label>
+              <label className="exam-question-selector-width">
+                <input
+                  type="checkbox"
+                  name="fullWidthQuestionIds"
+                  value={q.id}
+                  checked={fullWidthIds.has(q.id)}
+                  disabled={!selectedIds.has(q.id)}
+                  onChange={(event) => {
+                    setFullWidthIds((current) => {
+                      const next = new Set(current);
+                      if (event.target.checked) next.add(q.id);
+                      else next.delete(q.id);
+                      return next;
+                    });
+                  }}
+                />
+                <span>Largura total nesta prova</span>
+              </label>
+            </div>
+          </div>
         ))}
       </div>
     </div>

@@ -20,6 +20,17 @@ import { normalizeExamQuestionLayouts } from "@/lib/exam/layout";
 import { normalizeExamInstructions } from "@/lib/exam/instructions";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
+function readPositiveIntegerIds(formData: FormData, fieldName: string): number[] {
+  const ids = new Set<number>();
+  for (const value of formData.getAll(fieldName)) {
+    if (typeof value !== "string") continue;
+    const id = Number(value.trim());
+    if (Number.isSafeInteger(id) && id > 0) ids.add(id);
+  }
+  return [...ids];
+}
+
 export async function createExamAction(formData: FormData) {
   const disciplineId = Number(formData.get("disciplineId"));
   const title = (formData.get("title") as string | null)?.trim() ?? "";
@@ -38,6 +49,7 @@ export async function createExamAction(formData: FormData) {
     dissertativa: formData.get("layoutDissertativa"),
   });
   const allQuestionIds = (formData.getAll("questionIds") as string[]).map(Number).filter(Boolean);
+  const fullWidthQuestionIds = readPositiveIntegerIds(formData, "fullWidthQuestionIds");
   const thematicAreas = normalizeThematicAreas(formData.getAll("area").filter((value): value is string => typeof value === "string"));
   const qty = Math.min(Math.max(Number(quantitySetsRaw) || 1, 1), 8);
   const labels = SET_LETTERS.slice(0, qty);
@@ -94,6 +106,13 @@ export async function createExamAction(formData: FormData) {
     });
   }
 
+  const selectedQuestionIds = new Set(selectedQuestionInfos.map((question) => question.id));
+  const initialQuestionLayoutOverrides = Object.fromEntries(
+    fullWidthQuestionIds
+      .filter((questionId) => selectedQuestionIds.has(questionId))
+      .map((questionId) => [questionId, "full" as const]),
+  );
+
   const exam = createExam({
     disciplineId,
     title,
@@ -102,6 +121,7 @@ export async function createExamAction(formData: FormData) {
     allowQuestionSplit,
     questionIds: selectedQuestionInfos.map((q) => q.id),
     questionLayouts,
+    questionLayoutOverrides: initialQuestionLayoutOverrides,
   });
   const sets = buildSets(selectedQuestionInfos, labels);
 
@@ -132,7 +152,7 @@ export async function deleteExamAction(formData: FormData) {
     redirectWithToast("/exams", {
       type: "error",
       title: "Prova inválida",
-      description: "Não foi possível identificar a prova para exclusão.",
+      description: "Não foi possível identificar a prova para inativação.",
     });
   }
 
@@ -141,7 +161,7 @@ export async function deleteExamAction(formData: FormData) {
     redirectWithToast("/exams", {
       type: "error",
       title: "Prova não encontrada",
-      description: "A prova já foi removida ou não existe mais.",
+      description: "A prova não existe mais.",
     });
   }
 
