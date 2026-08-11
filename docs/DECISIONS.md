@@ -187,3 +187,9 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: add `/api/csv/exam/[examId]/trace` as a separate UTF-8 CSV with one row per printed question and the stable key `examId:setLabel:position`.
 - Reason: EvalBee version/position must be cross-referenced with the persisted question ID without changing existing answer-key CSVs.
 - Impact: rows are ordered by set label and displayed position, preserve the original shuffle/index data, leave dissertative answers blank intentionally, and keep missing question rows traceable instead of dropping them.
+
+## 2026-08-11 - Import generation is anchored to the professor's topic
+
+- Decision: `/questions/importar` asks for an explicit subject/topic and injects it into the centralized LLM prompt as `ASSUNTO/TEMA DA PROVA`.
+- Reason: a named topic prevents the model from drifting outside the requested scope while still allowing different subtopics and skills in the same question set.
+- Impact: the topic is referenced by the scope, construction, difficulty, distractor, diversity and source-fidelity rules; JSON is recommended for LLM generation, while CSV remains available for spreadsheet editing.

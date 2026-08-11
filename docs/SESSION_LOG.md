@@ -563,3 +563,10 @@
 - Criado `buildExamTraceCsv()` e a rota `/api/csv/exam/[examId]/trace`, com uma linha por questão impressa em cada set, resposta após embaralhamento, ordem original e ID da questão; questão ausente continua registrada.
 - `/exports` ganhou o botão “Mapa de rastreabilidade” e a explicação curta do cruzamento EvalBee ↔ banco.
 - Validação focada inicial foi bloqueada por ausência de dependências; o junction local para `node_modules` foi criado depois, sem instalação ou acesso externo.
+
+## 2026-08-11 - Assunto no prompt de importação
+
+- O importador ganhou o campo “Assunto/tema das questões”; o valor é inserido no prompt como `ASSUNTO/TEMA DA PROVA` e referenciado em todas as regras de escopo.
+- O prompt incorporou estrutura/densidade de enunciado, teste do contexto, dificuldade por raciocínio, fidelidade a materiais e controle de pistas nos distratores.
+- JSON foi documentado como formato preferencial para LLMs; CSV permanece indicado para edição tabular.
+- Validação: 20 arquivos, 116 testes; typecheck, lint e build passaram.
