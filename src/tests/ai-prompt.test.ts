@@ -40,6 +40,15 @@ describe("buildImportPrompt", () => {
     expect(prompt).toContain("TEMPLATE JSON COMPLETO");
   });
 
+  it("requires a standalone JSON file as the LLM response", () => {
+    const prompt = buildImportPrompt("Sistemas Operacionais");
+    expect(prompt).toContain("ARQUIVO JSON OBRIGATÓRIO");
+    expect(prompt).toContain("pronto para ser salvo com a extensão .json");
+    expect(prompt).toContain("deve começar pelo caractere {");
+    expect(prompt).toContain("Não envolva a resposta em um bloco");
+    expect(prompt).toContain("parser JSON padrão");
+  });
+
   it("places a complete four-type JSON template at the end", () => {
     const prompt = buildImportPrompt("Banco de Dados", { objetiva: 1, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 });
     expect(prompt.lastIndexOf('"version": 1')).toBeGreaterThan(prompt.lastIndexOf("REVISÃO FINAL"));

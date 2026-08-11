@@ -60,6 +60,7 @@ V1 usa IA para sugerir questoes objetivas. Nada gerado por IA entra no banco sem
 - O prompt exige exatamente as quantidades informadas; `0` desativa um tipo e as quantidades não entram como campos extras no JSON.
 - JSON é o formato recomendado para saída de LLM; CSV fica indicado para edição tabular.
 - O prompt copiado termina com o template JSON completo contendo os quatro tipos de questão.
+- A saída da LLM deve ser um arquivo `.json` standalone, sem bloco Markdown, CSV ou texto antes/depois do objeto.
 
 ## Fila de geracao em background (2026-04-24)
 - `/ai` usa `enqueueSingleAiGenerationAction` para gerar uma questao individual em background.

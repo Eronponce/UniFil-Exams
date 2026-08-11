@@ -388,6 +388,32 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
     <>
       <PageHeader eyebrow="Criar · Arquivo" title="Importar questões" description="Traga arquivos JSON ou CSV, valide o formato e selecione os itens antes de persistir." actions={<Link href="/questions" className="btn btn-ghost">← Voltar</Link>} />
 
+      {/* Upload form */}
+      <div className="card" style={{ marginBottom: "1.5rem" }}>
+        <p style={{ marginBottom: "1.5rem", opacity: 0.75, fontSize: "0.9rem" }}>
+          Importe a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines, explanation, correct_answer).
+        </p>
+        <p style={{ marginBottom: "1rem", opacity: 0.75, fontSize: "0.82rem" }}>
+          O campo <code>statement</code> aceita HTML sanitizado. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Atributos: {RICH_TEXT_ALLOWED_ATTRIBUTE_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}.
+        </p>
+        <form onSubmit={handleFileSubmit}>
+          <div className="form-group">
+            <label className="form-label">Disciplina de destino *</label>
+            <select name="disciplineId" className="form-select" required defaultValue={disciplines[0]?.id}>
+              {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Arquivo (.json ou .csv) *</label>
+            <input name="questionFile" type="file" accept=".json,.csv" className="form-input" style={{ padding: "0.4rem" }} required />
+          </div>
+          {error && <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</p>}
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary">Carregar e Visualizar</button>
+          </div>
+        </form>
+      </div>
+
       {/* Template reference */}
       <div className="card" style={{ marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
@@ -547,31 +573,6 @@ export function ImportFileClient({ disciplines }: { disciplines: Discipline[] })
         </pre>
       </div>
 
-      {/* Upload form */}
-      <div className="card">
-        <p style={{ marginBottom: "1.5rem", opacity: 0.75, fontSize: "0.9rem" }}>
-          Importe a partir de um arquivo <strong>.json</strong> (exportado por este sistema) ou <strong>.csv</strong> (colunas: statement, question_type, difficulty, option_a…e, correct_index, thematic_area, answer_lines, explanation, correct_answer).
-        </p>
-        <p style={{ marginBottom: "1rem", opacity: 0.75, fontSize: "0.82rem" }}>
-          O campo <code>statement</code> aceita HTML sanitizado. Tags: {RICH_TEXT_ALLOWED_TAGS_LABEL}. Atributos: {RICH_TEXT_ALLOWED_ATTRIBUTE_LABEL}. Styles: {RICH_TEXT_ALLOWED_STYLE_LABEL}.
-        </p>
-        <form onSubmit={handleFileSubmit}>
-          <div className="form-group">
-            <label className="form-label">Disciplina de destino *</label>
-            <select name="disciplineId" className="form-select" required defaultValue={disciplines[0]?.id}>
-              {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Arquivo (.json ou .csv) *</label>
-            <input name="questionFile" type="file" accept=".json,.csv" className="form-input" style={{ padding: "0.4rem" }} required />
-          </div>
-          {error && <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</p>}
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">Carregar e Visualizar</button>
-          </div>
-        </form>
-      </div>
     </>
   );
 }

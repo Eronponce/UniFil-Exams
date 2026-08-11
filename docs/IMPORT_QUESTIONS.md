@@ -23,6 +23,10 @@ status: active
 6. Salve a resposta da LLM em `.json`, carregue-a no importador, revise a prévia e selecione a disciplina.
 7. Confirme **Importar selecionadas**. A validação do schema acontece antes da persistência.
 
+## Saída obrigatória da LLM
+
+A resposta da LLM deve ser um único arquivo JSON pronto para salvar como `.json`. Ela deve começar com `{` e terminar com `}`, sem bloco `\`\`\`json`, Markdown, CSV, comentários ou texto adicional. O bloco JSON exibido no fim do prompt é somente referência do formato; não deve ser repetido como explicação fora do arquivo retornado.
+
 ## Assunto e quantidades
 
 O prompt nomeia o assunto como `ASSUNTO/TEMA DA PROVA` e repete essa referência nas regras de escopo, construção, dificuldade, distratores, diversidade e fidelidade aos materiais.

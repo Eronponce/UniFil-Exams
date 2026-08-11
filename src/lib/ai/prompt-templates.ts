@@ -346,6 +346,15 @@ REGRAS DE QUANTIDADE
   - Se algum valor ainda estiver marcado como [PREENCHA A QUANTIDADE], o professor deve preenchê-lo antes de enviar o prompt à LLM.`;
 }
 
+function buildImportOutputRules(): string {
+  return `FORMATO DA RESPOSTA — ARQUIVO JSON OBRIGATÓRIO
+- Retorne um único arquivo JSON válido, completo e pronto para ser salvo com a extensão .json.
+- A resposta final deve começar pelo caractere { e terminar pelo caractere }.
+- Não retorne Markdown, CSV, comentários, explicações, prefácio ou texto depois do JSON.
+- Não envolva a resposta em um bloco \`\`\`json; entregue diretamente o conteúdo do arquivo JSON.
+- O arquivo deve poder ser lido diretamente por um parser JSON padrão.`;
+}
+
 const IMPORT_TEMPLATE_JSON = `{
   "version": 1,
   "exportedAt": "2026-01-01T00:00:00.000Z",
@@ -459,6 +468,8 @@ Gere questões estritamente nesse formato JSON, respeitando todas as regras abai
 ${buildImportTopicRules(topic)}
 
 ${buildImportQuantityRules(counts)}
+
+${buildImportOutputRules()}
 
 FORMATO SUPERIOR OBRIGATÓRIO
 Mantenha exatamente esta estrutura superior do template fornecido:
