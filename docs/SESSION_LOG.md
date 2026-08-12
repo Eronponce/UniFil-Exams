@@ -24,7 +24,7 @@
 - Dry-run contra dados vivos passou, incluindo 9 SQLite, 2 dumps PostgreSQL e as áreas de arquivos/configuração, sem helper ou staging residual.
 - Primeiro snapshot remoto concluído: `613b2855f385a0551a4934d67088eb9f1a34e0a5c1d5d1759cee406a6c58b033`.
 - `check-backup-health.sh` confirmou `STATUS: healthy` e o snapshot remoto mais recente.
-- A verificação de restauração completa foi iniciada, mas a conectividade Tailscale/SSH/HTTP com o Dell caiu antes do resultado final; repetir `verify-system-backup.sh` após restabelecer o host.
+- A verificação de restauração foi retomada após restabelecer o host e concluída com sucesso; detalhes e correção de regressão registrados ao fim deste log.
 
 ## 2026-08-11
 
@@ -605,3 +605,12 @@
 - O importador ganhou quatro campos de quantidade: objetivas, verdadeiro/falso, numéricas e dissertativas; `0` desativa o tipo.
 - O prompt copiado agora inclui essas metas e termina com o JSON completo de exemplo contendo os quatro tipos, sem adicionar campos ao contrato de importação.
 - Validação: 20 arquivos, 118 testes; typecheck, lint e build passaram.
+
+## 2026-08-12 - Primeiro backup amplo e restauração verificada
+
+- Primeiro snapshot Restic no Google Drive concluído: `613b2855f385a0551a4934d67088eb9f1a34e0a5c1d5d1759cee406a6c58b033`.
+- O teste real encontrou recursão no wrapper do verificador quando `RESTIC_BIN` era o nome simples `restic`; o wrapper foi renomeado para `run_restic` e ganhou teste de regressão específico.
+- A validação restaurou `metadata/` e `databases/` em diretório temporário, sem alterar dados vivos: 15 checksums, 9 SQLite com `PRAGMA integrity_check`, 2 dumps PostgreSQL com `pg_restore --list` e `globals.sql` não vazio.
+- A restauração temporária transferiu 986,932 MiB; a execução corrigida teve pico de 295,6 MiB e zero swap. O diretório temporário foi removido automaticamente.
+- Um rate limit transitório do Google Drive foi recuperado automaticamente pelo rclone; o teste terminou com sucesso.
+- O timer `server-all-systems-backup.timer` permanece ativo para execução diária às 03:30 em `America/Sao_Paulo`, com atraso aleatório de até 10 minutos.

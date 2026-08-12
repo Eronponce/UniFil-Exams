@@ -76,23 +76,23 @@ for name in "$RESTIC_BIN" "$RCLONE_BIN" "$PYTHON_BIN" sha256sum find sort sed he
 done
 if [[ -n "$PG_RESTORE_BIN" ]]; then require_command "$PG_RESTORE_BIN"; else require_command "$DOCKER_BIN"; fi
 
-restic() {
+run_restic() {
   "$RESTIC_BIN" --repo "$EXPECTED_RESTIC_REPOSITORY" --password-file "$PASSWORD_FILE" \
     -o "rclone.program=$RCLONE_BIN" "$@"
 }
 
 SNAPSHOT_ID="$REQUESTED_SNAPSHOT"
 if [[ "$MODE" == latest ]]; then
-  SNAPSHOT_JSON="$(restic snapshots --latest 1 --json)" || die 'unable to read latest snapshot'
+  SNAPSHOT_JSON="$(run_restic snapshots --latest 1 --json)" || die 'unable to read latest snapshot'
   SNAPSHOT_ID="$(printf '%s\n' "$SNAPSHOT_JSON" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"[:space:]]*\)".*/\1/p' | head -n 1)"
 fi
 validate_snapshot_id "$SNAPSHOT_ID"
 if ((FULL_CHECK)); then
   log 'checking repository metadata and all packed data (--full)'
-  restic check --read-data || die 'Restic full check failed'
+  run_restic check --read-data || die 'Restic full check failed'
 else
   log 'checking repository metadata'
-  restic check || die 'Restic check failed'
+  run_restic check || die 'Restic check failed'
 fi
 
 VERIFY_ROOT="$(mktemp -d "$TMP_ROOT/system-backup-verify.XXXXXX")"
@@ -111,10 +111,10 @@ trap 'exit 143' TERM
 
 log "restoring metadata and databases for $SNAPSHOT_ID into a temporary directory"
 if ((FULL_CHECK)); then
-  restic restore "$SNAPSHOT_ID" --target "$VERIFY_ROOT" ||
+  run_restic restore "$SNAPSHOT_ID" --target "$VERIFY_ROOT" ||
     die 'Restic full verification restore failed'
 else
-  restic restore "$SNAPSHOT_ID" --target "$VERIFY_ROOT" --include databases --include metadata ||
+  run_restic restore "$SNAPSHOT_ID" --target "$VERIFY_ROOT" --include databases --include metadata ||
     die 'Restic verification restore failed'
 fi
 

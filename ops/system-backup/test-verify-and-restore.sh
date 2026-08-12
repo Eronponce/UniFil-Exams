@@ -217,7 +217,7 @@ run_with_env() {
   env -u SYSTEM_BACKUP_PG_RESTORE_BIN -u PG_RESTORE_BIN \
     SYSTEM_BACKUP_CONFIG_FILE="$CONFIG_FILE" \
     SYSTEM_BACKUP_PASSWORD_FILE="$PASSWORD_FILE" \
-    SYSTEM_BACKUP_RESTIC_BIN="$MOCK_DIR/restic" \
+    SYSTEM_BACKUP_RESTIC_BIN="${SYSTEM_BACKUP_RESTIC_BIN:-$MOCK_DIR/restic}" \
     SYSTEM_BACKUP_RCLONE_BIN="$MOCK_DIR/rclone" \
     SYSTEM_BACKUP_PYTHON_BIN="$MOCK_DIR/python3" \
     SYSTEM_BACKUP_DOCKER_BIN="$MOCK_DIR/docker" \
@@ -253,6 +253,19 @@ assert_not_contains "$DEFAULT_OUTPUT" "$SECRET_MARKER"
 [[ "$(grep -c '^python ' "$TEST_ROOT/default.mock.log")" == '9' ]] || fail 'expected nine Python SQLite checks'
 [[ "$(grep -c '^docker ' "$TEST_ROOT/default.mock.log")" == '2' ]] || fail 'expected two Docker pg_restore checks'
 printf 'PASS: default verification checks all SQLite files and both Supabase dumps\n'
+
+# Production resolves RESTIC_BIN to the bare command name "restic". Keep this
+# regression test so the shell wrapper cannot shadow and recursively call
+# itself again.
+BARE_RESTIC_OUTPUT="$TEST_ROOT/verify-bare-restic.out"
+if ! PATH="$MOCK_DIR:$PATH" SYSTEM_BACKUP_RESTIC_BIN=restic \
+  run_with_env bash "$VERIFY_SCRIPT" --snapshot snapshot-12345678 \
+  >"$BARE_RESTIC_OUTPUT" 2>&1; then
+  sed -n '1,120p' "$BARE_RESTIC_OUTPUT" >&2
+  fail 'bare restic command verification failed'
+fi
+assert_not_contains "$BARE_RESTIC_OUTPUT" "$SECRET_MARKER"
+printf 'PASS: bare restic command does not recurse through the wrapper\n'
 
 MISSING_DB_OUTPUT="$TEST_ROOT/missing-db.out"
 MOCK_OMIT_PATH='databases/canva-api/canva-api.db'
