@@ -56,6 +56,8 @@ USER_HOME="${HOME:-}"
   printf '%s\n' 'ERROR: HOME must be an absolute path' >&2
   exit 2
 }
+PATH="$USER_HOME/.local/bin:${PATH:-}"
+export PATH
 
 STATUS_FILE="${SYSTEM_BACKUP_STATUS_FILE:-${BACKUP_STATUS_FILE:-$USER_HOME/backups/system-wide/status/latest.env}}"
 CONFIG_FILE="${SYSTEM_BACKUP_CONFIG_FILE:-$USER_HOME/.config/server-backup/system-backup.env}"
@@ -150,7 +152,11 @@ cleanup_temporary_files() {
 trap cleanup_temporary_files EXIT
 
 RESTIC_STATE="skipped"
-if command -v restic >/dev/null 2>&1 && [[ -r "$CONFIG_FILE" ]]; then
+if [[ -e "$CONFIG_FILE" ]]; then
+  [[ -r "$CONFIG_FILE" ]] || health_fail failed 'Restic configuration is not readable'
+  RESTIC_BIN="$(command -v restic 2>/dev/null || true)"
+  RCLONE_BIN="$(command -v rclone 2>/dev/null || true)"
+  [[ -n "$RESTIC_BIN" ]] || health_fail failed 'Restic executable is unavailable'
   RESTIC_REPOSITORY="$(read_env_value RESTIC_REPOSITORY "$CONFIG_FILE" 2>/dev/null || true)"
   if [[ -z "$RESTIC_REPOSITORY" ]]; then
     RESTIC_REPOSITORY="$(read_env_value RESTIC_REPO "$CONFIG_FILE" 2>/dev/null || true)"
@@ -159,11 +165,14 @@ if command -v restic >/dev/null 2>&1 && [[ -r "$CONFIG_FILE" ]]; then
   if [[ -z "$RESTIC_REPOSITORY" || ! -r "$PASSWORD_FILE" ]]; then
     health_fail failed 'Restic configuration is incomplete'
   fi
+  if [[ "${RESTIC_REPOSITORY,,}" == rclone:* && -z "$RCLONE_BIN" ]]; then
+    health_fail failed 'rclone executable is unavailable for the Restic repository'
+  fi
 
   TEMP_RESTIC_OUTPUT="$(mktemp)"
   TEMP_RESTIC_ERROR="$(mktemp)"
   if ! RESTIC_PASSWORD_FILE="$PASSWORD_FILE" RESTIC_REPOSITORY="$RESTIC_REPOSITORY" \
-    restic snapshots --latest 1 --json > "$TEMP_RESTIC_OUTPUT" 2> "$TEMP_RESTIC_ERROR"; then
+    "$RESTIC_BIN" snapshots --latest 1 --json > "$TEMP_RESTIC_OUTPUT" 2> "$TEMP_RESTIC_ERROR"; then
     health_fail failed 'latest Restic snapshot check failed'
   fi
 

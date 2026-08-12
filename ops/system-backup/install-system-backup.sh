@@ -71,6 +71,8 @@ USER_HOME="${HOME:-}"
   printf '%s\n' 'ERROR: HOME contains a line break' >&2
   exit 2
 }
+PATH="$USER_HOME/.local/bin:${PATH:-}"
+export PATH
 
 LOGIN_USER="${USER:-}"
 if [[ -z "$LOGIN_USER" ]]; then

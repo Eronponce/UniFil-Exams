@@ -64,13 +64,15 @@ FAKE_HOME="$TEST_ROOT/home"
 FAKE_BIN="$TEST_ROOT/bin"
 SOURCE_FIXTURE="$TEST_ROOT/source"
 FAKE_REPOSITORY="$TEST_ROOT/repository"
-mkdir -p -- "$FAKE_HOME" "$FAKE_BIN" "$SOURCE_FIXTURE" "$FAKE_REPOSITORY"
+mkdir -p -- "$FAKE_HOME/.local/bin" "$FAKE_BIN" "$SOURCE_FIXTURE" "$FAKE_REPOSITORY"
 
 REAL_PYTHON3="$(command -v python3 2>/dev/null || true)"
 [[ -n "$REAL_PYTHON3" ]] || die 'python3 is required to run this test'
 ORIGINAL_PATH="${PATH:-}"
 export SYSTEM_BACKUP_REAL_PYTHON3="$REAL_PYTHON3"
 export SYSTEM_BACKUP_TEST_LOG="$TEST_ROOT/systemctl.log"
+export SYSTEM_BACKUP_RESTIC_LOG="$TEST_ROOT/restic.log"
+export SYSTEM_BACKUP_RCLONE_LOG="$TEST_ROOT/rclone.log"
 
 FAKE_COMMAND="$TEST_ROOT/fake-command"
 printf '%s\n' \
@@ -79,20 +81,32 @@ printf '%s\n' \
   'command_name="$(basename -- "$0")"' \
   'case "$command_name" in' \
   '  python3) exec "$SYSTEM_BACKUP_REAL_PYTHON3" "$@" ;;' \
-  "  restic) printf '%s\\n' '[{\"id\":\"test-snapshot\"}]' ;;" \
+  '  restic)' \
+  '    rclone_path="$(command -v rclone 2>/dev/null || true)"' \
+  '    [[ -n "$rclone_path" ]] || exit 1' \
+  '    printf "%s\n" "$RESTIC_REPOSITORY" > "$SYSTEM_BACKUP_RESTIC_LOG"' \
+  '    printf "%s\n" "$rclone_path" >> "$SYSTEM_BACKUP_RESTIC_LOG"' \
+  '    "$rclone_path" version >/dev/null' \
+  "    printf '%s\\n' '[{\"id\":\"test-snapshot\"}]'" \
+  '    ;;' \
   '  systemctl)' \
   '    printf "%s\n" "$*" >> "$SYSTEM_BACKUP_TEST_LOG"' \
   '    if [[ "$1" == "--user" && "$2" == "show-environment" ]]; then exit 0; fi' \
   '    exit 0' \
   '    ;;' \
   '  loginctl) printf "%s\n" no ;;' \
-  '  rclone|docker) exit 0 ;;' \
+  '  rclone) printf "%s\n" "$*" >> "$SYSTEM_BACKUP_RCLONE_LOG"; exit 0 ;;' \
+  '  docker) exit 0 ;;' \
   '  *) printf "unexpected fake command: %s\n" "$command_name" >&2; exit 1 ;;' \
   'esac' > "$FAKE_COMMAND"
 chmod 0750 -- "$FAKE_COMMAND"
-for command_name in rclone restic docker python3 systemctl loginctl; do
+for command_name in docker python3 systemctl loginctl; do
   cp -- "$FAKE_COMMAND" "$FAKE_BIN/$command_name"
   chmod 0750 -- "$FAKE_BIN/$command_name"
+done
+for command_name in rclone restic; do
+  cp -- "$FAKE_COMMAND" "$FAKE_HOME/.local/bin/$command_name"
+  chmod 0750 -- "$FAKE_HOME/.local/bin/$command_name"
 done
 
 for source_name in install-system-backup.sh server-all-systems-backup.service server-all-systems-backup.timer check-backup-health.sh; do
@@ -100,7 +114,7 @@ for source_name in install-system-backup.sh server-all-systems-backup.service se
 done
 printf '%s\n' '#!/usr/bin/env bash' 'set -Eeuo pipefail' 'exit 0' > "$SOURCE_FIXTURE/backup-all-systems.sh"
 chmod 0750 -- "$SOURCE_FIXTURE/backup-all-systems.sh"
-printf '%s\n' 'BACKUP_REPO=/fixture/repository' 'RESTIC_REPOSITORY=/fixture/restic-repository' > "$SOURCE_FIXTURE/system-backup.env.example"
+printf '%s\n' 'BACKUP_REPO=/fixture/repository' 'RESTIC_REPOSITORY=rclone:fixture:system-wide' > "$SOURCE_FIXTURE/system-backup.env.example"
 
 INSTALLER="$SOURCE_FIXTURE/install-system-backup.sh"
 HEALTH="$SOURCE_FIXTURE/check-backup-health.sh"
@@ -121,6 +135,8 @@ assert_file_contains "TARGET: $TARGET_CONFIG" "$DRY_RUN_OUTPUT"
 assert_file_contains "TARGET: $TARGET_PASSWORD" "$DRY_RUN_OUTPUT"
 assert_file_contains "TARGET: $TARGET_SERVICE" "$DRY_RUN_OUTPUT"
 assert_file_contains "TARGET: $TARGET_TIMER" "$DRY_RUN_OUTPUT"
+assert_file_contains "PREREQUISITE: found rclone ($FAKE_HOME/.local/bin/rclone)" "$DRY_RUN_OUTPUT"
+assert_file_contains "PREREQUISITE: found restic ($FAKE_HOME/.local/bin/restic)" "$DRY_RUN_OUTPUT"
 [[ ! -e "$FAKE_HOME/.config" ]] || die 'dry-run created user files'
 
 INSTALL_OUTPUT="$TEST_ROOT/install.out"
@@ -145,7 +161,7 @@ assert_file_contains 'RandomizedDelaySec=10m' "$TARGET_TIMER"
 assert_file_contains 'Unit=server-all-systems-backup.service' "$TARGET_TIMER"
 assert_file_contains '--user enable --now server-all-systems-backup.timer' "$SYSTEM_BACKUP_TEST_LOG"
 
-printf '%s\n' 'BACKUP_REPO=/preserved/config' 'RESTIC_REPOSITORY=/fixture/restic-repository' > "$TARGET_CONFIG"
+printf '%s\n' 'BACKUP_REPO=/preserved/config' 'RESTIC_REPOSITORY=rclone:fixture:system-wide' > "$TARGET_CONFIG"
 printf '%s\n' 'preserved-password-value' > "$TARGET_PASSWORD"
 PRESERVED_PASSWORD="$(<"$TARGET_PASSWORD")"
 SECOND_INSTALL_OUTPUT="$TEST_ROOT/second-install.out"
@@ -159,7 +175,7 @@ assert_file_not_contains "$PRESERVED_PASSWORD" "$SECOND_INSTALL_OUTPUT"
 mkdir -p -- "$(dirname -- "$STATUS_FILE")"
 RECENT_FINISHED_AT="$(date -u -d '1 hour ago' '+%Y-%m-%dT%H:%M:%SZ')"
 STALE_FINISHED_AT="$(date -u -d '40 hours ago' '+%Y-%m-%dT%H:%M:%SZ')"
-printf '%s\n' 'BACKUP_REPO=/preserved/config' 'RESTIC_REPOSITORY=/fixture/restic-repository' > "$TARGET_CONFIG"
+printf '%s\n' 'BACKUP_REPO=/preserved/config' 'RESTIC_REPOSITORY=rclone:fixture:system-wide' > "$TARGET_CONFIG"
 printf '%s\n' 'preserved-password-value' > "$TARGET_PASSWORD"
 
 printf '%s\n' \
@@ -175,6 +191,9 @@ if ! env HOME="$FAKE_HOME" PATH="$TEST_PATH" bash "$HEALTH" > "$HEALTHY_OUTPUT" 
 fi
 assert_file_contains 'STATUS: healthy' "$HEALTHY_OUTPUT"
 assert_file_contains 'RESTIC: latest snapshot verified' "$HEALTHY_OUTPUT"
+assert_file_contains 'rclone:fixture:system-wide' "$SYSTEM_BACKUP_RESTIC_LOG"
+assert_file_contains "$FAKE_HOME/.local/bin/rclone" "$SYSTEM_BACKUP_RESTIC_LOG"
+assert_file_contains 'version' "$SYSTEM_BACKUP_RCLONE_LOG"
 
 printf '%s\n' \
   'RESULT=success' \
