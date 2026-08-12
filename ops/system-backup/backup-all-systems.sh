@@ -563,6 +563,7 @@ PY
 }
 ensure_restic_repository() {
   local check_status
+  local check_error
   ERROR_STAGE=repository-check
   if "$RESTIC_BIN" "${RESTIC_ARGS[@]}" --no-cache snapshots \
     > "$RUN_DIR/tmp/restic-repository-check.out" \
@@ -571,7 +572,12 @@ ensure_restic_repository() {
   else
     check_status=$?
   fi
-  if [[ "$check_status" -eq 10 ]]; then
+  check_error="$(<"$RUN_DIR/tmp/restic-repository-check.err")"
+  if [[ "$check_status" -eq 10 ]] || {
+    [[ "$check_status" -eq 1 ]] &&
+      [[ "$check_error" == *'unable to open config file: <config/> does not exist'* ]] &&
+      [[ "$check_error" == *'Is there a repository at the following location?'* ]]
+  }; then
     ERROR_STAGE=repository-init
     log "Restic repository is absent; initializing the encrypted repository"
     "$RESTIC_BIN" "${RESTIC_ARGS[@]}" init \

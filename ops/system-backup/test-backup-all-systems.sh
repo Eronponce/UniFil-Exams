@@ -209,7 +209,13 @@ done
 [[ -n "$rclone_program" ]] || exit 4
 case "$subcommand" in
   snapshots)
-    [[ -e "$state_path.repo" ]] && exit 0 || exit 10
+    if [[ -e "$state_path.repo" ]]; then
+      exit 0
+    fi
+    printf '%s\n' \
+      'Fatal: unable to open config file: <config/> does not exist' \
+      'Is there a repository at the following location?' >&2
+    exit 1
     ;;
   init)
     : > "$state_path.repo"
