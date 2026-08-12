@@ -1,5 +1,31 @@
 # Session Log
 
+## 2026-08-12 - Backup diário criptografado de todos os sistemas
+
+### Cobertura e arquitetura
+
+- Inventariados os containers, bind mounts, volumes nomeados e bancos persistentes do Dell remoto.
+- Implementado Restic criptografado e deduplicado sobre o remote rclone `unifil-drive:Servidor-Eron/backup-restic`.
+- Incluídos UniFil Exams, Canva API, Eron Dashboard, Mirror legado, os volumes ativo e histórico do Grade App, as duas cópias host do Grade, todos os bancos conectáveis do Supabase (`postgres` e `_supabase`), storage/functions/snippets e configurações necessárias para recuperação.
+- Segredos entram somente por allowlist explícita dentro do snapshot criptografado; `rclone.conf` e a senha Restic são excluídos.
+- Retenção configurada em 14 diários, 8 semanais e 12 mensais, com prune inicialmente desativado.
+
+### Operação e segurança
+
+- Instalados `rclone` e `restic` em `~/.local/bin`, sem alteração global de pacotes.
+- OAuth do Google Drive validado; pasta remota criada e configuração protegida com modo `0600`.
+- Instalado timer systemd do usuário para 03:30 `America/Sao_Paulo`, persistente, com atraso aleatório de até 10 minutos; `linger` ativado para funcionar sem sessão SSH.
+- Senha Restic gerada com modo `0600`; cópia de recuperação conferida por SHA-256 em `C:\Users\eronp\Documents\UniFil-Backup-Recovery\restic-password.txt`, fora do Google Drive e com ACL restrita ao usuário/SYSTEM.
+- O cron local PostgreSQL anterior foi preservado como camada adicional durante a adoção inicial.
+
+### Evidência
+
+- Os três harnesses Bash passaram localmente e no Ubuntu remoto.
+- Dry-run contra dados vivos passou, incluindo 9 SQLite, 2 dumps PostgreSQL e as áreas de arquivos/configuração, sem helper ou staging residual.
+- Primeiro snapshot remoto concluído: `613b2855f385a0551a4934d67088eb9f1a34e0a5c1d5d1759cee406a6c58b033`.
+- `check-backup-health.sh` confirmou `STATUS: healthy` e o snapshot remoto mais recente.
+- A verificação de restauração completa foi iniciada, mas a conectividade Tailscale/SSH/HTTP com o Dell caiu antes do resultado final; repetir `verify-system-backup.sh` após restabelecer o host.
+
 ## 2026-08-11
 
 - Added the persisted per-exam `allowQuestionSplit` preference with a Portuguese controlled checkbox and validation-redirect preservation.
