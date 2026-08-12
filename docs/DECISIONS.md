@@ -205,3 +205,12 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: export one high-resolution commented answer-key PNG per exam set through `/api/png/[setId]`, with optional `?version=N`.
 - Reason: teachers need a polished image artifact to attach to external class/assessment systems without converting the HTML page manually.
 - Impact: each image preserves the selected set order and shuffled objective letter, writes V/F answers as `True`/`False`, includes the bank question ID and justification, and reads immutable snapshot content for historical versions.
+
+## 2026-08-12 - Server-wide backup uses encrypted Restic over Google Drive
+
+- Decision: create one daily, application-consistent snapshot of every production database and persistent data area with Restic, using the rclone Google Drive remote only as the encrypted repository transport.
+- Coverage: UniFil Exams, Canva API, Grade App active/historical volumes and host copies, Eron Dashboard, legacy Mirror SQLite, all connectable Supabase PostgreSQL databases, Supabase storage/functions/snippets/configuration, and an explicit recovery-config allowlist.
+- Retention: 14 daily, 8 weekly, and 12 monthly snapshots; pruning stays disabled until verified operational history exists.
+- Recovery: automated restore is extraction-only into a new or empty staging directory. Replacing live data remains a separately approved maintenance action.
+- Security: the Restic password and rclone OAuth configuration are never included in the repository; the password must have a recovery copy outside the same Google Drive account.
+- Continuity: the pre-existing local PostgreSQL cron backup remains enabled during initial adoption as a separate short-term recovery layer.

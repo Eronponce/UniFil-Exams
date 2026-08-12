@@ -200,16 +200,27 @@ loginctl show-user eronp -p Linger
 systemctl --user daemon-reload
 ~~~
 
-6. Initialize the Restic repository only if it has not already been
-   initialized and only after independently safeguarding the password. Then
-   run one foreground backup through the installed service and inspect its
-   journal. The exact unit name is the one installed by the system-backup
-   installer; the examples below use <code>server-system-backup</code>.
+6. Run the idempotent installer from the repository. It generates the Restic
+   password only when none exists, preserves an existing configuration and
+   password, installs the user service/timer, and enables the timer. Safeguard
+   the generated password independently before relying on the remote copy.
 
 ~~~bash
-systemctl --user start server-system-backup.service
-systemctl --user status server-system-backup.service --no-pager
-journalctl --user -u server-system-backup.service --since today --no-pager
+bash ops/system-backup/install-system-backup.sh --check \
+  --repo /home/eronp/UniFil-Exams
+bash ops/system-backup/install-system-backup.sh --install \
+  --repo /home/eronp/UniFil-Exams
+~~~
+
+7. Start one foreground backup through the installed service and inspect its
+   journal. The engine initializes the encrypted Restic repository only when
+   Restic explicitly reports that the repository does not exist; authentication
+   and other repository errors fail closed.
+
+~~~bash
+systemctl --user start server-all-systems-backup.service
+systemctl --user status server-all-systems-backup.service --no-pager
+journalctl --user -u server-all-systems-backup.service --since today --no-pager
 ~~~
 
 The first successful run must leave a Restic snapshot with all four top-level
@@ -221,22 +232,22 @@ and metadata entries.
 Use the service, timer, journal, and repository views together:
 
 ~~~bash
-systemctl --user status server-system-backup.timer --no-pager
-systemctl --user list-timers 'server-system-backup.timer'
-journalctl --user -u server-system-backup.service --since '7 days ago' --no-pager
+systemctl --user status server-all-systems-backup.timer --no-pager
+systemctl --user list-timers 'server-all-systems-backup.timer'
+journalctl --user -u server-all-systems-backup.service --since '7 days ago' --no-pager
 restic --repo 'rclone:unifil-drive:Servidor-Eron/backup-restic' \
   --password-file "$HOME/.config/server-backup/restic-password" snapshots
 ~~~
 
-Retention is a policy decision, not a substitute for verification. After a
-successful backup and a successful verification, retain at least seven daily,
-four weekly, and twelve monthly snapshots, or use the values configured by
-the installed engine:
+Retention is a policy decision, not a substitute for verification. The
+installed defaults retain 14 daily, 8 weekly, and 12 monthly snapshots.
+Pruning is disabled by default; enable it in the configuration only after the
+first backup and verification have succeeded.
 
 ~~~bash
 restic --repo 'rclone:unifil-drive:Servidor-Eron/backup-restic' \
   --password-file "$HOME/.config/server-backup/restic-password" \
-  forget --keep-daily 7 --keep-weekly 4 --keep-monthly 12 --prune
+  forget --keep-daily 14 --keep-weekly 8 --keep-monthly 12
 ~~~
 
 Do not prune while investigating a failed verification, a missing password,
