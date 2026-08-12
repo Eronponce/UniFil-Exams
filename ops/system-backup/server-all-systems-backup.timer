@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily UniFil Exams system-wide Restic backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 America/Sao_Paulo
+Persistent=true
+RandomizedDelaySec=10m
+Unit=server-all-systems-backup.service
+
+[Install]
+WantedBy=timers.target
