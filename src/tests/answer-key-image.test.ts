@@ -56,11 +56,27 @@ describe("commented answer-key image", () => {
     expect(width).toBe(1400);
     expect(height).toBeGreaterThan(500);
     expect(svg).toContain("GABARITO COMENTADO");
+    expect(svg).toContain("ENUNCIADO");
     expect(svg).toContain("Prova &lt;Final&gt;");
     expect(svg).toContain("UniFil &amp; Curso  •  Set B  •  Versão 4");
     expect(svg).toContain("D — Segunda");
     expect(svg).toContain("Justificativa segura &amp; completa");
     expect(svg).not.toContain("<Final>");
+  });
+
+  it("keeps long statements readable without the old 520-character truncation", () => {
+    const statement = `${"Contexto detalhado para leitura confortável. ".repeat(18)}MARCADOR_FINAL_DO_ENUNCIADO`;
+    const { svg, height } = buildAnswerKeySvg({
+      examTitle: "Prova extensa",
+      institution: "UniFil",
+      setLabel: "A",
+      questions: [question({ statementHtml: statement })],
+    });
+
+    expect(statement.length).toBeGreaterThan(520);
+    expect(svg).toContain("MARCADOR_FINAL_DO_ENUNCIADO");
+    expect(svg).toContain('class="statement-label">ENUNCIADO</text>');
+    expect(height).toBeGreaterThan(1_000);
   });
 
   it("renders a real PNG payload", async () => {

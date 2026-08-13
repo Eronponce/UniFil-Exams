@@ -127,15 +127,17 @@ export function resolveAnswerKeyImageAnswer(question: AnswerKeyImageQuestion): s
 }
 
 function prepareQuestion(question: AnswerKeyImageQuestion): PreparedQuestion {
-  const statement = richTextPlain(question.statementHtml, 520) || `Questão do banco #${question.sourceQuestionId}`;
+  const statement = richTextPlain(question.statementHtml, 2400) || `Questão do banco #${question.sourceQuestionId}`;
   const explanation = richTextPlain(question.explanation, 1800) || "Sem justificativa cadastrada.";
-  const statementLines = wrapText(statement, 92);
+  // Statements use a larger bold font than explanations. Keep the line
+  // shorter so glyphs never cross the right edge of the card.
+  const statementLines = wrapText(statement, 70);
   const answerLines = wrapText(resolveAnswerKeyImageAnswer(question), 78);
   const explanationLines = wrapText(explanation, 91);
-  const height = 331
-    + (statementLines.length * 34)
-    + (answerLines.length * 31)
-    + (Math.max(0, explanationLines.length - 1) * 31);
+  const height = 393
+    + (statementLines.length * 38)
+    + (answerLines.length * 33)
+    + (Math.max(0, explanationLines.length - 1) * 32);
 
   return {
     ...question,
@@ -176,9 +178,11 @@ export function buildAnswerKeySvg(input: AnswerKeyImageInput): { svg: string; wi
     const cardX = PAGE_MARGIN;
     const innerX = cardX + 42;
     const cardWidth = CONTENT_WIDTH;
-    const statementY = cardY + 116;
-    const answerBoxY = statementY + (question.statementLines.length * 34) + 20;
-    const answerBoxHeight = 55 + (question.answerLines.length * 31);
+    const statementBoxY = cardY + 86;
+    const statementY = statementBoxY + 70;
+    const statementBoxHeight = 92 + (question.statementLines.length * 38);
+    const answerBoxY = statementBoxY + statementBoxHeight + 18;
+    const answerBoxHeight = 57 + (question.answerLines.length * 33);
     const explanationLabelY = answerBoxY + answerBoxHeight + 48;
     const explanationY = explanationLabelY + 42;
     y += question.height + 28;
@@ -189,7 +193,9 @@ export function buildAnswerKeySvg(input: AnswerKeyImageInput): { svg: string; wi
         <circle cx="${innerX + 25}" cy="${cardY + 49}" r="25" fill="#f59e0b"/>
         <text x="${innerX + 25}" y="${cardY + 58}" text-anchor="middle" class="question-number">${question.position}</text>
         <text x="${innerX + 70}" y="${cardY + 56}" class="question-meta">${escapeXml(question.typeLabel)}  •  BANCO #${question.sourceQuestionId}</text>
-        ${textLines(question.statementLines, innerX, statementY, 34, "statement")}
+        <rect x="${innerX}" y="${statementBoxY}" width="${cardWidth - 84}" height="${statementBoxHeight}" rx="16" fill="#f6f9fc" stroke="#d8e3ec" stroke-width="1"/>
+        <text x="${innerX + 22}" y="${statementBoxY + 30}" class="statement-label">ENUNCIADO</text>
+        ${textLines(question.statementLines, innerX + 22, statementY, 38, "statement")}
         <rect x="${innerX}" y="${answerBoxY}" width="${cardWidth - 84}" height="${answerBoxHeight}" rx="16" fill="#eaf8ef"/>
         <text x="${innerX + 22}" y="${answerBoxY + 25}" class="answer-label">RESPOSTA CORRETA</text>
         ${textLines(question.answerLines, innerX + 22, answerBoxY + 62, 31, "answer")}
@@ -212,7 +218,8 @@ export function buildAnswerKeySvg(input: AnswerKeyImageInput): { svg: string; wi
       .meta { fill: #d8e7f1; font-size: 23px; }
       .question-number { fill: #ffffff; font-size: 26px; font-weight: 700; }
       .question-meta { fill: #476072; font-size: 22px; font-weight: 700; letter-spacing: 1px; }
-      .statement { fill: #172b3a; font-size: 25px; font-weight: 600; }
+      .statement-label { fill: #31566f; font-size: 17px; font-weight: 700; letter-spacing: 1px; }
+      .statement { fill: #102a3a; font-size: 28px; font-weight: 700; }
       .answer-label { fill: #237a48; font-size: 17px; font-weight: 700; letter-spacing: 1px; }
       .answer { fill: #14532d; font-size: 23px; font-weight: 700; }
       .explanation-label { fill: #31566f; font-size: 18px; font-weight: 700; letter-spacing: 1px; }

@@ -1,5 +1,12 @@
 # Session Log
 
+## 2026-08-13 - Enunciado legível no PNG comentado
+
+- Corrigida a quebra de linhas que permitia ao enunciado ultrapassar e ser cortado na borda direita do card.
+- O limite de texto do enunciado aumentou de 520 para 2.400 caracteres.
+- O PNG ganhou bloco visual `ENUNCIADO`, fonte maior, contraste reforçado e cálculo de altura compatível com textos longos.
+- Adicionado teste de regressão com enunciado acima de 520 caracteres e marcador no final.
+
 ## 2026-08-12 - Documentação consolidada de produto e backup
 
 - Criado [[IMPLEMENTATION_HISTORY_2026-08]] com as implementações de montagem, paginação, versões, inativação, importação, rastreabilidade, `True/False`, PNG comentado e backup amplo.
