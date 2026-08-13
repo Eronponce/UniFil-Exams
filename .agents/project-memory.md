@@ -12,7 +12,7 @@ status: active
 
 - Repository: `UniFil-Exams`; local-first, single-user academic exam workspace.
 - Stack: Next.js `16.2.4`, React `19.2.4`, TypeScript, SQLite via `better-sqlite3`, Zustand `5` already present.
-- Production recovery uses the repository package under `ops/system-backup/`: encrypted Restic over rclone Google Drive, daily user-systemd timer, application-consistent SQLite/PostgreSQL snapshots, explicit secret allowlist, and extraction-only restore tooling. The Restic password recovery copy must remain outside the same Google Drive account.
+- Production recovery uses the repository package under `ops/system-backup/`: encrypted Restic over rclone Google Drive, daily user-systemd timer, application-consistent SQLite/PostgreSQL snapshots, explicit secret allowlist, and extraction-only restore tooling. By explicit owner decision, the password exists on the server, in a protected Windows recovery file, and as plaintext at `Servidor-Eron/RECUPERACAO-NAO-APAGAR/restic-password.txt` in the same Drive; document the exposure but do not print the secret.
 - Worktree for the 2026-08-04 UI bundle: `C:\Users\eronp\.codex\worktrees\71c7\UniFil-Exams`.
 - User data and uploads are out of scope for UI work; do not read, copy, seed, migrate or delete them.
 - Print routes and components are compatibility-sensitive and are not owned by the app UI task.

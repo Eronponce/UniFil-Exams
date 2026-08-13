@@ -29,6 +29,8 @@ Start here for project knowledge.
 
 ## Project Operations
 - [[BOOTSTRAP|Bootstrap]]
+- [[IMPLEMENTATION_HISTORY_2026-08|Implementações de agosto de 2026]]
+- [[SERVER_ALL_SYSTEMS_BACKUP|Backup amplo e recuperação do servidor]]
 - [[DECISIONS|Decisions]]
 - [[SESSION_LOG|Session Log]]
 - [[TODO|Active Todo]]

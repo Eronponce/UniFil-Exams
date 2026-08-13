@@ -1,5 +1,13 @@
 # Session Log
 
+## 2026-08-12 - Documentação consolidada de produto e backup
+
+- Criado [[IMPLEMENTATION_HISTORY_2026-08]] com as implementações de montagem, paginação, versões, inativação, importação, rastreabilidade, `True/False`, PNG comentado e backup amplo.
+- [[EXPORTS_EVALBEE]] foi corrigido para refletir `True`/`False` e exportações históricas versionadas.
+- [[BACKUP_GOOGLE_DRIVE]] foi marcado como pacote legado substituído por [[SERVER_ALL_SYSTEMS_BACKUP]].
+- O runbook e a memória persistente agora registram a decisão explícita de manter uma cópia da senha Restic em texto puro no mesmo Drive, além das cópias no servidor e no Windows.
+- O incidente Netdata de swap foi documentado com causa raiz, limites de contenção, correção do wrapper recursivo e evidência da restauração real.
+
 ## 2026-08-12 - Backup diário criptografado de todos os sistemas
 
 ### Cobertura e arquitetura

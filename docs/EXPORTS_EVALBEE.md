@@ -40,7 +40,7 @@ O sistema gera prova para impressao e gabarito separado. A correcao acontece for
 - Um CSV por set.
 - Colunas: `Questão`, `Resposta`, `Enunciado`.
 - Questao objetiva usa letra final ja randomizada (`A`-`E`).
-- Verdadeiro/falso usa `V` ou `F`.
+- Verdadeiro/falso usa `True` ou `False`, nunca `V` ou `F`.
 - Dissertativa usa `-`.
 - Filename: `gabarito-{safe-title}-set-{label}.csv` (slug a partir do título da prova; portável em Linux).
 - Encoding: UTF-8 sem BOM; `Content-Disposition: attachment`.
@@ -64,6 +64,13 @@ Campos principais:
 - `enunciado_resumido`
 
 Para validar resultados do EvalBee: use `versao_set` + `posicao_exibida` como chave de junção, leia `id_questao_banco` e compare a resposta do aluno com `resposta_correta_exibida`. A ordem embaralhada fica no mesmo arquivo para auditoria posterior.
+
+## Versões históricas e PNG comentado
+
+- Provas editadas possuem versões imutáveis selecionáveis em `/exports`.
+- PDF, CSV por set, matriz, rastreabilidade e PNG recebem `?version=N` e usam exclusivamente o snapshot escolhido.
+- Cada set oferece um PNG de alta resolução com resposta correta, ID original da questão e justificativa, adequado para anexar à vista de prova.
+- V/F também aparece como `True` ou `False` no PNG.
 
 ## Exportacao de banco de questoes
 - JSON e CSV de questoes ficam em `/api/export/questions`.

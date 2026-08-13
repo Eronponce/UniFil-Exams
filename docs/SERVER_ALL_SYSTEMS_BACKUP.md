@@ -17,8 +17,10 @@ read-only with respect to live services.
 > [!warning]
 > The Restic password is the recovery boundary. If the password is lost, the
 > encrypted snapshots cannot be decrypted, even if the Google Drive files and
-> the rclone OAuth token still exist. Save the password offline and outside the
-> same Google Drive account.
+> the rclone OAuth token still exist. Keep independent recovery copies. By
+> explicit owner decision, this installation also stores a plaintext copy in
+> the same Drive; that improves availability but allows anyone with Drive
+> access to decrypt the repository.
 
 ## Fixed paths and storage
 
@@ -28,10 +30,12 @@ The operator configuration and password paths are fixed:
 - Restic password: <code>~/.config/server-backup/restic-password</code>
 - Restic repository: <code>rclone:unifil-drive:Servidor-Eron/backup-restic</code>
 
-The repository is encrypted by Restic. Never upload a raw archive, a copied
-database, a plaintext secret, or the Restic password with <code>rclone</code>.
-The backup/verification tools pass the password file directly to Restic and
-do not print its contents.
+The repository is encrypted by Restic. The automated job never uploads a raw
+archive, copied database, plaintext secret, or password outside the encrypted
+repository. The backup/verification tools pass the password file directly to
+Restic and do not print its contents. The owner-requested recovery copy at
+<code>Servidor-Eron/RECUPERACAO-NAO-APAGAR/restic-password.txt</code> is a
+deliberate exception and is not created or refreshed by the daily job.
 
 The verification and restore scripts prepend <code>$HOME/.local/bin</code> to
 <code>PATH</code> for noninteractive SSH sessions. Their Restic calls also
@@ -187,8 +191,9 @@ says otherwise.
 2. Configure <code>unifil-drive</code> with rclone OAuth and confirm the remote
    path without copying any plaintext data.
 3. Create the fixed configuration and password files. The configuration must
-   point to the fixed repository above; the password file must contain only
-   the Restic password and must be stored independently of Drive.
+   point to the fixed repository above and the password file must contain only
+   the Restic password. Maintain at least one independent recovery copy even
+   if the owner-requested plaintext Drive copy remains available.
 4. Confirm the backup allowlist and the live-path protection list before the
    first run. Do not add an entire home directory as a shortcut.
 5. For a user-level systemd timer, enable user lingering for the service
@@ -203,7 +208,7 @@ systemctl --user daemon-reload
 6. Run the idempotent installer from the repository. It generates the Restic
    password only when none exists, preserves an existing configuration and
    password, installs the user service/timer, and enables the timer. Safeguard
-   the generated password independently before relying on the remote copy.
+   the generated password independently before relying on either remote copy.
 
 ~~~bash
 bash ops/system-backup/install-system-backup.sh --check \
@@ -413,12 +418,15 @@ snapshot.
 ## Recovery warnings
 
 - A missing Restic password is unrecoverable by Google Drive, the Google Drive
-  connector, Gmail, or rclone OAuth. Maintain an offline recovery copy with
-  controlled access.
+  connector, Gmail, or rclone OAuth. Current recovery copies exist on the
+  server, protected Windows storage, and—by explicit owner decision—as
+  plaintext in the same Drive. Maintain the independent Windows copy.
 - An expired rclone OAuth grant affects repository access, not encryption
   recovery. Reauthorize the <code>unifil-drive</code> remote separately and
   rerun verification.
-- Never use plaintext copies to work around a Restic or OAuth problem.
+- Do not create additional plaintext copies as a workaround for a Restic or
+  OAuth problem; use the documented recovery copies and rotate them together
+  if the password changes.
 - An extracted destination contains plaintext restored data. Restrict its
   permissions and have the operator remove it through the approved host
   cleanup process after the incident; the restore script intentionally never

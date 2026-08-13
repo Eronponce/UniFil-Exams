@@ -8,6 +8,9 @@ status: active
 
 # UniFil Exams — Google Drive backup
 
+> [!warning] Pacote legado substituído
+> Este documento descreve o pacote antigo, limitado ao UniFil Exams. Em produção, o mecanismo ativo é o backup amplo e criptografado descrito em [[SERVER_ALL_SYSTEMS_BACKUP]]. Não instale este timer junto do atual sem revisar sobreposição, carga e retenção.
+
 This package creates a consistent SQLite snapshot while the Docker app keeps
 running, archives it with `public/uploads/` and `public/gabaritos/`, writes
 SHA-256 manifests, and uploads the result with `rclone`.
@@ -17,10 +20,8 @@ The implementation uses the installed container's Node.js and
 does not plain-copy the live database, stop the app, restart the app, install
 rclone, or install credentials.
 
-> [!warning]
-> This host currently has no rclone remote configured. Google Drive access has
-> not been tested or used by this package implementation. Configure the remote
-> once, then run the installer/checks below.
+> [!info]
+> O servidor atualmente possui o remote `unifil-drive` configurado e validado para o pacote amplo. As instruções abaixo permanecem apenas como referência histórica do mecanismo anterior.
 
 ## Files and defaults
 
