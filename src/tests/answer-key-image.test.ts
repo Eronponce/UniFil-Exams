@@ -79,6 +79,20 @@ describe("commented answer-key image", () => {
     expect(height).toBeGreaterThan(1_000);
   });
 
+  it("preserves readable spacing between rich-text blocks", () => {
+    const { svg } = buildAnswerKeySvg({
+      examTitle: "Prova HTML",
+      institution: "UniFil",
+      setLabel: "A",
+      questions: [question({
+        statementHtml: "<p>Primeiro parágrafo.</p><p>Segundo parágrafo.</p><ul><li>Item um</li><li>Item dois</li></ul>",
+      })],
+    });
+
+    expect(svg).toContain("Primeiro parágrafo. Segundo parágrafo. Item um Item dois");
+    expect(svg).not.toContain("parágrafo.Segundo");
+  });
+
   it("renders a real PNG payload", async () => {
     const png = await renderAnswerKeyPng({
       examTitle: "Teste de conhecimentos",

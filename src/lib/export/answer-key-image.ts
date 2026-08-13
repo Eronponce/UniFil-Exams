@@ -61,7 +61,10 @@ function decodeHtmlEntities(value: string): string {
 }
 
 function richTextPlain(value: string, maxLength: number): string {
-  return decodeHtmlEntities(truncateRichTextPlain(value, maxLength)).replace(/\s+/g, " ").trim();
+  const withBlockBoundaries = value
+    .replace(/<\s*br\s*\/?\s*>/gi, " ")
+    .replace(/<\s*\/?\s*(?:p|div|li|tr|th|td|ul|ol|table)(?:\s[^>]*)?>/gi, " ");
+  return decodeHtmlEntities(truncateRichTextPlain(withBlockBoundaries, maxLength)).replace(/\s+/g, " ").trim();
 }
 
 function plainText(value: string, maxLength: number): string {
