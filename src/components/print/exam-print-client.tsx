@@ -14,6 +14,7 @@ import type { PrintExamPayload, PrintQuestionPayload, PrintSetPayload } from "@/
 import { getAnswerKeyWidthRatio } from "@/lib/pdf/answer-key-layout";
 import { richTextHasTable } from "@/lib/html/rich-text";
 import { MIN_ESSAY_TABLE_SCALE } from "@/lib/print/table-layout";
+import { getPrintQuestionImageWidth } from "@/lib/print/question-image-layout";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -62,6 +63,7 @@ interface RenderState {
 interface QuestionRenderPrefs {
   tableScale: number;
   adaptiveTable: boolean;
+  imageWidth?: number;
 }
 
 function buildDisplaySets(sets: PrintSetPayload[]): DisplaySet[] {
@@ -96,6 +98,25 @@ function getFragmentMeasureKey(
   end: number,
 ): string {
   return `${measureKey}-${layout}-${continuation ? "continuation" : "first"}-${start}-${end}`;
+}
+
+function applyMeasuredImageWidth(
+  node: HTMLDivElement | null | undefined,
+  containerWidth: number,
+  pageMetrics: PageMetrics,
+): number | undefined {
+  const image = node?.querySelector<HTMLImageElement>(".exam-print-question-image");
+  if (!node || !image) return undefined;
+
+  const width = getPrintQuestionImageWidth({
+    naturalWidth: image.naturalWidth,
+    naturalHeight: image.naturalHeight,
+    containerWidth,
+    pageWidth: pageMetrics.fullWidth,
+    pageHeight: pageMetrics.fullHeight,
+  });
+  node.style.setProperty("--question-image-width", `${width}px`);
+  return width;
 }
 
 async function waitForImages(root: HTMLElement | null): Promise<void> {
@@ -147,6 +168,7 @@ export function QuestionBlock({
   question,
   tableScale = 1,
   adaptiveTable = false,
+  imageWidth,
   optionStart = 0,
   optionEnd,
   continuation = false,
@@ -154,6 +176,7 @@ export function QuestionBlock({
   question: DisplayQuestion;
   tableScale?: number;
   adaptiveTable?: boolean;
+  imageWidth?: number;
   optionStart?: number;
   optionEnd?: number;
   continuation?: boolean;
@@ -161,9 +184,10 @@ export function QuestionBlock({
   const firstOption = Math.max(0, optionStart);
   const lastOption = Math.min(question.shuffledOptions.length, optionEnd ?? question.shuffledOptions.length);
   const className = `exam-print-question${adaptiveTable ? " exam-print-question--adaptive-table" : ""}`;
-  const style = adaptiveTable
+  const style = adaptiveTable || imageWidth !== undefined
     ? ({
-        "--essay-table-scale": `${tableScale}`,
+        ...(adaptiveTable ? { "--essay-table-scale": `${tableScale}` } : {}),
+        ...(imageWidth !== undefined ? { "--question-image-width": `${imageWidth}px` } : {}),
       } as CSSProperties)
     : undefined;
 
@@ -351,6 +375,9 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           const hasTable = getStatementIsFullWidth(question.statementHtml);
           const isTableQuestion = hasTable;
           const layout = question.layout ?? payload.questionLayouts[question.questionType];
+          const columnImageWidth = applyMeasuredImageWidth(columnNode, pageMetrics.columnWidth, pageMetrics);
+          const fullImageWidth = applyMeasuredImageWidth(fullNode, pageMetrics.fullWidth, pageMetrics);
+          const imageWidth = layout === "column" ? columnImageWidth : fullImageWidth;
 
           if (isTableQuestion && columnNode && fullNode) {
             const measureTable = columnNode.querySelector("table");
@@ -368,6 +395,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
             questionRenderPrefs[question.measureKey] = {
               tableScale,
               adaptiveTable: true,
+              imageWidth,
             };
 
             return {
@@ -382,6 +410,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           questionRenderPrefs[question.measureKey] = {
             tableScale: 1,
             adaptiveTable: isTableQuestion,
+            imageWidth,
           };
 
           let split: PrintQuestionSplitLayoutInput | undefined;
@@ -390,6 +419,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
             const firstHeights = Array.from({ length: optionCount + 1 }, (_, end) => {
               if (end === 0) return 0;
               const node = fragmentMeasureRefs.current[getFragmentMeasureKey(question.measureKey, layout, false, 0, end)];
+              if (node && imageWidth !== undefined) node.style.setProperty("--question-image-width", `${imageWidth}px`);
               return node ? Math.ceil(node.offsetHeight) : Number.NaN;
             });
             const continuationHeights = Array.from({ length: optionCount + 1 }, (_, start) =>
@@ -576,6 +606,7 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
                           question={question}
                           tableScale={renderPrefs?.tableScale ?? 1}
                           adaptiveTable={renderPrefs?.adaptiveTable ?? false}
+                          imageWidth={renderPrefs?.imageWidth}
                           {...fragmentProps}
                         />
                       </div>
