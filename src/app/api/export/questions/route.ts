@@ -13,8 +13,9 @@ export async function GET(req: NextRequest) {
   const audited = auditedParam === "1" ? true : auditedParam === "0" ? false : undefined;
   const rejected = sp.get("rejected") === "1" ? true : undefined;
   const thematicAreas = normalizeThematicAreas(sp.getAll("area"));
+  const withoutThematicArea = sp.get("withoutArea") === "1";
 
-  const questions = listQuestionsFiltered({ disciplineId, audited, rejected, search: sp.get("q") ?? undefined, questionType, thematicAreas });
+  const questions = listQuestionsFiltered({ disciplineId, audited, rejected, search: sp.get("q") ?? undefined, questionType, thematicAreas, withoutThematicArea });
 
   const date = new Date().toISOString().slice(0, 10);
   if (format === "csv") {

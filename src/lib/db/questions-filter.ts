@@ -54,6 +54,8 @@ export interface QuestionFilters {
   thematicAreas?: readonly string[];
   /** Legacy single-value thematic-area filter. */
   thematicArea?: string;
+  /** Matches NULL, empty, or whitespace-only thematic areas. */
+  withoutThematicArea?: boolean;
   questionType?: QuestionType;
 }
 
@@ -79,7 +81,9 @@ export function listQuestionsFiltered(filters: QuestionFilters = {}): Question[]
     params.push(`%${filters.search}%`);
   }
   const thematicAreas = normalizeThematicAreas(filters.thematicAreas, filters.thematicArea);
-  if (thematicAreas.length > 0) {
+  if (filters.withoutThematicArea) {
+    conditions.push("TRIM(COALESCE(q.thematic_area, '')) = ''");
+  } else if (thematicAreas.length > 0) {
     conditions.push(`q.thematic_area IN (${thematicAreas.map(() => "?").join(", ")})`);
     params.push(...thematicAreas);
   }

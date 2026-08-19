@@ -15,8 +15,9 @@ export function QuestionFilters({ disciplines, areas = [] }: { disciplines: Disc
   const [isPending, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedAreas = normalizeThematicAreas(searchParams.getAll("area"));
+  const withoutArea = searchParams.get("withoutArea") === "1";
   const urlSearch = searchParams.get("q") ?? "";
-  const hasFilters = searchParams.get("discipline") || searchParams.get("audited") || searchParams.get("rejected") || urlSearch || searchParams.get("type") || selectedAreas.length > 0;
+  const hasFilters = searchParams.get("discipline") || searchParams.get("audited") || searchParams.get("rejected") || urlSearch || searchParams.get("type") || selectedAreas.length > 0 || withoutArea;
 
   function replace(params: URLSearchParams) {
     startTransition(() => {
@@ -36,6 +37,18 @@ export function QuestionFilters({ disciplines, areas = [] }: { disciplines: Disc
     const params = new URLSearchParams(searchParams.toString());
     params.delete("area");
     for (const area of nextAreas) params.append("area", area);
+    if (nextAreas.length > 0) params.delete("withoutArea");
+    replace(params);
+  }
+
+  function toggleWithoutArea() {
+    const params = new URLSearchParams(searchParams.toString());
+    if (withoutArea) {
+      params.delete("withoutArea");
+    } else {
+      params.set("withoutArea", "1");
+      params.delete("area");
+    }
     replace(params);
   }
 
@@ -60,6 +73,15 @@ export function QuestionFilters({ disciplines, areas = [] }: { disciplines: Disc
       </select>
 
       <ThematicAreaFilter areas={areas} selectedAreas={selectedAreas} onChange={setAreas} />
+
+      <button
+        type="button"
+        className={withoutArea ? "btn btn-primary" : "btn btn-ghost"}
+        aria-pressed={withoutArea}
+        onClick={toggleWithoutArea}
+      >
+        Sem área temática
+      </button>
 
       <select
         className="form-select"

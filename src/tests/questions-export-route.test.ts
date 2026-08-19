@@ -31,4 +31,10 @@ describe("question export filters", () => {
     expect(listQuestionsFiltered).toHaveBeenNthCalledWith(1, expect.objectContaining({ disciplineId: 1, thematicAreas: ["A", "B"] }));
     expect(listQuestionsFiltered).toHaveBeenNthCalledWith(2, expect.objectContaining({ disciplineId: 1, thematicAreas: ["A", "B"] }));
   });
+
+  it("passes the missing thematic-area filter to exports", async () => {
+    await GET(new NextRequest("http://localhost/api/export/questions?withoutArea=1&format=json"));
+
+    expect(listQuestionsFiltered).toHaveBeenCalledWith(expect.objectContaining({ withoutThematicArea: true }));
+  });
 });

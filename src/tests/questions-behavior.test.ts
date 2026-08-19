@@ -53,6 +53,16 @@ describe("thematic-area filters", () => {
     expect(listQuestionsFiltered({ thematicAreas: [" Álgebra ", "Geometria", "Álgebra"], thematicArea: "Cálculo" }).map((question) => question.id)).toEqual([2, 1]);
     expect(listQuestionsFiltered({ thematicArea: "Cálculo" }).map((question) => question.id)).toEqual([3]);
   });
+
+  it("finds only questions whose thematic area is null or blank", () => {
+    addQuestion(1, 1, "Sem área nula", null, "2026-01-02");
+    addQuestion(2, 1, "Sem área vazia", "", "2026-01-02");
+    addQuestion(3, 1, "Sem área com espaços", "   ", "2026-01-02");
+    addQuestion(4, 1, "Com área", "Álgebra", "2026-01-02");
+
+    expect(listQuestionsFiltered({ withoutThematicArea: true }).map((question) => question.id)).toEqual([3, 2, 1]);
+    expect(listQuestionsFiltered({ withoutThematicArea: true, thematicAreas: ["Álgebra"] }).map((question) => question.id)).toEqual([3, 2, 1]);
+  });
 });
 
 describe("bulk question updates", () => {

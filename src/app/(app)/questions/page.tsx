@@ -9,7 +9,7 @@ import type { QuestionType } from "@/types";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icon";
 
-export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; rejected?: string; q?: string; type?: string; area?: string | string[] }> }) {
+export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; audited?: string; rejected?: string; q?: string; type?: string; area?: string | string[]; withoutArea?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const disciplineId = sp.discipline ? Number(sp.discipline) : undefined;
@@ -22,6 +22,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
     search: sp.q,
     questionType: (sp.type ?? undefined) as QuestionType | undefined,
     thematicAreas,
+    withoutThematicArea: sp.withoutArea === "1",
   });
 
   // Available areas scoped to selected discipline (ignores other filters)
@@ -30,7 +31,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
       .map((q) => q.thematicArea)
       .filter(Boolean) as string[]
   )].sort();
-  const hasFilters = Boolean(sp.discipline || sp.audited || sp.rejected || sp.q || sp.type || thematicAreas.length > 0);
+  const hasFilters = Boolean(sp.discipline || sp.audited || sp.rejected || sp.q || sp.type || thematicAreas.length > 0 || sp.withoutArea === "1");
 
   // Build export query params from current filters
   const exportParams = new URLSearchParams();
@@ -40,6 +41,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   if (sp.q) exportParams.set("q", sp.q);
   if (sp.type) exportParams.set("type", sp.type);
   for (const area of thematicAreas) exportParams.append("area", area);
+  if (sp.withoutArea === "1") exportParams.set("withoutArea", "1");
   const exportBase = `/api/export/questions?${exportParams.toString()}`;
 
   return (
