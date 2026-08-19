@@ -8,6 +8,7 @@ import { makeQuestionDraft, useWorkspaceStore } from "@/lib/state/workspace-stor
 import type { QuestionDraft } from "@/lib/state/workspace-store";
 import { MarkdownText } from "@/components/markdown-text";
 import { PageHeader } from "@/components/ui";
+import { QuestionImageInput } from "./question-image-input";
 import {
   RICH_TEXT_ALLOWED_ATTRIBUTE_LABEL,
   RICH_TEXT_ALLOWED_STYLE_LABEL,
@@ -279,10 +280,7 @@ export function QuestionForm({ disciplines, action, question, cancelHref, title,
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="image">{question?.imageUrl ? "Substituir imagem" : "Imagem (opcional)"}</label>
-            <input id="image" name="image" type="file" accept="image/*" className="form-input" style={{ padding: "0.4rem" }} />
-          </div>
+          <QuestionImageInput hasCurrentImage={Boolean(question?.imageUrl)} />
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={isPending}>{isPending ? "Salvando…" : submitLabel}</button>
