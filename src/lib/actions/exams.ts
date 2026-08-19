@@ -41,6 +41,7 @@ export async function createExamAction(formData: FormData) {
   const numDissertativasRaw = (formData.get("numDissertativas") as string | null) ?? "";
   const numNumericasRaw = (formData.get("numNumericas") as string | null) ?? "";
   const allowQuestionSplit = formData.get("allowQuestionSplit") === "1";
+  const compactQuestionOrder = formData.get("compactQuestionOrder") === "1";
   const instructions = normalizeExamInstructions(formData.get("instructions"));
   const questionLayouts = normalizeExamQuestionLayouts({
     objetiva: formData.get("layoutObjetiva"),
@@ -67,6 +68,7 @@ export async function createExamAction(formData: FormData) {
     params.set("layoutNumerica", questionLayouts.numerica);
     params.set("layoutDissertativa", questionLayouts.dissertativa);
     params.set("allowQuestionSplit", allowQuestionSplit ? "1" : "0");
+    params.set("compactQuestionOrder", compactQuestionOrder ? "1" : "0");
     return params;
   }
 
@@ -123,7 +125,14 @@ export async function createExamAction(formData: FormData) {
     questionLayouts,
     questionLayoutOverrides: initialQuestionLayoutOverrides,
   });
-  const sets = buildSets(selectedQuestionInfos, labels);
+  const sets = buildSets(
+    selectedQuestionInfos.map((question) => ({
+      ...question,
+      layout: initialQuestionLayoutOverrides[question.id] ?? questionLayouts[question.questionType],
+    })),
+    labels,
+    { compactLayoutOrder: compactQuestionOrder },
+  );
 
   for (const s of sets) {
     createExamSet(exam.id, {

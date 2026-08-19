@@ -84,3 +84,31 @@ it("filters initial full-width IDs after quantity selection and ignores invalid 
   expect(exam.questionLayoutOverrides).toEqual({});
   expect(listExamVersions(exam.id)[0]?.snapshot.sets[0]?.questions[0]?.layout).toBe("column");
 });
+
+it("creates compact sets with column questions before full-width questions", async () => {
+  const questions = ["A", "B", "C", "D"].map((statement) => createQuestion({
+    disciplineId: 1,
+    statement: `<p>${statement}</p>`,
+    options: ["A", "B", "C", "D", "E"],
+    correctIndex: 0,
+  }));
+  const formData = new FormData();
+  formData.set("disciplineId", "1");
+  formData.set("title", "Montagem compacta");
+  formData.set("quantitySets", "1");
+  formData.set("numObjetivas", "4");
+  formData.set("numVF", "0");
+  formData.set("numNumericas", "0");
+  formData.set("numDissertativas", "0");
+  formData.set("compactQuestionOrder", "1");
+  for (const question of questions) formData.append("questionIds", String(question.id));
+  formData.append("fullWidthQuestionIds", String(questions[1].id));
+  formData.append("fullWidthQuestionIds", String(questions[3].id));
+
+  await expect(createExamAction(formData)).rejects.toThrow("REDIRECT");
+
+  const exam = listExams("todas")[0]!;
+  const layouts = exam.sets[0]!.questions.map(({ questionId }) => exam.questionLayoutOverrides[questionId] ?? exam.questionLayouts.objetiva);
+  expect(layouts).toEqual(["column", "column", "full", "full"]);
+  expect(listExamVersions(exam.id)[0]!.snapshot.sets[0]!.questions.map((question) => question.layout)).toEqual(layouts);
+});

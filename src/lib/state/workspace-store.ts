@@ -35,6 +35,7 @@ export interface ExamDraft {
   layoutNumerica: QuestionLayout;
   layoutDissertativa: QuestionLayout;
   allowQuestionSplit: boolean;
+  compactQuestionOrder: boolean;
 }
 
 export interface QuestionDraft {
@@ -112,6 +113,7 @@ export function makeExamDraft(): ExamDraft {
     layoutNumerica: "column",
     layoutDissertativa: "full",
     allowQuestionSplit: false,
+    compactQuestionOrder: false,
   };
 }
 

@@ -5,7 +5,7 @@ tags:
   - integrations/evalbee
 aliases:
   - Exportacao e EvalBee
-status: draft
+status: active
 ---
 
 # Exports and EvalBee
@@ -15,10 +15,10 @@ O sistema gera prova para impressao e gabarito separado. A correcao acontece for
 ## PDF da Prova
 - PDF completo por prova: todos os sets em sequencia.
 - PDF individual por set: renderiza apenas o set pedido, mas usa a mesma contagem fixa calculada para o lote.
-- Layout em duas colunas.
+- Layout misto: cada questão usa meia página (`column`) ou largura total (`full`) conforme a prova.
 - Questoes numeradas conforme ordem final do set.
 - Alternativas exibidas conforme ordem randomizada.
-- Imagens de questao dimensionadas para caber na coluna.
+- Imagens acompanham a largura útil da questão, preservam proporção e encolhem quando excederiam 25% da área imprimível; imagens estreitas/altas também respeitam metade da altura da página.
 - Gabarito/imagem EvalBee fica sempre na ultima pagina do bloco do set.
 - Se houver altura livre suficiente e isso nao quebrar o alvo uniforme do lote, o gabarito pode compartilhar essa ultima pagina com as ultimas questoes.
 
@@ -44,6 +44,13 @@ O sistema gera prova para impressao e gabarito separado. A correcao acontece for
 - Dissertativa usa `-`.
 - Filename: `gabarito-{safe-title}-set-{label}.csv` (slug a partir do título da prova; portável em Linux).
 - Encoding: UTF-8 sem BOM; `Content-Disposition: attachment`.
+
+## Ordem aleatória compacta
+
+- A montagem normal mantém a sequência dos tipos e o comportamento de sorteio existente, sem separar as larguras.
+- Quando a opção compacta está ativa, cada tipo é dividido em `column` e `full`; os dois grupos continuam aleatórios e `column` vem primeiro.
+- A sequência global permanece `objetiva → verdadeiro/falso → numérica → dissertativa`.
+- Essa ordem é persistida em `exam_set_questions.position`; PDF, CSV, PNG, gabarito completo e mapa de rastreabilidade não reordenam o conteúdo depois.
 
 ## Mapa de rastreabilidade
 
@@ -81,9 +88,12 @@ Para validar resultados do EvalBee: use `versao_set` + `posicao_exibida` como ch
 ```mermaid
 flowchart TD
     Select[Selecionar questoes] --> Sets[Definir sets]
-    Sets --> EvalBee[Anexar imagem EvalBee por set]
-    EvalBee --> Shuffle[Randomizar questoes e alternativas]
-    Shuffle --> Key[Calcular gabarito do set]
+    Sets --> Order{Ordem compacta?}
+    Order -->|Não| Shuffle[Randomizar dentro de cada tipo]
+    Order -->|Sim| Compact[Agrupar tipo → column → full e randomizar grupos]
+    Shuffle --> EvalBee[Anexar imagem EvalBee por set]
+    Compact --> EvalBee
+    EvalBee --> Key[Calcular gabarito do set]
     Key --> PDF[Gerar PDF com imagem EvalBee final]
     Key --> CSV[Gerar CSV do gabarito]
     Key --> Trace[Gerar mapa posição → ID do banco]

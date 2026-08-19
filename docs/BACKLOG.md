@@ -1,3 +1,11 @@
+---
+title: Backlog — UniFil Exams
+tags:
+  - project/backlog
+  - product/requirements
+status: active
+---
+
 # Backlog — UniFil Exams
 
 Data: 2026-04-22
@@ -142,11 +150,27 @@ Data: 2026-04-22
 
 ---
 
+## US-19 · Ordem compacta por tipo e largura
+
+**Como** professor, **quero** agrupar as questões aleatórias por tipo e largura,
+**para** reduzir espaços vazios causados pela alternância entre meia página e largura total.
+
+**Critérios de aceite:**
+- Opção explícita e desativada por padrão na montagem
+- Sequência fixa `objetiva → V/F → numérica → dissertativa`
+- Dentro de cada tipo: questões `column` aleatórias, depois questões `full` aleatórias
+- Posição persistida compartilhada por prova, gabarito e rastreabilidade
+- Randomização normal continua disponível
+
+**Status:** ✅ Implementado (2026-08-19)
+
+---
+
 ## Backlog Futuro
 
 | ID | Descrição | Prioridade |
 |----|-----------|------------|
-| US-07 | Paginação automática de questões no PDF (quando há muitas questões que não cabem em 1 página) | Alta |
+| US-07 | Paginação automática de questões no PDF | ✅ Implementado |
 | US-08 | Upload de logo personalizada por prova (substituir `public/unifil-logo.png`) | Média |
 | US-09 | Edição inline do gabarito na tela de exportação | Média |
 | US-10 | Exportação de prova em formato DOCX | Baixa |

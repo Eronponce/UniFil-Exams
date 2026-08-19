@@ -13,7 +13,7 @@ import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icon";
 
 
-export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; status?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string; layoutObjetiva?: string; layoutVF?: string; layoutNumerica?: string; layoutDissertativa?: string; allowQuestionSplit?: string }> }) {
+export default async function ExamsPage({ searchParams }: { searchParams: Promise<{ discipline?: string; area?: string | string[]; status?: string; error?: string; title?: string; institution?: string; quantitySets?: string; numObjetivas?: string; numVF?: string; numDissertativas?: string; numNumericas?: string; layoutObjetiva?: string; layoutVF?: string; layoutNumerica?: string; layoutDissertativa?: string; allowQuestionSplit?: string; compactQuestionOrder?: string }> }) {
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const status: ExamStatusFilter = sp.status === "inativas" || sp.status === "todas" ? sp.status : "ativas";
@@ -67,7 +67,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
             {selectedAreas.map((area) => <input key={area} type="hidden" name="area" value={area} />)}
 
             <ExamDraftFields
-              key={`exam-draft-${sp.allowQuestionSplit ?? "persisted"}`}
+              key={`exam-draft-${sp.allowQuestionSplit ?? "persisted"}-${sp.compactQuestionOrder ?? "persisted"}`}
               initialTitle={sp.title ?? ""}
               initialInstitution={sp.institution ?? ""}
               initialQuantitySets={sp.quantitySets ?? ""}
@@ -80,6 +80,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               initialLayoutNumerica={sp.layoutNumerica ?? ""}
               initialLayoutDissertativa={sp.layoutDissertativa ?? ""}
               initialAllowQuestionSplit={sp.allowQuestionSplit ?? ""}
+              initialCompactQuestionOrder={sp.compactQuestionOrder ?? ""}
               availabilityKey={JSON.stringify({
                 discipline: selectedDisciplineId ?? null,
                 areas: [...selectedAreas].sort(),

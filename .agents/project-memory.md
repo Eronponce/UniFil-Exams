@@ -31,6 +31,10 @@ status: active
 - The full answer key on `/exports` reproduces Set A question positions and objective-option shuffling, so its marked letters match the Set A quick CSV; other per-set PDFs and CSVs retain their own shuffled order.
 - `/exports` also offers a high-resolution commented PNG per set; `/api/png/[setId]?version=N` preserves the selected version snapshot, shuffled answer, source bank ID and justification.
 - The desktop sidebar collapse toggle remains visible in the compact 82px rail, allowing the persisted collapsed state to be expanded again.
+- Manual question creation accepts an image file or `Ctrl/Cmd + V` clipboard image, shows a preview, and can remove the pending image before submit.
+- The question bank has an explicit no-thematic-area filter covering normalized null/blank areas.
+- Exam creation has an opt-in compact order (default false): type order remains objective/VF/numeric/discursive, and each type persists randomized `column` questions before randomized `full` questions. Stored set position remains authoritative for every answer-key/trace export.
+- Printed question images fill their resolved question width but are proportionally capped at 25% of printable page area and 50% of page height.
 
 ## Product IA
 

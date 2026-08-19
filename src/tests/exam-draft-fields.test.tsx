@@ -14,6 +14,7 @@ const examDraft = {
   layoutNumerica: "column" as const,
   layoutDissertativa: "full" as const,
   allowQuestionSplit: false,
+  compactQuestionOrder: false,
 };
 const originalExamDraft = { ...examDraft };
 const updateExam = vi.fn((patch) => Object.assign(examDraft, patch));
@@ -47,6 +48,7 @@ const baseProps = {
   initialLayoutNumerica: "",
   initialLayoutDissertativa: "",
   initialAllowQuestionSplit: "",
+  initialCompactQuestionOrder: "",
 };
 
 describe("ExamDraftFields availability synchronization", () => {
@@ -163,5 +165,23 @@ describe("ExamDraftFields availability synchronization", () => {
 
     fireEvent.click(checkbox);
     expect(updateExam).toHaveBeenCalledWith({ allowQuestionSplit: false });
+  });
+
+  it("controls the compact order option and submits its hidden value", async () => {
+    render(
+      <ExamDraftFields
+        {...baseProps}
+        initialCompactQuestionOrder="1"
+        availabilityKey="availability-a"
+        typeCounts={{ objetiva: 1, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 }}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /Agrupar questões por largura para economizar espaço/ });
+    await waitFor(() => expect(checkbox).toBeChecked());
+    expect(document.querySelector('input[name="compactQuestionOrder"]')).toHaveValue("1");
+
+    fireEvent.click(checkbox);
+    expect(updateExam).toHaveBeenCalledWith({ compactQuestionOrder: false });
   });
 });

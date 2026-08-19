@@ -1,4 +1,21 @@
+---
+title: Session Log
+tags:
+  - project/session-log
+  - project/history
+status: active
+---
+
 # Session Log
+
+## 2026-08-19 - Imagens, filtro sem área e montagem compacta
+
+- `/questions/new` aceita imagem colada com `Ctrl/Cmd + V`, transforma o conteúdo do clipboard em arquivo do mesmo upload, exibe preview e oferece **Remover imagem** antes de salvar.
+- `/questions` ganhou o filtro **Sem área temática**, cobrindo valores `NULL` e vazios normalizados sem misturá-los às áreas nomeadas.
+- A impressão passou a dimensionar imagens pela largura real da questão: meia página acompanha a coluna e largura total acompanha a linha. A área renderizada fica limitada a 25% da página imprimível e imagens estreitas/altas a 50% da altura.
+- `/exams` ganhou a opção desativada por padrão **Agrupar questões por largura para economizar espaço**. Ela mantém `objetiva → V/F → numérica → dissertativa` e, em cada tipo, persiste questões aleatórias `column` antes de questões aleatórias `full`.
+- A posição do set continua sendo a fonte única para numeração, PDF, gabarito, PNG e mapa EvalBee; não existe reordenação tardia na impressão.
+- Documentação principal auditada: README, contexto, modelo de dados, fluxos, exportações, decisões, backlog, histórico de agosto e memória persistente.
 
 ## 2026-08-13 - Enunciado legível no PNG comentado
 

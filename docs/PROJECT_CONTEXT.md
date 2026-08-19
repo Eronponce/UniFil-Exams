@@ -1,29 +1,41 @@
+---
+title: Project Context
+tags:
+  - project/context
+  - product/current-state
+status: active
+---
+
 # Project Context
 
 ## Stable Facts
 - Project name: UniFil Exams.
 - Repository started empty on 2026-04-22.
 - Current stack: Next.js 16.2.4 + React 19.2.4 + TypeScript + SQLite (`better-sqlite3`).
-- No remote `origin` is configured at scaffold time.
+- Runtime de produção em Docker no host remoto; o repositório local continua sendo a fonte das mudanças.
 
 ## Product Scope
-- Local web app for objective exam creation, auditing, generation, assembly, and export.
+- Aplicação web local para criação, auditoria, montagem e exportação de avaliações.
 - Users manage disciplines and reusable question banks.
-- Questions have statement, alternatives A-E, correct answer, and optional image.
+- Questões podem ser objetivas, verdadeiro/falso, numéricas ou dissertativas, com enunciado HTML sanitizado, resposta, justificativa e imagem opcional.
 - Users can manually audit, edit, delete, and create questions.
-- AI can generate structured objective questions for human review.
+- IA pode gerar questões estruturadas dos quatro tipos para revisão humana.
 - Exams are assembled from selected questions into multiple randomized sets.
-- Each set randomizes question order and alternative order.
+- Cada set preserva a sequência `objetiva → verdadeiro/falso → numérica → dissertativa` e randomiza questões/alternativas quando aplicável.
+- A montagem oferece ordem compacta opcional, que agrupa `column` antes de `full` dentro de cada tipo para reduzir transições de largura e áreas vazias.
 - Each set exports a print-ready PDF and a separate answer key CSV.
 - Each PDF includes the EvalBee image for that set on the last page.
 
 ## Current Product State
 - Banco de questões já implementado com CRUD, auditoria e importação/exportação.
-- Tipos suportados: `objetiva`, `verdadeiro_falso`, `dissertativa`.
+- Tipos suportados: `objetiva`, `verdadeiro_falso`, `numerica`, `dissertativa`.
+- Criação manual aceita imagem por arquivo ou colagem `Ctrl/Cmd + V`, com preview e remoção antes do envio.
+- Banco de questões possui filtro para registros sem área temática (`NULL` ou vazio normalizado).
 - Geração IA já possui trace detalhado e agora também expõe status em tempo real durante a execução.
 - Geração IA individual e em lote usa fila em memória como fluxo principal; resultado é recuperável via `?task=`.
 - Feedback de processos usa toast global para geração IA, salvamentos, uploads, importações, auditoria e criação de prova.
-- Montagem de prova aceita seleção por quantidade de cada tipo de questão.
+- Montagem aceita quantidades, largura por tipo, largura individual, quebra opcional de objetivas longas e ordem aleatória compacta.
+- Imagens impressas acompanham a largura da questão e são reduzidas proporcionalmente ao ultrapassar 25% da área imprimível ou metade da altura da página.
 - Exportação PDF agora tenta encaixar seções subsequentes na sobra da página anterior antes de abrir nova página.
 - Exportação PDF usa contagem uniforme e par de páginas por set dentro do mesmo lote; PDF individual por set respeita o alvo do lote.
 - Documentação Obsidian versionável vive em `docs/`; comece por [[INDEX]].

@@ -108,4 +108,45 @@ describe("buildSets", () => {
     expect(types[1]).toBe("verdadeiro_falso");
     expect(types[2]).toBe("dissertativa");
   });
+
+  it("compact order keeps type sequence and groups column before full within every type", () => {
+    const mixed: QuestionInfo[] = [
+      { id: 1, correctIndex: 0, questionType: "objetiva", layout: "column" },
+      { id: 2, correctIndex: 0, questionType: "objetiva", layout: "full" },
+      { id: 3, correctIndex: 0, questionType: "verdadeiro_falso", layout: "full" },
+      { id: 4, correctIndex: 0, questionType: "verdadeiro_falso", layout: "column" },
+      { id: 5, correctIndex: 0, questionType: "numerica", layout: "full" },
+      { id: 6, correctIndex: 0, questionType: "numerica", layout: "column" },
+      { id: 7, correctIndex: 0, questionType: "dissertativa", layout: "full" },
+      { id: 8, correctIndex: 0, questionType: "dissertativa", layout: "column" },
+    ];
+
+    const [set] = buildSets(mixed, ["A"], { compactLayoutOrder: true, random: () => 0 });
+
+    expect(set.questionOrder).toEqual([1, 2, 4, 3, 6, 5, 8, 7]);
+  });
+
+  it("regular order remains random across widths", () => {
+    const questions: QuestionInfo[] = [
+      { id: 1, correctIndex: 0, questionType: "objetiva", layout: "column" },
+      { id: 2, correctIndex: 0, questionType: "objetiva", layout: "full" },
+      { id: 3, correctIndex: 0, questionType: "objetiva", layout: "column" },
+    ];
+
+    const [set] = buildSets(questions, ["A"], { random: () => 0 });
+
+    expect(set.questionOrder).toEqual([2, 3, 1]);
+  });
+
+  it("keeps the legacy discursive order when compact mode is off", () => {
+    const questions: QuestionInfo[] = [
+      { id: 1, correctIndex: 0, questionType: "dissertativa", layout: "column" },
+      { id: 2, correctIndex: 0, questionType: "dissertativa", layout: "full" },
+      { id: 3, correctIndex: 0, questionType: "dissertativa", layout: "column" },
+    ];
+
+    const [set] = buildSets(questions, ["A"], { random: () => 0 });
+
+    expect(set.questionOrder).toEqual([1, 2, 3]);
+  });
 });

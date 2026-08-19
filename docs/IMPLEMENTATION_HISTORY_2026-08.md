@@ -1,6 +1,6 @@
 ---
 title: Implementações de agosto de 2026
-date: 2026-08-12
+date: 2026-08-19
 tags:
   - project/history
   - product/exams
@@ -12,7 +12,7 @@ status: active
 
 # Implementações de agosto de 2026
 
-Este documento consolida as mudanças realizadas no UniFil Exams entre 3 e 12 de agosto de 2026 e a implantação do backup amplo do servidor. Para decisões arquiteturais, consulte [[DECISIONS]]; para comandos operacionais completos de recuperação, consulte [[SERVER_ALL_SYSTEMS_BACKUP]].
+Este documento consolida as mudanças realizadas no UniFil Exams entre 3 e 19 de agosto de 2026 e a implantação do backup amplo do servidor. Para decisões arquiteturais, consulte [[DECISIONS]]; para comandos operacionais completos de recuperação, consulte [[SERVER_ALL_SYSTEMS_BACKUP]].
 
 > [!info] Escopo
 > O histórico registra o comportamento entregue, os dados persistidos, as rotas relevantes, a implantação e as evidências de validação. Valores secretos, tokens OAuth e a senha Restic nunca são reproduzidos na documentação.
@@ -24,7 +24,9 @@ Este documento consolida as mudanças realizadas no UniFil Exams entre 3 e 12 de
 - Imagens de questões passaram a ser servidas corretamente pelo runtime Docker por rotas dinâmicas.
 - A visualização individual ganhou navegação **Anterior** e **Próxima** dentro da disciplina.
 - A edição mostra a imagem atual em preview grande logo após o enunciado; o campo de upload permanece dedicado à substituição.
+- A criação manual aceita colar uma imagem com `Ctrl/Cmd + V`; o arquivo colado entra no mesmo `FormData` do upload, aparece em preview e pode ser removido antes do salvamento.
 - A seleção coletiva do banco permite aplicar ou remover uma área temática sem alterar o conteúdo das questões.
+- O filtro **Sem área temática** busca exclusivamente questões com área nula ou vazia normalizada.
 - A interface acadêmica foi reorganizada no fluxo `ORGANIZAR → REVISAR → CRIAR → ENTREGAR`, com navegação responsiva, paleta `Ctrl/Cmd + K`, tema e sidebar persistidos.
 
 ### Montagem da prova
@@ -40,11 +42,13 @@ Este documento consolida as mudanças realizadas no UniFil Exams entre 3 e 12 de
 | Dissertativa | página inteira | `column` ou `full` |
 
 - Na edição de uma prova já criada, o professor vê previews maiores e pode alterar a largura de questões específicas sem perder a preferência inicial.
+- A opção **Agrupar questões por largura para economizar espaço** preserva a sequência dos tipos e grava, dentro de cada tipo, questões aleatórias `column` antes das aleatórias `full`. A opção é desativada por padrão e não altera provas existentes.
 - Dissertativas com `answerLines=0` não geram linhas, permitindo espaço livre para desenho; continuam podendo ocupar meia página.
 - V/F e numérica possuem apresentação diferente: V/F mostra escolhas desmarcadas; numérica mostra campo de resposta rotulado.
 - A opção **Permitir dividir questões objetivas longas entre páginas** é explícita e desativada por padrão. Quando ativada, enunciado e alternativas são medidos; um bloco inicial de alternativas pode ficar na página atual e o restante segue na próxima, preservando letras e ordem embaralhada.
 - V/F, numéricas, dissertativas, tabelas e estruturas não suportadas permanecem atômicas e não são cortadas.
 - A paginação uniforme entre sets e a última folha reservada ao gabarito continuam usando o mesmo cálculo de páginas.
+- Imagens de questões usam a largura disponível do próprio bloco (`column` ou `full`), preservam proporção e são reduzidas quando ultrapassariam 25% da área imprimível; fontes muito altas também são limitadas a metade da altura da página.
 
 ### Instruções da prova
 

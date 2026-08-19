@@ -1,10 +1,10 @@
 # UniFil Exams
 
-Banco local de questões para professores universitários. Suporta questões objetivas, verdadeiro/falso e dissertativas, com criação manual ou via IA, auditoria, montagem de provas, randomização, exportação em PDF/CSV, fila global de tarefas e documentação Obsidian versionada.
+Banco local de questões para professores universitários. Suporta questões objetivas, verdadeiro/falso, numéricas e dissertativas, com criação manual ou via IA, auditoria, montagem de provas, randomização, exportação em PDF/CSV/PNG, fila global de tarefas e documentação Obsidian versionada.
 
 ## Pré-requisitos
 
-- [Node.js](https://nodejs.org/) 18+
+- [Node.js](https://nodejs.org/) 20.9+
 - [Ollama](https://ollama.com/) (para geração de questões com IA local)
 
 ## Instalação
@@ -22,7 +22,7 @@ Crie o arquivo `.env.local` na raiz do projeto:
 ```env
 # Ollama (IA local — obrigatório para geração de questões)
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2:latest
+OLLAMA_MODEL=qwen2.5:latest
 
 # APIs externas (opcional)
 CLAUDE_API_KEY=
@@ -40,7 +40,7 @@ ollama serve
 **2. Baixe o modelo** (apenas na primeira vez):
 
 ```bash
-ollama pull llama3.2:latest
+ollama pull qwen2.5:latest
 ```
 
 **3. Inicie o servidor de desenvolvimento:**
@@ -76,7 +76,9 @@ Notas:
 
 ### Banco e IA
 
-- Questões `objetivas`, `verdadeiro_falso` e `dissertativas`
+- Questões `objetiva`, `verdadeiro_falso`, `numerica` e `dissertativa`
+- Imagem opcional por upload ou colagem com `Ctrl/Cmd + V`, com preview e remoção antes de salvar
+- Filtro explícito de questões sem área temática no banco
 - Geração IA individual e em lote via fila em memória
 - Recuperação de resultados por link `?task=...`
 - Revisão antes de salvar no banco
@@ -85,8 +87,10 @@ Notas:
 ### Montagem e exportação
 
 - Seleção manual do pool auditado
-- Definição de quantidades por tipo (`objetiva`, `V/F`, `dissertativa`) na prova
+- Definição de quantidades por tipo (`objetiva`, `V/F`, `numérica`, `dissertativa`) na prova
 - Randomização de ordem das questões e das alternativas quando aplicável
+- Ordem compacta opcional: preserva a sequência dos tipos e agrupa meia página antes de largura total dentro de cada tipo
+- Largura por tipo e por questão; imagens acompanham a largura disponível sem exceder 25% da área imprimível
 - PDF com seções contínuas, tentando aproveitar a sobra da página anterior
 - PDFs de sets com mesma quantidade par de páginas por lote, com páginas vazias antes do gabarito quando necessário
 - CSV de gabarito por set
@@ -102,7 +106,7 @@ Notas:
 | `/ai` | Gerar questão única com IA |
 | `/ai/import` | Importar múltiplas questões via IA a partir de texto |
 | `/questions/importar` | Importar JSON/CSV revisado e copiar prompt com assunto, quantidades e template completo |
-| `/exams` | Montar provas com randomização de alternativas |
+| `/exams` | Montar provas com randomização normal ou compacta |
 | `/exports` | Exportar provas em PDF, gabarito e mapa de rastreabilidade CSV |
 | `/settings` | Visualizar configuração de provedores IA |
 

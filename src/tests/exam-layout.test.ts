@@ -118,6 +118,18 @@ describe("exam question layouts", () => {
     expect(typeof redirectUrl).toBe("string");
     expect(new URL(`http://local${redirectUrl}`).searchParams.get("allowQuestionSplit")).toBe("1");
   });
+
+  it("preserves the compact order option in validation redirects", async () => {
+    redirectWithToastMock.mockClear();
+    const formData = new FormData();
+    formData.set("disciplineId", "1");
+    formData.set("compactQuestionOrder", "1");
+
+    await expect(createExamAction(formData)).rejects.toThrow("REDIRECT");
+    const redirectUrl = redirectWithToastMock.mock.calls.at(-1)?.[0];
+    expect(typeof redirectUrl).toBe("string");
+    expect(new URL(`http://local${redirectUrl}`).searchParams.get("compactQuestionOrder")).toBe("1");
+  });
 });
 
 describe("student print affordances", () => {

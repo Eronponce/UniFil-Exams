@@ -17,6 +17,7 @@ interface ExamDraftFieldsProps {
   initialLayoutNumerica: string;
   initialLayoutDissertativa: string;
   initialAllowQuestionSplit?: string;
+  initialCompactQuestionOrder?: string;
   availabilityKey: string;
   typeCounts: {
     objetiva: number;
@@ -39,6 +40,7 @@ export function ExamDraftFields({
   initialLayoutNumerica,
   initialLayoutDissertativa,
   initialAllowQuestionSplit = "",
+  initialCompactQuestionOrder = "",
   availabilityKey,
   typeCounts,
 }: ExamDraftFieldsProps) {
@@ -52,7 +54,14 @@ export function ExamDraftFields({
       ? false
       : undefined;
   const [allowQuestionSplitOverride, setAllowQuestionSplitOverride] = useState<boolean | null>(() => initialAllowQuestionSplitValue ?? null);
+  const initialCompactQuestionOrderValue = initialCompactQuestionOrder === "1"
+    ? true
+    : initialCompactQuestionOrder === "0"
+      ? false
+      : undefined;
+  const [compactQuestionOrderOverride, setCompactQuestionOrderOverride] = useState<boolean | null>(() => initialCompactQuestionOrderValue ?? null);
   const allowQuestionSplit = allowQuestionSplitOverride ?? Boolean(exam.allowQuestionSplit);
+  const compactQuestionOrder = compactQuestionOrderOverride ?? Boolean(exam.compactQuestionOrder);
   const draft = {
     title: initialTitle || exam.title,
     institution: initialInstitution || exam.institution,
@@ -66,6 +75,7 @@ export function ExamDraftFields({
     layoutNumerica: normalizeQuestionLayout(exam.layoutNumerica, "column"),
     layoutDissertativa: normalizeQuestionLayout(exam.layoutDissertativa, "full"),
     allowQuestionSplit,
+    compactQuestionOrder,
   };
 
   useEffect(() => {
@@ -86,6 +96,11 @@ export function ExamDraftFields({
     if (initialAllowQuestionSplitValue === undefined) return;
     updateExam({ allowQuestionSplit: initialAllowQuestionSplitValue });
   }, [initialAllowQuestionSplitValue, updateExam]);
+
+  useEffect(() => {
+    if (initialCompactQuestionOrderValue === undefined) return;
+    updateExam({ compactQuestionOrder: initialCompactQuestionOrderValue });
+  }, [initialCompactQuestionOrderValue, updateExam]);
 
   useEffect(() => {
     const hasExplicitQuantities = [initialNumObjetivas, initialNumVF, initialNumNumericas, initialNumDissertativas].some(Boolean);
@@ -272,6 +287,28 @@ export function ExamDraftFields({
             </span>
           </span>
         </label>
+        <input type="hidden" name="compactQuestionOrder" value={draft.compactQuestionOrder ? "1" : "0"} />
+        <label
+          htmlFor="compact-question-order"
+          style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", marginTop: "1rem", fontSize: "0.875rem" }}
+        >
+          <input
+            id="compact-question-order"
+            type="checkbox"
+            checked={draft.compactQuestionOrder}
+            onChange={(event) => {
+              const value = event.target.checked;
+              setCompactQuestionOrderOverride(value);
+              updateExam({ compactQuestionOrder: value });
+            }}
+          />
+          <span>
+            <strong>Agrupar questões por largura para economizar espaço</strong>
+            <span style={{ display: "block", marginTop: "0.2rem", color: "var(--muted)", fontSize: "0.78rem" }}>
+              Mantém objetiva → V/F → numérica → dissertativa; dentro de cada tipo, sorteia primeiro meia página e depois largura total.
+            </span>
+          </span>
+        </label>
       </div>
 
       <button
@@ -280,6 +317,7 @@ export function ExamDraftFields({
         style={{ marginBottom: "1rem" }}
         onClick={() => {
           setAllowQuestionSplitOverride(null);
+          setCompactQuestionOrderOverride(null);
           resetExam();
         }}
       >

@@ -1,3 +1,11 @@
+---
+title: Decisions
+tags:
+  - project/decisions
+  - architecture
+status: active
+---
+
 # Decisions
 
 Use this file for durable project decisions. Keep entries short and factual.
@@ -58,7 +66,7 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Impact: `/ai` and `/ai/import` now consume live events and show evolving trace data before completion.
 
 ## 2026-04-23 - Exam Composition By Question Type
-- Decision: exam assembly accepts explicit counts for `objetiva`, `verdadeiro_falso`, and `dissertativa`.
+- Decision: exam assembly accepts explicit counts for `objetiva`, `verdadeiro_falso`, `numerica`, and `dissertativa`.
 - Reason: teachers need deterministic section composition even when the audited pool is much larger than the final exam.
 - Impact: per-type counts take precedence over generic total question count when provided.
 
@@ -95,7 +103,7 @@ Use this file for durable project decisions. Keep entries short and factual.
 ## 2026-04-24 - Remove Generic numQuestions Field
 - Decision: remove the generic "questões por prova" total count input from exam creation; per-type counts are the only mechanism.
 - Reason: having both fields created ambiguity about which took precedence when they conflicted.
-- Impact: `normalizeExamSelectionRequest` only reads `numObjetivas`, `numVF`, `numDissertativas`; throws if all are zero; exam creation form no longer renders the generic count input.
+- Impact: `normalizeExamSelectionRequest` only reads `numObjetivas`, `numVF`, `numNumericas`, `numDissertativas`; throws if all are zero; exam creation form no longer renders the generic count input.
 
 ## 2026-04-24 - Safe Filenames For CSV/PDF Downloads
 - Decision: derive download filenames from exam titles using a slug transformation (`toLowerCase` + replace non-alphanumeric with `-`).
@@ -214,3 +222,9 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Recovery: automated restore is extraction-only into a new or empty staging directory. Replacing live data remains a separately approved maintenance action.
 - Security: the Restic password and rclone OAuth configuration are never included in Git or inside the encrypted snapshot. An independent protected Windows copy is retained. By later explicit owner decision, a plaintext convenience copy also exists in the same Drive at `Servidor-Eron/RECUPERACAO-NAO-APAGAR/restic-password.txt`; this intentionally trades confidentiality for recovery availability and is not managed by the daily job.
 - Continuity: the pre-existing local PostgreSQL cron backup remains enabled during initial adoption as a separate short-term recovery layer.
+
+## 2026-08-19 - Compact randomization groups persisted positions by type and width
+
+- Decision: expose an opt-in compact order during exam creation; preserve `objetiva → verdadeiro_falso → numerica → dissertativa` and, inside every type, persist randomized `column` questions before randomized `full` questions.
+- Reason: alternating half-width and full-width questions creates repeated layout transitions and can strand usable space before a full-width block.
+- Impact: only the generated set order changes; `exam_set_questions.position` remains the source of truth for print, answer keys, PNG and trace exports. Normal randomization remains available and existing exams are unchanged.

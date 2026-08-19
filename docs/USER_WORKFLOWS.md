@@ -16,7 +16,7 @@ O UniFil Exams foi organizado para reduzir a troca de contexto do professor. A t
 
 1. Abra `/` e confira os KPIs e o cartão “Continue de onde parou”.
 2. Use `/disciplines` para cadastrar ou editar componentes curriculares.
-3. Entre em `/questions` para pesquisar o banco; filtros e exportações preservam os parâmetros atuais.
+3. Entre em `/questions` para pesquisar o banco; filtros e exportações preservam os parâmetros atuais. Use **Sem área temática** para isolar questões cuja área está ausente.
 4. Em desktop, recolha a sidebar se precisar de mais largura; em celular, use o menu móvel.
 5. Pressione `Ctrl/Cmd + K` para buscar qualquer destino ou ação sem percorrer o menu.
 
@@ -25,7 +25,7 @@ O UniFil Exams foi organizado para reduzir a troca de contexto do professor. A t
 1. Acesse `/questions/new` ou escolha “Nova questão” na paleta.
 2. Escolha a disciplina, dificuldade e tipo.
 3. Preencha enunciado, alternativas/resposta, justificativa e linhas de resposta quando aplicável.
-4. Anexe imagem opcional sem alterar o contrato do upload.
+4. Na imagem opcional, escolha um arquivo ou cole uma imagem com `Ctrl/Cmd + V`; confira o preview e use **Remover imagem** se necessário.
 5. Salve; a questão aparece no banco e, enquanto não auditada, entra na fila de revisão.
 
 ## 3. Auditar o banco
@@ -63,15 +63,16 @@ O UniFil Exams foi organizado para reduzir a troca de contexto do professor. A t
 
 1. Abra `/exams` e selecione a disciplina.
 2. Opcionalmente filtre áreas temáticas e ajuste a seleção de questões auditadas.
-3. Defina título, instituição, quantidade de sets e contagem por tipo.
-4. Gere a prova; cada set preserva a randomização das questões e alternativas.
-5. Em falha de validação, título, instituição, sets e quantidades retornam pelos parâmetros de recuperação existentes.
+3. Defina título, instituição, quantidade de sets, contagem e largura padrão por tipo; marque largura total em questões específicas quando necessário.
+4. Para reduzir espaço vazio, marque **Agrupar questões por largura para economizar espaço**. Cada set mantém `objetiva → V/F → numérica → dissertativa` e, dentro de cada tipo, sorteia primeiro `column` e depois `full`.
+5. Gere a prova; a ordem gravada no set é usada igualmente na impressão, no gabarito e na rastreabilidade.
+6. Em falha de validação, os campos de montagem e a opção compacta são recuperados pelos parâmetros existentes.
 
 ## 7. Entregar PDF, CSV e ZIP
 
 1. Em `/exports`, escolha a prova criada.
 2. Anexe ou substitua o gabarito EvalBee e ajuste a largura se necessário.
-3. Abra o preview HTML A4 para conferir questões, sets e a última página.
+3. Abra o preview HTML A4 para conferir questões, sets e a última página. Imagens acompanham a largura da questão, mas não podem ocupar mais de 25% da área imprimível; fontes muito altas também ficam limitadas a metade da altura da página.
 4. Baixe PDF direto, CSV por set/todos os sets e ZIP (um PDF por set).
 5. Use o “Gabarito Completo” para uma última conferência antes de imprimir.
 
