@@ -57,6 +57,17 @@ export function QuestionImageInput({ hasCurrentImage = false }: Props) {
     setAttachmentMessage(`Imagem ${normalizedFile.name} anexada pelo Ctrl+V.`);
   }, []);
 
+  const removeSelectedImage = useCallback(() => {
+    const input = inputRef.current;
+    if (input) {
+      const emptyTransfer = new DataTransfer();
+      input.value = "";
+      input.files = emptyTransfer.files;
+    }
+    setSelectedImage(null);
+    setAttachmentMessage("Imagem removida.");
+  }, []);
+
   useEffect(() => {
     function handlePaste(event: ClipboardEvent) {
       if (!event.clipboardData) return;
@@ -97,15 +108,24 @@ export function QuestionImageInput({ hasCurrentImage = false }: Props) {
         {attachmentMessage}
       </p>
       {previewUrl && selectedImage && (
-        <div className="question-image-paste-preview">
-          <Image
-            src={previewUrl}
-            alt={`Prévia de ${selectedImage.name}`}
-            width={720}
-            height={480}
-            unoptimized
-          />
-        </div>
+        <>
+          <div className="question-image-paste-preview">
+            <Image
+              src={previewUrl}
+              alt={`Prévia de ${selectedImage.name}`}
+              width={720}
+              height={480}
+              unoptimized
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost question-image-remove-button"
+            onClick={removeSelectedImage}
+          >
+            Remover imagem
+          </button>
+        </>
       )}
     </div>
   );

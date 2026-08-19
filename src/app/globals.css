@@ -283,6 +283,7 @@ fieldset { min-width: 0; }
 .question-image-attachment-status { min-height: 1.25rem; margin: .35rem 0 0; color: var(--success); font-size: .8rem; font-weight: 600; }
 .question-image-paste-preview { display: grid; place-items: center; width: min(100%, 720px); max-height: 380px; margin-top: .45rem; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted); }
 .question-image-paste-preview img { display: block; width: 100%; height: auto; max-height: 380px; object-fit: contain; }
+.question-image-remove-button { margin-top: .5rem; color: var(--danger); }
 .option-item { display: flex; align-items: flex-start; gap: .75rem; margin-bottom: .5rem; padding: .7rem .75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: .86rem; }
 .option-item.correct { border-color: color-mix(in srgb, var(--success) 65%, var(--border)); background: var(--success-soft); }
 .option-letter { display: inline-grid; place-items: center; width: 29px; height: 29px; flex: 0 0 29px; border-radius: 50%; color: var(--muted-strong); background: var(--surface-muted); font-size: .78rem; font-weight: 800; }

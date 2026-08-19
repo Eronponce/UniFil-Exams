@@ -86,6 +86,24 @@ describe("QuestionImageInput", () => {
     expect(screen.getByRole("img", { name: "Prévia de captura.png" })).toBeInTheDocument();
   });
 
+  it("removes the attached image from the file input and preview", () => {
+    render(<QuestionImageInput />);
+    const image = new File(["png"], "captura.png", { type: "image/png" });
+    const clipboardData = {
+      items: [{ kind: "file", type: "image/png", getAsFile: () => image }],
+      files: [],
+    } as unknown as DataTransfer;
+
+    fireEvent.paste(window, { clipboardData });
+    fireEvent.click(screen.getByRole("button", { name: "Remover imagem" }));
+
+    const input = screen.getByLabelText("Imagem (opcional)") as HTMLInputElement;
+    expect(input.files).toHaveLength(0);
+    expect(screen.getByRole("status")).toHaveTextContent("Imagem removida");
+    expect(screen.queryByRole("img", { name: "Prévia de captura.png" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remover imagem" })).not.toBeInTheDocument();
+  });
+
   it("keeps manual file selection working", () => {
     render(<QuestionImageInput hasCurrentImage />);
     const image = new File(["jpg"], "diagrama.jpg", { type: "image/jpeg" });
