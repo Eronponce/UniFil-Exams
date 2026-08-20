@@ -29,7 +29,7 @@ function question(overrides: Partial<AnswerKeyImageQuestion> = {}): AnswerKeyIma
 
 describe("commented answer-key image", () => {
   it("uses the displayed objective letter and True/False wording", () => {
-    expect(resolveAnswerKeyImageAnswer(question())).toBe("D — Segunda");
+    expect(resolveAnswerKeyImageAnswer(question())).toBe("D - Segunda");
     expect(resolveAnswerKeyImageAnswer(question({
       questionType: "verdadeiro_falso",
       shuffledOptions: [1, 0],
@@ -59,7 +59,7 @@ describe("commented answer-key image", () => {
     expect(svg).toContain("ENUNCIADO");
     expect(svg).toContain("Prova &lt;Final&gt;");
     expect(svg).toContain("UniFil &amp; Curso  •  Set B  •  Versão 4");
-    expect(svg).toContain("D — Segunda");
+    expect(svg).toContain("D - Segunda");
     expect(svg).toContain("Justificativa segura &amp; completa");
     expect(svg).not.toContain("<Final>");
   });

@@ -33,7 +33,7 @@ status: active
 - Question detail and edit screens share discipline-scoped previous/next navigation; the edit form shows the current image at large size directly after the statement and keeps replacement upload separate.
 - The question bank supports selecting multiple questions and applying one shared thematic area without changing their statements; submitting a blank area clears it from the selection.
 - The full answer key on `/exports` reproduces Set A question positions and objective-option shuffling, so its marked letters match the Set A quick CSV; other per-set PDFs and CSVs retain their own shuffled order.
-- `/exports` also offers a high-resolution commented PNG per set; `/api/png/[setId]?version=N` preserves the selected version snapshot, shuffled answer, source bank ID and justification.
+- `/exports` offers a paginated commented PDF per set; `/api/pdf/commented/[setId]?version=N` preserves the selected version snapshot, shuffled answer, source bank ID and justification. The former PNG route remains only for compatibility.
 - The desktop sidebar collapse toggle remains visible in the compact 82px rail, allowing the persisted collapsed state to be expanded again.
 - Manual question creation accepts an image file or `Ctrl/Cmd + V` clipboard image, shows a preview, and can remove the pending image before submit.
 - The question bank has an explicit no-thematic-area filter covering normalized null/blank areas.

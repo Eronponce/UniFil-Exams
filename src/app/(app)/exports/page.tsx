@@ -249,7 +249,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                           </span>
                         </div>
                         <div className="actions-row">
-                          <a href={`/api/png/${set.id}${csvVersionQuery}`} className="btn btn-primary btn-sm" download>🖼 PNG comentado</a>
+                          <a href={`/api/pdf/commented/${set.id}${csvVersionQuery}`} className="btn btn-primary btn-sm" download>⬇ PDF comentado</a>
                           <a href={`/api/csv/${set.id}${csvVersionQuery}`} className="btn btn-ghost btn-sm" download>⬇ CSV</a>
                         </div>
                       </div>

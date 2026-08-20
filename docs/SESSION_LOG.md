@@ -8,6 +8,12 @@ status: active
 
 # Session Log
 
+## 2026-08-20 - Gabarito comentado em PDF
+
+- `/exports` passou a baixar um PDF comentado A4 por set no lugar do PNG.
+- A rota `/api/pdf/commented/[setId]` encaminha `?version=N` para a página de impressão e preserva título, instituição, ordem, embaralhamento, ID do banco e justificativa do snapshot selecionado.
+- A antiga rota `/api/png/[setId]` foi mantida somente para compatibilidade e reutiliza a mesma carga de dados.
+
 ## 2026-08-20 - Editor visual e continuacoes de impressao
 
 - Implementado o editor visual de `/exams` com selecao exata, grupos canonicos, botoes de ordem limitados ao subgrupo, largura por questao, sliders de imagem e tabs Set A..H.

@@ -50,7 +50,7 @@ O sistema gera prova para impressao e gabarito separado. A correcao acontece for
 - A montagem normal mantém a sequência dos tipos e o comportamento de sorteio existente, sem separar as larguras.
 - Quando a opção compacta está ativa, cada tipo é dividido em `column` e `full`; os dois grupos continuam aleatórios e `column` vem primeiro.
 - A sequência global permanece `objetiva → verdadeiro/falso → numérica → dissertativa`.
-- Essa ordem é persistida em `exam_set_questions.position`; PDF, CSV, PNG, gabarito completo e mapa de rastreabilidade não reordenam o conteúdo depois.
+- Essa ordem é persistida em `exam_set_questions.position`; PDFs, CSV, gabarito completo e mapa de rastreabilidade não reordenam o conteúdo depois.
 
 ## Mapa de rastreabilidade
 
@@ -72,12 +72,13 @@ Campos principais:
 
 Para validar resultados do EvalBee: use `versao_set` + `posicao_exibida` como chave de junção, leia `id_questao_banco` e compare a resposta do aluno com `resposta_correta_exibida`. A ordem embaralhada fica no mesmo arquivo para auditoria posterior.
 
-## Versões históricas e PNG comentado
+## Versões históricas e PDF comentado
 
 - Provas editadas possuem versões imutáveis selecionáveis em `/exports`.
-- PDF, CSV por set, matriz, rastreabilidade e PNG recebem `?version=N` e usam exclusivamente o snapshot escolhido.
-- Cada set oferece um PNG de alta resolução com resposta correta, ID original da questão e justificativa, adequado para anexar à vista de prova.
-- V/F também aparece como `True` ou `False` no PNG.
+- PDF da prova, PDF comentado, CSV por set, matriz e rastreabilidade recebem `?version=N` e usam exclusivamente o snapshot escolhido.
+- Cada set oferece um PDF A4 paginado com enunciado, resposta correta, ID original da questão e justificativa.
+- V/F aparece como `True` ou `False` no PDF comentado.
+- O botão de `/exports` usa `/api/pdf/commented/[setId]`; a rota PNG anterior permanece somente para compatibilidade.
 
 ## Exportacao de banco de questoes
 - JSON e CSV de questoes ficam em `/api/export/questions`.

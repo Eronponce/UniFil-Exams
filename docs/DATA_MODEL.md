@@ -71,7 +71,7 @@ erDiagram
 - A correta deve apontar para uma alternativa existente antes da randomizacao.
 - O gabarito do set deve apontar para a letra final depois da randomizacao.
 - O modo compacto altera a ordem persistida do set para `tipo → column → full`; não existe reordenação apenas visual na impressão.
-- PDF, CSV, PNG e rastreabilidade devem consumir a mesma posição persistida.
+- PDFs, CSV e rastreabilidade devem consumir a mesma posição persistida.
 - Imagens de questão e EvalBee são arquivos locais servidos por rotas controladas.
 
 > [!warning]

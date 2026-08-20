@@ -109,7 +109,7 @@ function typeLabel(type: QuestionType): string {
 
 export function resolveAnswerKeyImageAnswer(question: AnswerKeyImageQuestion): string {
   if (question.questionType === "dissertativa") {
-    return "Resposta dissertativa — consulte a justificativa abaixo.";
+    return "Resposta dissertativa - consulte a justificativa abaixo.";
   }
   if (question.questionType === "numerica") {
     return question.correctAnswer.trim() || "Resposta numérica não cadastrada";
@@ -126,7 +126,7 @@ export function resolveAnswerKeyImageAnswer(question: AnswerKeyImageQuestion): s
   const correctOption = question.options.find((option) => option.index === originalIndex);
   const letter = LETTERS[displayedIndex] ?? "?";
   const optionText = correctOption ? plainText(correctOption.text, 260) : "alternativa não encontrada";
-  return `${letter} — ${optionText}`;
+  return `${letter} - ${optionText}`;
 }
 
 function prepareQuestion(question: AnswerKeyImageQuestion): PreparedQuestion {

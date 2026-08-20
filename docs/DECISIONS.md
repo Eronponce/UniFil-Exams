@@ -226,6 +226,12 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Reason: teachers need a polished image artifact to attach to external class/assessment systems without converting the HTML page manually.
 - Impact: each image preserves the selected set order and shuffled objective letter, writes V/F answers as `True`/`False`, includes the bank question ID and justification, and reads immutable snapshot content for historical versions.
 
+## 2026-08-20 - Commented answer keys export as paginated PDFs
+
+- Decision: replace the visible PNG download in `/exports` with one A4 PDF per set through `/api/pdf/commented/[setId]`, forwarding optional `?version=N` to a dedicated print page.
+- Reason: the commented answer key must be printable, readable across multiple pages and usable without converting a tall raster image.
+- Impact: the PDF preserves set order, shuffled answers, source question IDs, explanations and immutable historical snapshots. `/api/png/[setId]` remains available only for backward compatibility.
+
 ## 2026-08-12 - Server-wide backup uses encrypted Restic over Google Drive
 
 - Decision: create one daily, application-consistent snapshot of every production database and persistent data area with Restic, using the rclone Google Drive remote only as the encrypted repository transport.

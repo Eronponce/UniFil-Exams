@@ -74,6 +74,7 @@ export async function renderHtmlPageToPdfBuffer(url: string): Promise<Buffer> {
       "--disable-dev-shm-usage",
       "--run-all-compositor-stages-before-draw",
       "--virtual-time-budget=15000",
+      "--no-pdf-header-footer",
       "--print-to-pdf-no-header",
       `--print-to-pdf=${pdfPath}`,
       url,

@@ -12,7 +12,7 @@ status: active
 
 # Implementações de agosto de 2026
 
-Este documento consolida as mudanças realizadas no UniFil Exams entre 3 e 19 de agosto de 2026 e a implantação do backup amplo do servidor. Para decisões arquiteturais, consulte [[DECISIONS]]; para comandos operacionais completos de recuperação, consulte [[SERVER_ALL_SYSTEMS_BACKUP]].
+Este documento consolida as mudanças realizadas no UniFil Exams entre 3 e 20 de agosto de 2026 e a implantação do backup amplo do servidor. Para decisões arquiteturais, consulte [[DECISIONS]]; para comandos operacionais completos de recuperação, consulte [[SERVER_ALL_SYSTEMS_BACKUP]].
 
 > [!info] Escopo
 > O histórico registra o comportamento entregue, os dados persistidos, as rotas relevantes, a implantação e as evidências de validação. Valores secretos, tokens OAuth e a senha Restic nunca são reproduzidos na documentação.
@@ -64,7 +64,7 @@ A primeira página recebe instruções editáveis. O texto padrão explica:
 - Provas exportadas podem ser reabertas em `/exams/[id]/edit`.
 - Salvar cria um snapshot imutável com número sequencial e nota de alteração.
 - Cada versão preserva título, instituição, instruções, layouts, divisão de questões, sets, ordem de questões, ordem de alternativas e respostas corretas.
-- Preview, PDF, CSV, mapa de rastreabilidade e PNG podem ser baixados para uma versão histórica específica por `?version=N`.
+- Preview, PDFs, CSV e mapa de rastreabilidade podem ser baixados para uma versão histórica específica por `?version=N`.
 - Restaurar uma versão antiga não apaga o histórico: cria uma nova versão a partir daquele snapshot.
 - Provas são inativadas em vez de removidas definitivamente. A listagem permite filtrar por status e reativar uma prova inativa.
 
@@ -92,11 +92,11 @@ Detalhes do contrato: [[IMPORT_QUESTIONS]].
 ### Gabaritos e exportações
 
 - O gabarito completo segue a ordem e o embaralhamento do **Set A**, evitando divergência entre gabarito rápido e completo.
-- CSV, matriz, rastreabilidade e PNG históricos usam o snapshot da versão selecionada.
+- CSV, matriz, rastreabilidade e PDF comentado históricos usam o snapshot da versão selecionada.
 - Respostas verdadeiro/falso são exportadas como `True` e `False`, nunca `V` e `F`.
 - Dissertativas usam `-` nos gabaritos objetivos.
-- Cada set pode baixar um PNG de alta resolução com identificação da prova/set/versão, resposta correta, ID da questão do banco e justificativa. O arquivo serve para anexar posteriormente à vista de prova.
-- O PNG não reutiliza o estado atual quando uma versão histórica foi selecionada.
+- Cada set pode baixar um PDF A4 paginado com identificação da prova/set/versão, enunciado, resposta correta, ID da questão do banco e justificativa.
+- O PDF comentado não reutiliza o estado atual quando uma versão histórica foi selecionada; a antiga rota PNG permanece apenas para compatibilidade.
 
 Detalhes operacionais: [[EXPORTS_EVALBEE]].
 

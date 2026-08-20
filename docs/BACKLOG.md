@@ -205,3 +205,4 @@ Fragmentos incompletos nao atravessam para a outra coluna da pagina atual; a con
 | US-14 | Smoke manual no navegador: streaming com Ollama/Claude/Gemini reais | Alta |
 | US-15 | Validar visualmente PDFs longos com mixes de seção para ajustar density | Média |
 | US-16 | Compartilhar configuracao Obsidian `.obsidian/` no GitHub se a equipe quiser padronizar plugins/tema | Baixa |
+| US-23 | Exportar o gabarito comentado em PDF, substituindo o formato PNG | ✅ Implementado (2026-08-20) |
