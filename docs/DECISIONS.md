@@ -10,6 +10,12 @@ status: active
 
 Use this file for durable project decisions. Keep entries short and factual.
 
+## 2026-08-20 - Redeploy no host remoto (Servidor-Eron)
+
+- Decisão: o redeploy de produção é `git pull && docker compose up --build -d` executado via SSH direto no host remoto; não há CI/CD automatizado.
+- Motivo: infraestrutura mínima para um app single-tenant; o mesmo host já roda outros serviços do dono (dashboard, backups).
+- Impacto: credenciais e endereço do host **não** ficam neste repositório público — vivem em `conexao-remota` (repo privado local, arquivo `unifil-exams.md`). Antes de redeploy, sempre commitar e dar push das mudanças locais primeiro, pois o servidor só atualiza via `git pull` de `origin/main`.
+
 ## 2026-08-20 - Escala de imagens somente na visualização de impressão
 
 - Decisão: permitir que o professor reduza cada imagem da questão entre 100% e 25% da largura segura calculada; a escala é normalizada em `imageScale` na URL e reaplicada pelo preview e pelo PDF direto.
