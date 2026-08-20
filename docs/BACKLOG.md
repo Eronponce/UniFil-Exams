@@ -10,6 +10,18 @@ status: active
 
 Data: 2026-04-22
 
+## US-21 - Editor visual com preview A4
+
+**Status:** Implementado (2026-08-20)
+
+Selecao exata de questoes auditadas, ordem manual canonica por tipo/largura, largura individual, escala de imagem e preview embedded por Set vivem no mesmo rascunho deterministico.
+
+## US-22 - Continuacao de objetiva na pagina seguinte
+
+**Status:** Implementado (2026-08-20)
+
+Fragmentos incompletos nao atravessam para a outra coluna da pagina atual; a continuacao recebe cabecalho e marcador medido.
+
 ---
 
 ## US-01 · IA decide a dificuldade no import em lote

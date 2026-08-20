@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { getExam } from "@/lib/db/exams";
 import { renderHtmlPageToPdfBuffer } from "@/lib/print/browser-pdf";
-import { parseQuestionImageScale, serializeQuestionImageScale } from "@/lib/print/question-image-scale";
+import { parseQuestionImageScale, serializeQuestionImageScaleForForwarding } from "@/lib/print/question-image-scale";
 
 interface SetRow {
   id: number;
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: Promise<{ setId: string }> }) {
   const { setId } = await params;
   const requestUrl = new URL(req.url);
-  const serializedImageScale = serializeQuestionImageScale(
+  const serializedImageScale = serializeQuestionImageScaleForForwarding(
     parseQuestionImageScale(requestUrl.searchParams.get("imageScale")),
   );
   const row = getDb()

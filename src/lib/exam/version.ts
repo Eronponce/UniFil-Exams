@@ -2,6 +2,7 @@ import type { Exam, ExamQuestionLayouts, Question, QuestionLayout, QuestionOptio
 import { sanitizeRichText } from "@/lib/html/rich-text";
 import { normalizeExamInstructions } from "./instructions";
 import { normalizeExamQuestionLayouts, normalizeQuestionLayout } from "./layout";
+import { normalizeQuestionImageScalePercent } from "@/lib/print/question-image-scale";
 
 export const EXAM_VERSION_SNAPSHOT_SCHEMA_VERSION = 1 as const;
 
@@ -24,6 +25,8 @@ export interface ExamVersionSnapshotQuestion {
   correctShuffledIndex: number;
   questionType: QuestionType;
   answerLines: number;
+  /** Historical snapshots may omit this; parsers normalize absence to 100. */
+  imageScalePercent?: number;
   layoutOverride: QuestionLayout | null;
   layout: QuestionLayout;
   difficulty: Question["difficulty"];
@@ -113,6 +116,7 @@ function parseSnapshotQuestion(value: unknown, sourceSetId: number): ExamVersion
     correctShuffledIndex: value.correctShuffledIndex as number,
     questionType,
     answerLines: Number.isInteger(value.answerLines) ? Math.max(0, value.answerLines as number) : 0,
+    imageScalePercent: normalizeQuestionImageScalePercent(value.imageScalePercent),
     layoutOverride,
     layout,
     difficulty: value.difficulty === "easy" || value.difficulty === "hard" ? value.difficulty : "medium",
@@ -206,6 +210,7 @@ export function buildExamVersionSnapshot(
               correctShuffledIndex: setQuestion.correctShuffledIndex,
               questionType: question.questionType,
               answerLines: question.answerLines,
+              imageScalePercent: normalizeQuestionImageScalePercent(exam.questionImageScaleOverrides?.[question.id]),
               layoutOverride,
               layout: layoutOverride ?? exam.questionLayouts[question.questionType],
               difficulty: question.difficulty,

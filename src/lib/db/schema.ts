@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS exam_questions (
   question_id INTEGER NOT NULL REFERENCES questions(id),
   position    INTEGER NOT NULL,
   layout_override TEXT CHECK(layout_override IN ('column', 'full') OR layout_override IS NULL),
+  image_scale_percent INTEGER CHECK(image_scale_percent IS NULL OR (typeof(image_scale_percent) = 'integer' AND image_scale_percent BETWEEN 25 AND 99)),
   PRIMARY KEY (exam_id, question_id)
 );
 
@@ -104,5 +105,8 @@ export function migrate(): void {
   const eqCols = (db.prepare("PRAGMA table_info(exam_questions)").all() as { name: string }[]).map((c) => c.name);
   if (!eqCols.includes("layout_override")) {
     db.exec("ALTER TABLE exam_questions ADD COLUMN layout_override TEXT");
+  }
+  if (!eqCols.includes("image_scale_percent")) {
+    db.exec("ALTER TABLE exam_questions ADD COLUMN image_scale_percent INTEGER CHECK(image_scale_percent IS NULL OR (typeof(image_scale_percent) = 'integer' AND image_scale_percent BETWEEN 25 AND 99))");
   }
 }

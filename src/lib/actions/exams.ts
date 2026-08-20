@@ -12,14 +12,19 @@ import {
   type ExamVersionEditorInput,
 } from "@/lib/db/exams";
 import { getQuestion } from "@/lib/db/questions";
-import { buildSets, type QuestionInfo } from "@/lib/exam/randomize";
+import { buildSets, normalizeExamDraftSeed, type QuestionInfo } from "@/lib/exam/randomize";
+import { normalizeManualQuestionOrder } from "@/lib/exam/manual-order";
 import { normalizeExamSelectionRequest, pickQuestionsForExam } from "@/lib/exam/select-questions";
 import { redirectWithToast } from "@/lib/toast";
 import { normalizeThematicAreas } from "@/lib/questions/thematic-areas";
 import { normalizeExamQuestionLayouts } from "@/lib/exam/layout";
 import { normalizeExamInstructions } from "@/lib/exam/instructions";
+import {
+  isValidQuestionImageScalePercent,
+} from "@/lib/print/question-image-scale";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const DEFAULT_VISUAL_DRAFT_SEED = "visual-default";
 
 function readPositiveIntegerIds(formData: FormData, fieldName: string): number[] {
   const ids = new Set<number>();
@@ -29,6 +34,36 @@ function readPositiveIntegerIds(formData: FormData, fieldName: string): number[]
     if (Number.isSafeInteger(id) && id > 0) ids.add(id);
   }
   return [...ids];
+}
+
+function readFormQuestionLayoutOverrides(formData: FormData): Record<number, "column" | "full"> {
+  const overrides: Record<number, "column" | "full"> = {};
+  for (const [name, value] of formData.entries()) {
+    const match = /^layoutOverride-(\d+)$/.exec(name);
+    if (!match || typeof value !== "string") continue;
+    const questionId = Number(match[1]);
+    if (!Number.isSafeInteger(questionId) || questionId <= 0) continue;
+    if (value === "column" || value === "full") overrides[questionId] = value;
+  }
+  return overrides;
+}
+
+function readFormQuestionImageScaleOverrides(formData: FormData): {
+  values: Record<number, number | null>;
+  hasFields: boolean;
+} {
+  const values: Record<number, number | null> = {};
+  let hasFields = false;
+  for (const [name, value] of formData.entries()) {
+    const match = /^imageScale-(\d+)$/.exec(name);
+    if (!match) continue;
+    const questionId = Number(match[1]);
+    if (!Number.isSafeInteger(questionId) || questionId <= 0) continue;
+    hasFields = true;
+    const parsed = typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN;
+    values[questionId] = isValidQuestionImageScalePercent(parsed) ? parsed : null;
+  }
+  return { values, hasFields };
 }
 
 export async function createExamAction(formData: FormData) {
@@ -42,6 +77,8 @@ export async function createExamAction(formData: FormData) {
   const numNumericasRaw = (formData.get("numNumericas") as string | null) ?? "";
   const allowQuestionSplit = formData.get("allowQuestionSplit") === "1";
   const compactQuestionOrder = formData.get("compactQuestionOrder") === "1";
+  const visualBuilder = formData.get("visualBuilder") === "1";
+  const draftSeed = normalizeExamDraftSeed(formData.get("draftSeed")) ?? DEFAULT_VISUAL_DRAFT_SEED;
   const instructions = normalizeExamInstructions(formData.get("instructions"));
   const questionLayouts = normalizeExamQuestionLayouts({
     objetiva: formData.get("layoutObjetiva"),
@@ -49,8 +86,11 @@ export async function createExamAction(formData: FormData) {
     numerica: formData.get("layoutNumerica"),
     dissertativa: formData.get("layoutDissertativa"),
   });
-  const allQuestionIds = (formData.getAll("questionIds") as string[]).map(Number).filter(Boolean);
+  const allQuestionIds = readPositiveIntegerIds(formData, "questionIds");
   const fullWidthQuestionIds = readPositiveIntegerIds(formData, "fullWidthQuestionIds");
+  const formQuestionLayoutOverrides = readFormQuestionLayoutOverrides(formData);
+  const formQuestionImageScaleOverrides = readFormQuestionImageScaleOverrides(formData).values;
+  const manualQuestionOrder = readPositiveIntegerIds(formData, "manualQuestionOrder");
   const thematicAreas = normalizeThematicAreas(formData.getAll("area").filter((value): value is string => typeof value === "string"));
   const qty = Math.min(Math.max(Number(quantitySetsRaw) || 1, 1), 8);
   const labels = SET_LETTERS.slice(0, qty);
@@ -69,6 +109,7 @@ export async function createExamAction(formData: FormData) {
     params.set("layoutDissertativa", questionLayouts.dissertativa);
     params.set("allowQuestionSplit", allowQuestionSplit ? "1" : "0");
     params.set("compactQuestionOrder", compactQuestionOrder ? "1" : "0");
+    if (visualBuilder) params.set("visualBuilder", "1");
     return params;
   }
 
@@ -81,22 +122,64 @@ export async function createExamAction(formData: FormData) {
     });
   }
 
-  const questionInfos: QuestionInfo[] = allQuestionIds
+  const loadedQuestions = allQuestionIds
     .map((id) => getQuestion(id))
-    .filter(Boolean)
-    .map((q) => ({ id: q!.id, correctIndex: q!.correctIndex, questionType: q!.questionType }));
+    .filter((question) => question !== undefined);
+  const questionInfos: QuestionInfo[] = loadedQuestions
+    .map((q) => ({ id: q.id, correctIndex: q.correctIndex, questionType: q.questionType }));
 
   let selectedQuestionInfos: QuestionInfo[];
-  try {
-    selectedQuestionInfos = pickQuestionsForExam(questionInfos, normalizeExamSelectionRequest(formData));
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Seleção inválida";
-    const params = buildErrorParams(msg);
-    redirectWithToast(`/exams?${params.toString()}`, {
-      type: "error",
-      title: "Seleção de questões inválida",
-      description: msg,
-    });
+  let initialQuestionLayoutOverrides: Record<number, "column" | "full">;
+  if (visualBuilder) {
+    const auditedQuestionInfos = loadedQuestions
+      .filter((question) => question.audited && !question.rejected && question.disciplineId === disciplineId)
+      .map((question) => ({
+        id: question.id,
+        correctIndex: question.correctIndex,
+        questionType: question.questionType,
+        layout: formQuestionLayoutOverrides[question.id] ?? questionLayouts[question.questionType],
+      }));
+    selectedQuestionInfos = normalizeManualQuestionOrder(auditedQuestionInfos, manualQuestionOrder);
+    // `readPositiveIntegerIds` already de-duplicates submitted fields. The
+    // normalized valid/audited set must still match that submitted set exactly;
+    // otherwise a stale or tampered visual draft must not become a partial exam.
+    const submittedIds = new Set(allQuestionIds);
+    const selectedIds = new Set(selectedQuestionInfos.map((question) => question.id));
+    const exactVisualSelection = selectedQuestionInfos.length === allQuestionIds.length
+      && selectedIds.size === submittedIds.size
+      && [...submittedIds].every((questionId) => selectedIds.has(questionId));
+    if (!exactVisualSelection) {
+      const params = buildErrorParams("nenhuma-questao-auditada");
+      redirectWithToast(`/exams?${params.toString()}`, {
+        type: "error",
+        title: "Seleção visual desatualizada",
+        description: "Uma ou mais questões selecionadas não existem mais, não estão auditadas ou pertencem a outra disciplina. Recarregue o banco e tente novamente.",
+      });
+    }
+    initialQuestionLayoutOverrides = Object.fromEntries(
+      selectedQuestionInfos
+        .filter((question) => formQuestionLayoutOverrides[question.id] !== undefined)
+        .map((question) => [question.id, formQuestionLayoutOverrides[question.id]!]),
+    );
+  } else {
+    try {
+      selectedQuestionInfos = pickQuestionsForExam(questionInfos, normalizeExamSelectionRequest(formData));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Seleção inválida";
+      const params = buildErrorParams(msg);
+      redirectWithToast(`/exams?${params.toString()}`, {
+        type: "error",
+        title: "Seleção de questões inválida",
+        description: msg,
+      });
+    }
+
+    const selectedQuestionIds = new Set(selectedQuestionInfos.map((question) => question.id));
+    initialQuestionLayoutOverrides = Object.fromEntries(
+      fullWidthQuestionIds
+        .filter((questionId) => selectedQuestionIds.has(questionId))
+        .map((questionId) => [questionId, "full" as const]),
+    );
   }
 
   if (selectedQuestionInfos.length === 0) {
@@ -108,12 +191,29 @@ export async function createExamAction(formData: FormData) {
     });
   }
 
-  const selectedQuestionIds = new Set(selectedQuestionInfos.map((question) => question.id));
-  const initialQuestionLayoutOverrides = Object.fromEntries(
-    fullWidthQuestionIds
-      .filter((questionId) => selectedQuestionIds.has(questionId))
-      .map((questionId) => [questionId, "full" as const]),
+  const questionInfosForSets = selectedQuestionInfos.map((question) => ({
+    ...question,
+    layout: initialQuestionLayoutOverrides[question.id] ?? question.layout ?? questionLayouts[question.questionType],
+  }));
+  const sets = buildSets(
+    questionInfosForSets,
+    labels,
+    visualBuilder
+      ? { manualQuestionOrder: selectedQuestionInfos.map((question) => question.id), seed: draftSeed }
+      : { compactLayoutOrder: compactQuestionOrder },
   );
+  if (sets.some((set) =>
+    set.questionOrder.length !== selectedQuestionInfos.length
+    || set.shuffledOptions.length !== selectedQuestionInfos.length
+    || set.correctShuffledIndices.length !== selectedQuestionInfos.length,
+  )) {
+    const params = buildErrorParams("conjunto-invalido");
+    redirectWithToast(`/exams?${params.toString()}`, {
+      type: "error",
+      title: "Não foi possível montar os sets",
+      description: "A distribuição das questões foi invalidada antes da criação da prova.",
+    });
+  }
 
   const exam = createExam({
     disciplineId,
@@ -124,15 +224,8 @@ export async function createExamAction(formData: FormData) {
     questionIds: selectedQuestionInfos.map((q) => q.id),
     questionLayouts,
     questionLayoutOverrides: initialQuestionLayoutOverrides,
+    questionImageScaleOverrides: formQuestionImageScaleOverrides,
   });
-  const sets = buildSets(
-    selectedQuestionInfos.map((question) => ({
-      ...question,
-      layout: initialQuestionLayoutOverrides[question.id] ?? questionLayouts[question.questionType],
-    })),
-    labels,
-    { compactLayoutOrder: compactQuestionOrder },
-  );
 
   for (const s of sets) {
     createExamSet(exam.id, {
@@ -217,6 +310,7 @@ function readEditorInput(formData: FormData): { examId: number; input: ExamVersi
   const examId = Number(formData.get("examId"));
   const formText = (value: FormDataEntryValue | null): string => typeof value === "string" ? value : "";
   const questionLayoutOverrides: Record<number, "column" | "full" | null> = {};
+  const imageScaleFields = readFormQuestionImageScaleOverrides(formData);
   for (const [name, value] of formData.entries()) {
     const match = /^layoutOverride-(\d+)$/.exec(name);
     if (!match) continue;
@@ -237,6 +331,7 @@ function readEditorInput(formData: FormData): { examId: number; input: ExamVersi
         dissertativa: formText(formData.get("layoutDissertativa")),
       },
       questionLayoutOverrides,
+      questionImageScaleOverrides: imageScaleFields.hasFields ? imageScaleFields.values : undefined,
       changeNote: formText(formData.get("changeNote")).trim(),
     },
   };

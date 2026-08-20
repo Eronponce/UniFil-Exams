@@ -41,6 +41,7 @@ erDiagram
 - Estado de auditoria/recusa e origem manual ou IA.
 
 ### Prova
+- `exam_questions.image_scale_percent` guarda apenas overrides de imagem 25..99; ausencia/100 usa escala segura padrao. O preview visual mantem o rascunho em estado client-side ate o submit.
 - Disciplina.
 - Titulo.
 - Instituição, instruções, estado ativo e largura do gabarito.

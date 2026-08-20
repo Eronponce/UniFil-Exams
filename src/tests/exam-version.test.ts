@@ -9,6 +9,7 @@ import { createExam, createExamSet, createExamVersion, getExam, getExamVersion, 
 import { createQuestion, updateQuestion } from "@/lib/db/questions";
 import { migrate } from "@/lib/db/schema";
 import { DEFAULT_EXAM_INSTRUCTIONS } from "@/lib/exam/instructions";
+import { parseExamVersionSnapshot } from "@/lib/exam/version";
 import { buildPrintExamPayload } from "@/lib/print/build-print-payload";
 
 function addQuestion(statement = "<p>Enunciado original</p>") {
@@ -131,5 +132,98 @@ describe("exam versions", () => {
     expect(getExam(exam.id)?.title).toBe("Prova original");
     expect(getExam(exam.id)?.questionLayoutOverrides).toEqual({});
     expect(listExamVersions(exam.id).map((version) => version.versionNumber)).toEqual([3, 2, 1]);
+  });
+
+  it("preserves image scales in live models, immutable snapshots, print payloads, saves, and restores", () => {
+    const selected = addQuestion("<p>Imagem</p>");
+    const other = addQuestion("<p>Outra</p>");
+    const exam = createExam({
+      disciplineId: 1,
+      title: "Escalas",
+      questionIds: [selected.id, other.id],
+      questionImageScaleOverrides: {
+        [selected.id]: 75,
+        [other.id]: 100,
+        99999: 50,
+      },
+    });
+    createExamSet(exam.id, {
+      label: "A",
+      questionOrder: [selected.id, other.id],
+      shuffledOptions: [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]],
+      correctShuffledIndices: [0, 0],
+    });
+    const initial = createExamVersion(exam.id);
+
+    expect(getExam(exam.id)?.questionImageScaleOverrides).toEqual({ [selected.id]: 75 });
+    expect(initial.snapshot.sets[0]?.questions[0]?.imageScalePercent).toBe(75);
+    expect(buildPrintExamPayload(getExam(exam.id)!).sets[0]?.questions[0]?.imageScalePercent).toBe(75);
+    expect(buildPrintExamPayload(getExam(exam.id)!, initial).sets[0]?.questions[0]?.imageScalePercent).toBe(75);
+
+    const saved = saveExamVersion(exam.id, {
+      title: "Escalas revisadas",
+      institution: "UniFil",
+      instructions: "Instruções",
+      allowQuestionSplit: false,
+      questionLayouts: {},
+      questionLayoutOverrides: {},
+      questionImageScaleOverrides: { [selected.id]: 50, [other.id]: null },
+    });
+    expect(saved.snapshot.sets[0]?.questions[0]?.imageScalePercent).toBe(50);
+    expect(getExam(exam.id)?.questionImageScaleOverrides).toEqual({ [selected.id]: 50 });
+
+    saveExamVersion(exam.id, {
+      title: "Escalas preservadas",
+      institution: "UniFil",
+      instructions: "Instruções",
+      allowQuestionSplit: false,
+      questionLayouts: {},
+      questionLayoutOverrides: {},
+    });
+    expect(getExam(exam.id)?.questionImageScaleOverrides).toEqual({ [selected.id]: 50 });
+
+    const restored = restoreExamVersion(exam.id, initial.versionNumber);
+    expect(restored.snapshot.sets[0]?.questions[0]?.imageScalePercent).toBe(75);
+    expect(getExam(exam.id)?.questionImageScaleOverrides).toEqual({ [selected.id]: 75 });
+  });
+
+  it("normalizes historical snapshots without imageScalePercent to the default", () => {
+    const question = addQuestion();
+    const snapshot = parseExamVersionSnapshot({
+      schemaVersion: 1,
+      sourceExamId: 1,
+      title: "Histórica",
+      institution: "UniFil",
+      instructions: "Instruções",
+      answerKeyWidthPt: 350,
+      allowQuestionSplit: false,
+      questionLayouts: {},
+      sets: [{
+        sourceSetId: 1,
+        label: "A",
+        evalBeeImageUrl: null,
+        questions: [{
+          sourceQuestionId: question.id,
+          sourceSetId: 1,
+          position: 0,
+          statementHtml: "<p>Q</p>",
+          imageUrl: null,
+          options: [{ index: 0, text: "A" }],
+          shuffledOptions: [],
+          correctShuffledIndex: 0,
+          questionType: "dissertativa",
+          answerLines: 0,
+          layoutOverride: null,
+          layout: "full",
+          difficulty: "medium",
+          thematicArea: null,
+          correctIndex: 0,
+          correctAnswer: "",
+          explanation: "",
+        }],
+      }],
+    });
+
+    expect(snapshot?.sets[0]?.questions[0]?.imageScalePercent).toBe(100);
   });
 });

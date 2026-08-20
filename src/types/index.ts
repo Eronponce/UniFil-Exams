@@ -63,6 +63,8 @@ export interface Exam {
   questionLayouts: ExamQuestionLayouts;
   /** Only explicit per-question overrides are stored. Missing keys inherit by type. */
   questionLayoutOverrides: Record<number, QuestionLayout>;
+  /** Only explicit non-default (25..99) per-question image scales are stored. */
+  questionImageScaleOverrides?: Record<number, number>;
   sets: ExamSet[];
   createdAt: string;
 }

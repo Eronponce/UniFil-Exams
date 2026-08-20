@@ -175,7 +175,7 @@ describe("paginateQuestionsWithReservedLastPage", () => {
     expect(optionIndexes).toEqual([0, 1, 2, 3, 4]);
   });
 
-  it("uses the next column for a continuation before opening a page", () => {
+  it("starts an objective continuation on the next physical page", () => {
     const pages = paginateQuestionsWithReservedLastPage(
       [{
         id: 7,
@@ -190,7 +190,7 @@ describe("paginateQuestionsWithReservedLastPage", () => {
             [],
             [0, 0, 90, 150, 210, 270],
             [0, 0, 0, 90, 150, 210],
-            [0, 0, 0, 0, 90, 350],
+            [0, 0, 0, 0, 90, 150],
             [0, 0, 0, 0, 0, 90],
             [],
           ],
@@ -201,13 +201,23 @@ describe("paginateQuestionsWithReservedLastPage", () => {
       { allowQuestionSplit: true },
     );
 
-    expect(pages[0].placed.map((item) => `${item.id}:${item.column}:${item.optionStart}-${item.optionEnd}`)).toEqual([
-      "7:left:0-3",
-      "7:right:3-4",
-    ]);
-    expect(pages[1].placed.map((item) => `${item.id}:${item.column}:${item.optionStart}-${item.optionEnd}`)).toEqual([
-      "7:left:4-5",
-    ]);
+    expect(pages).toHaveLength(2);
+    expect(pages[0].placed).toEqual([expect.objectContaining({
+      id: 7,
+      column: "left",
+      optionStart: 0,
+      optionEnd: 3,
+      continuation: false,
+      continuesToNextPage: true,
+    })]);
+    expect(pages[1].placed).toEqual([expect.objectContaining({
+      id: 7,
+      column: "left",
+      optionStart: 3,
+      optionEnd: 5,
+      continuation: true,
+      continuesToNextPage: false,
+    })]);
   });
 
   it("reserves the measured first-page instructions area and uses the stricter one-page capacity", () => {

@@ -149,4 +149,51 @@ describe("buildSets", () => {
 
     expect(set.questionOrder).toEqual([1, 2, 3]);
   });
+
+  it("uses one canonical manual order for every set while shuffling only objective/VF options", () => {
+    const questions: QuestionInfo[] = [
+      { id: 1, correctIndex: 0, questionType: "objetiva", layout: "full" },
+      { id: 2, correctIndex: 1, questionType: "objetiva", layout: "column" },
+      { id: 3, correctIndex: 0, questionType: "verdadeiro_falso", layout: "column" },
+      { id: 4, correctIndex: 0, questionType: "numerica", layout: "full" },
+      { id: 5, correctIndex: 0, questionType: "dissertativa", layout: "full" },
+    ];
+
+    const options = { manualQuestionOrder: [1, 2, 3, 4, 5], seed: "draft-42" };
+    const first = buildSets(questions, ["A", "B"], options);
+    const second = buildSets(questions, ["A", "B"], options);
+
+    expect(first).toEqual(second);
+    expect(first.map((set) => set.questionOrder)).toEqual([[2, 1, 3, 4, 5], [2, 1, 3, 4, 5]]);
+    expect(first[0]?.shuffledOptions[3]).toEqual([]);
+    expect(first[0]?.shuffledOptions[4]).toEqual([]);
+    expect(first[0]?.shuffledOptions[0]).toHaveLength(5);
+    expect(first[0]?.shuffledOptions[1]).toHaveLength(5);
+    expect(first[0]?.shuffledOptions[2]).toHaveLength(2);
+
+    for (const set of first) {
+      set.questionOrder.forEach((questionId, position) => {
+        const question = questions.find(({ id }) => id === questionId)!;
+        const shuffled = set.shuffledOptions[position]!;
+        if (question.questionType === "objetiva" || question.questionType === "verdadeiro_falso") {
+          expect(shuffled[set.correctShuffledIndices[position]!]).toBe(question.correctIndex);
+        } else {
+          expect(shuffled).toEqual([]);
+        }
+      });
+    }
+  });
+
+  it("matches the deterministic preview PRNG for the same seed", () => {
+    const questions: QuestionInfo[] = [
+      { id: 10, correctIndex: 0, questionType: "objetiva" },
+      { id: 11, correctIndex: 1, questionType: "verdadeiro_falso" },
+    ];
+    const first = buildSets(questions, ["A", "B"], { manualQuestionOrder: [10, 11], seed: "same" });
+    const second = buildSets(questions, ["A", "B"], { manualQuestionOrder: [10, 11], seed: "same" });
+    const different = buildSets(questions, ["A", "B"], { manualQuestionOrder: [10, 11], seed: "different" });
+
+    expect(first).toEqual(second);
+    expect(JSON.stringify(first)).not.toBe(JSON.stringify(different));
+  });
 });

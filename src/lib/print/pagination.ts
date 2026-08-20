@@ -25,6 +25,8 @@ export interface PlacedPrintQuestion {
   optionStart?: number;
   optionEnd?: number;
   continuation?: boolean;
+  /** The fragment has remaining options that must begin on the next page. */
+  continuesToNextPage?: boolean;
 }
 
 export interface PrintQuestionPageLayout {
@@ -82,7 +84,7 @@ function placeQuestionFragment(
   question: PrintQuestionLayoutInput,
   column: "left" | "right" | undefined,
   top: number,
-  fragment: { start: number; end: number; continuation: boolean; height: number },
+  fragment: { start: number; end: number; continuation: boolean; height: number; continuesToNextPage?: boolean },
 ): void {
   page.placed.push({
     id: question.id,
@@ -94,6 +96,7 @@ function placeQuestionFragment(
     optionStart: fragment.start,
     optionEnd: fragment.end,
     continuation: fragment.continuation,
+    continuesToNextPage: fragment.continuesToNextPage,
   });
 }
 
@@ -312,10 +315,10 @@ function attemptSplitLayout(
     let previousFragmentColumn: "left" | "right" | undefined;
 
     while (start < split.optionCount) {
-      if (!firstFragment && question.layout === "full") {
-        if (!nextPage()) return false;
-      }
-      if (!firstFragment && question.layout === "column" && previousFragmentColumn === "right") {
+      // Once an objective has been split, every continuation starts on a new
+      // physical page. It must never be placed in the other column of the
+      // page containing the previous fragment.
+      if (!firstFragment) {
         if (!nextPage()) return false;
         previousFragmentColumn = undefined;
       }
@@ -348,6 +351,7 @@ function attemptSplitLayout(
             end,
             continuation: !firstFragment,
             height,
+            continuesToNextPage: end < split.optionCount,
           });
           leftY = (chosenEnd === null ? 0 : top) + height;
           rightY = leftY;
@@ -383,6 +387,7 @@ function attemptSplitLayout(
             end: chosen.end,
             continuation: !firstFragment,
             height: chosen.height,
+            continuesToNextPage: chosen.end < split.optionCount,
           });
           if (chosen.column === "left") leftY += chosen.height;
           else rightY += chosen.height;
@@ -401,6 +406,7 @@ function attemptSplitLayout(
             end,
             continuation: !firstFragment,
             height,
+            continuesToNextPage: end < split.optionCount,
           });
           leftY = height;
           fillingRight = start < split.optionCount;

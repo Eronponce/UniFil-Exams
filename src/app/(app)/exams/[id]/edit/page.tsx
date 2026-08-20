@@ -8,6 +8,13 @@ import { getExamQuestionIdsInSetAOrder } from "@/lib/exam/reference-set";
 import { RichText } from "@/components/rich-text";
 import { PageHeader } from "@/components/ui";
 import { restoreExamVersionAction, saveExamVersionAction } from "@/lib/actions/exams";
+import { ImageScaleField } from "./_components/image-scale-field";
+import {
+  DEFAULT_QUESTION_IMAGE_SCALE_PERCENT,
+  MAX_QUESTION_IMAGE_SCALE_PERCENT,
+  MIN_QUESTION_IMAGE_SCALE_PERCENT,
+  normalizeQuestionImageScalePercent,
+} from "@/lib/print/question-image-scale";
 
 const TYPE_LABEL: Record<string, string> = {
   objetiva: "Objetiva",
@@ -106,14 +113,24 @@ export default async function ExamEditPage({
                     <strong>Q{index + 1} · {TYPE_LABEL[question.questionType] ?? question.questionType} · ID {question.id}</strong>
                     <RichText html={question.statement} />
                   </div>
-                  <label className="exam-editor-question-control">
-                    <span className="form-label">Largura</span>
-                    <select name={`layoutOverride-${question.id}`} className="form-select" defaultValue={exam.questionLayoutOverrides[question.id] ?? ""}>
+                  <div className="exam-editor-question-control">
+                    <label className="form-label" htmlFor={`layout-override-${question.id}`}>Largura</label>
+                    <select id={`layout-override-${question.id}`} name={`layoutOverride-${question.id}`} className="form-select" defaultValue={exam.questionLayoutOverrides[question.id] ?? ""}>
                       <option value="">Herdar do tipo</option>
                       <option value="column">Meia página</option>
                       <option value="full">Largura total</option>
                     </select>
-                  </label>
+                    {question.imageUrl && (
+                      <>
+                        <ImageScaleField
+                          questionId={question.id}
+                          initialValue={normalizeQuestionImageScalePercent(exam.questionImageScaleOverrides?.[question.id] ?? DEFAULT_QUESTION_IMAGE_SCALE_PERCENT)}
+                          min={MIN_QUESTION_IMAGE_SCALE_PERCENT}
+                          max={MAX_QUESTION_IMAGE_SCALE_PERCENT}
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

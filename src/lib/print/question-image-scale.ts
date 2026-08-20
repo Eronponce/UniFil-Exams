@@ -29,8 +29,9 @@ export function normalizeQuestionImageScalePercent(value: unknown): number {
 
 /**
  * Copies only valid numeric question IDs and integer scale percentages. The
- * default value is retained here so parsing remains lossless; serialization
- * omits it because it does not change the safe auto-sized result.
+ * default value is retained here so parsing remains lossless. Serialization
+ * omits it unless a non-default persisted base is supplied and the explicit
+ * 100% value is needed as a tombstone override.
  */
 export function normalizeQuestionImageScaleOverrides(value: unknown): QuestionImageScaleOverrides {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -67,13 +68,39 @@ export function parseQuestionImageScale(value: string | null | undefined): Quest
   return parsed;
 }
 
-/** Serialize valid overrides by numeric question ID, omitting the default. */
+/**
+ * Serialize valid overrides by numeric question ID. A 100% value is omitted
+ * for a question without a persisted non-default base; when a base map is
+ * supplied, an explicit 100% remains representable as a reset tombstone.
+ */
 export function serializeQuestionImageScale(
   value: QuestionImageScaleOverrides | null | undefined,
+  persistedBaseOverrides?: QuestionImageScaleOverrides | null,
 ): string {
   const normalized = normalizeQuestionImageScaleOverrides(value);
+  const persistedBase = normalizeQuestionImageScaleOverrides(persistedBaseOverrides);
   return Object.entries(normalized)
-    .filter(([, percent]) => percent !== DEFAULT_QUESTION_IMAGE_SCALE_PERCENT)
+    .filter(([questionId, percent]) => {
+      const base = persistedBase[Number(questionId)];
+      if (percent === DEFAULT_QUESTION_IMAGE_SCALE_PERCENT) return base !== undefined && base !== DEFAULT_QUESTION_IMAGE_SCALE_PERCENT;
+      return percent !== base;
+    })
+    .sort(([left], [right]) => Number(left) - Number(right))
+    .map(([questionId, percent]) => `${questionId}:${percent}`)
+    .join(",");
+}
+
+/**
+ * Serialize a sanitized query map when forwarding it between PDF endpoints.
+ * Unlike the UI serializer, this must retain an explicit 100% value: the
+ * print page may have a persisted non-default scale that the query is
+ * intentionally resetting, but the forwarding route does not have that base
+ * map available to manufacture the tombstone later.
+ */
+export function serializeQuestionImageScaleForForwarding(
+  value: QuestionImageScaleOverrides | null | undefined,
+): string {
+  return Object.entries(normalizeQuestionImageScaleOverrides(value))
     .sort(([left], [right]) => Number(left) - Number(right))
     .map(([questionId, percent]) => `${questionId}:${percent}`)
     .join(",");

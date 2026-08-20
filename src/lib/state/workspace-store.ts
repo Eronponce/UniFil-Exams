@@ -36,6 +36,12 @@ export interface ExamDraft {
   layoutDissertativa: QuestionLayout;
   allowQuestionSplit: boolean;
   compactQuestionOrder: boolean;
+  /** Visual builder draft fields; kept in the workspace store for route continuity. */
+  draftSeed: string;
+  selectedQuestionIds: number[];
+  manualQuestionOrder: number[];
+  layoutOverrides: Record<number, QuestionLayout>;
+  imageScaleOverrides: Record<number, number>;
 }
 
 export interface QuestionDraft {
@@ -114,6 +120,11 @@ export function makeExamDraft(): ExamDraft {
     layoutDissertativa: "full",
     allowQuestionSplit: false,
     compactQuestionOrder: false,
+    draftSeed: "",
+    selectedQuestionIds: [],
+    manualQuestionOrder: [],
+    layoutOverrides: {},
+    imageScaleOverrides: {},
   };
 }
 

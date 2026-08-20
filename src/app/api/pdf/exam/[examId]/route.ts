@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getExam, getExamVersion } from "@/lib/db/exams";
 import { renderHtmlPageToPdfBuffer } from "@/lib/print/browser-pdf";
-import { parseQuestionImageScale, serializeQuestionImageScale } from "@/lib/print/question-image-scale";
+import { parseQuestionImageScale, serializeQuestionImageScaleForForwarding } from "@/lib/print/question-image-scale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
   const { examId } = await params;
   const requestUrl = new URL(req.url);
   const requestedVersion = requestUrl.searchParams.get("version");
-  const serializedImageScale = serializeQuestionImageScale(
+  const serializedImageScale = serializeQuestionImageScaleForForwarding(
     parseQuestionImageScale(requestUrl.searchParams.get("imageScale")),
   );
   const exam = getExam(Number(examId));

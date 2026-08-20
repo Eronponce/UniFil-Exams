@@ -240,3 +240,15 @@ Use this file for durable project decisions. Keep entries short and factual.
 - Decision: expose an opt-in compact order during exam creation; preserve `objetiva → verdadeiro_falso → numerica → dissertativa` and, inside every type, persist randomized `column` questions before randomized `full` questions.
 - Reason: alternating half-width and full-width questions creates repeated layout transitions and can strand usable space before a full-width block.
 - Impact: only the generated set order changes; `exam_set_questions.position` remains the source of truth for print, answer keys, PNG and trace exports. Normal randomization remains available and existing exams are unchanged.
+
+## 2026-08-20 - Visual exam builder owns the draft preview
+
+- Decision: `/exams` keeps only audited-pool filtering and moves selection, canonical manual order, per-question width, image scale, seed, and Set preview into one client-owned visual builder.
+- Reason: teachers need to inspect the exact exam before persisting it; random quantity controls and an existing-exams card list obscured that workflow.
+- Impact: the form submits repeated `questionIds`, `manualQuestionOrder`, `layoutOverride-<id>`, `imageScale-<id>`, and `draftSeed`; existing history remains under `/exports`.
+
+## 2026-08-20 - Objective fragments cross physical pages
+
+- Decision: when an objective question is split, every incomplete fragment begins on the next physical page and renders an explicit measured continuation marker below the fragment.
+- Reason: moving a continuation only to the other column made the reading order ambiguous and could hide the transition at print time.
+- Impact: the paginator exposes `continuesToNextPage`; the existing `N. (continuacao)` header and shuffled option letters remain unchanged.

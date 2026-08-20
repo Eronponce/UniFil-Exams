@@ -27,6 +27,10 @@ status: active
 - Each PDF includes the EvalBee image for that set on the last page.
 
 ## Current Product State
+- `/exams` usa um editor visual client-side: selecao exata do pool auditado, ordem manual canonica (`objetiva -> V/F -> numerica -> dissertativa`, meia antes de total), largura por questao e preview A4 por Set.
+- O rascunho visual usa `draftSeed` estavel e `buildDraftPrintPayload` para manter sets deterministas enquanto o professor edita; 25..100% de escala de imagem vive no estado do rascunho.
+- O preview standalone recomputa quando o payload muda, inicializa escalas persistidas com precedencia para query, e exibe a sidebar de imagem sempre aberta; modo embedded esconde toolbar e controles.
+- Fragmentos incompletos de objetivas continuam sempre na pagina fisica seguinte e carregam marcador medido `Questao N continua na proxima pagina ->`.
 - Banco de questões já implementado com CRUD, auditoria e importação/exportação.
 - Tipos suportados: `objetiva`, `verdadeiro_falso`, `numerica`, `dissertativa`.
 - Criação manual aceita imagem por arquivo ou colagem `Ctrl/Cmd + V`, com preview e remoção antes do envio.

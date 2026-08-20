@@ -34,6 +34,10 @@ interface ExamPrintClientProps {
   mode: "exam" | "set";
   setId?: number;
   initialImageScaleOverrides?: QuestionImageScaleOverrides;
+  /** Embedded previews are controlled by their parent and omit print controls. */
+  embedded?: boolean;
+  imageScaleOverrides?: QuestionImageScaleOverrides;
+  onImageScaleChange?: (overrides: QuestionImageScaleOverrides) => void;
 }
 
 interface DisplayQuestion extends PrintQuestionPayload {
@@ -46,6 +50,7 @@ interface DisplaySet extends PrintSetPayload {
 }
 
 interface PageMetrics {
+  measurementKey: string;
   fullWidth: number;
   fullHeight: number;
   firstPageHeight: number;
@@ -66,6 +71,7 @@ interface RenderedSet {
 }
 
 interface RenderState {
+  measurementKey: string;
   renderedSets: RenderedSet[];
   targetTotalPages: number;
   answerKeyWidth: number;
@@ -114,6 +120,78 @@ function getFragmentMeasureKey(
 
 function getSourceQuestionId(question: PrintQuestionPayload): number {
   return question.sourceQuestionId ?? question.id;
+}
+
+/**
+ * Metadata rendered in the first-page prototype changes the usable question
+ * area. Keep a stable key so pagination never publishes a layout made with a
+ * prototype measured for an older header/instructions block.
+ */
+export function getPrototypeMeasurementKey(
+  payload: Pick<PrintExamPayload, "title" | "institution" | "instructions">,
+): string {
+  return JSON.stringify([payload.title, payload.institution, payload.instructions]);
+}
+
+export function isRenderStateCurrent(
+  metricsMeasurementKey: string | null | undefined,
+  renderMeasurementKey: string | null | undefined,
+  prototypeMeasurementKey: string,
+): boolean {
+  return metricsMeasurementKey === prototypeMeasurementKey && renderMeasurementKey === prototypeMeasurementKey;
+}
+
+function pageMetricsEqual(left: PageMetrics, right: PageMetrics): boolean {
+  return left.measurementKey === right.measurementKey
+    && left.fullWidth === right.fullWidth
+    && left.fullHeight === right.fullHeight
+    && left.firstPageHeight === right.firstPageHeight
+    && left.columnWidth === right.columnWidth
+    && left.leftColumnLeft === right.leftColumnLeft
+    && left.rightColumnLeft === right.rightColumnLeft;
+}
+
+export function resolveInitialImageScaleOverrides(
+  persisted: QuestionImageScaleOverrides | null | undefined,
+  queryOverrides: QuestionImageScaleOverrides | null | undefined,
+): QuestionImageScaleOverrides {
+  return {
+    ...normalizeQuestionImageScaleOverrides(persisted),
+    ...normalizeQuestionImageScaleOverrides(queryOverrides),
+  };
+}
+
+export function updateImageScaleOverride(
+  current: QuestionImageScaleOverrides,
+  sourceQuestionId: number,
+  rawValue: string | number,
+): QuestionImageScaleOverrides {
+  const percent = normalizeQuestionImageScalePercent(Number(rawValue));
+  const next = { ...current };
+  if (percent === DEFAULT_QUESTION_IMAGE_SCALE_PERCENT) delete next[sourceQuestionId];
+  else next[sourceQuestionId] = percent;
+  return next;
+}
+
+export function resetImageScaleOverrides(
+  current: QuestionImageScaleOverrides,
+  sourceQuestionId?: number,
+): QuestionImageScaleOverrides {
+  if (sourceQuestionId === undefined) return {};
+  const next = { ...current };
+  delete next[sourceQuestionId];
+  return next;
+}
+
+export function buildImageScaleQueryOverrides(
+  current: QuestionImageScaleOverrides,
+  persistedBase: QuestionImageScaleOverrides,
+): QuestionImageScaleOverrides {
+  const next = { ...current };
+  for (const questionId of Object.keys(persistedBase)) {
+    if (!(Number(questionId) in next)) next[Number(questionId)] = DEFAULT_QUESTION_IMAGE_SCALE_PERCENT;
+  }
+  return next;
 }
 
 function applyMeasuredImageWidth(
@@ -190,6 +268,7 @@ export function QuestionBlock({
   optionStart = 0,
   optionEnd,
   continuation = false,
+  continuesToNextPage = false,
 }: {
   question: DisplayQuestion;
   tableScale?: number;
@@ -198,6 +277,7 @@ export function QuestionBlock({
   optionStart?: number;
   optionEnd?: number;
   continuation?: boolean;
+  continuesToNextPage?: boolean;
 }) {
   const firstOption = Math.max(0, optionStart);
   const lastOption = Math.min(question.shuffledOptions.length, optionEnd ?? question.shuffledOptions.length);
@@ -210,6 +290,7 @@ export function QuestionBlock({
     : undefined;
 
   return (
+    <>
     <div className={className} style={style}>
       {continuation ? (
         <div className="exam-print-question-continuation">{question.displayNumber}. (continuação)</div>
@@ -266,6 +347,12 @@ export function QuestionBlock({
         </div>
       )}
     </div>
+    {continuesToNextPage && (
+      <div className="exam-print-question-continues" data-testid="exam-print-continuation-marker">
+        Questão {question.displayNumber} continua na próxima página →
+      </div>
+    )}
+    </>
   );
 }
 
@@ -309,10 +396,41 @@ function BlankPrintPage() {
   return <section className="exam-print-page exam-print-page--blank" />;
 }
 
-export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrides }: ExamPrintClientProps) {
-  const [displaySets] = useState<DisplaySet[]>(() => buildDisplaySets(payload.sets));
-  const [imageScaleOverrides, setImageScaleOverrides] = useState<QuestionImageScaleOverrides>(() =>
-    normalizeQuestionImageScaleOverrides(initialImageScaleOverrides),
+export function ExamPrintClient({
+  payload,
+  mode,
+  setId,
+  initialImageScaleOverrides,
+  embedded = false,
+  imageScaleOverrides: controlledImageScaleOverrides,
+  onImageScaleChange,
+}: ExamPrintClientProps) {
+  const displaySets = useMemo(() => buildDisplaySets(payload.sets), [payload.sets]);
+  const persistedImageScaleOverrides = useMemo(() => {
+    const persisted: QuestionImageScaleOverrides = {};
+    for (const set of payload.sets) {
+      for (const question of set.questions) {
+        const sourceQuestionId = getSourceQuestionId(question);
+        if (question.imageScalePercent !== undefined) persisted[sourceQuestionId] = question.imageScalePercent;
+      }
+    }
+    return persisted;
+  }, [payload.sets]);
+  const isControlled = controlledImageScaleOverrides !== undefined;
+  const [uncontrolledImageScaleOverrides, setUncontrolledImageScaleOverrides] = useState<QuestionImageScaleOverrides>(() => ({
+    ...resolveInitialImageScaleOverrides(persistedImageScaleOverrides, initialImageScaleOverrides),
+  }));
+  const imageScaleOverrides = useMemo(
+    () => isControlled ? normalizeQuestionImageScaleOverrides(controlledImageScaleOverrides) : uncontrolledImageScaleOverrides,
+    [controlledImageScaleOverrides, isControlled, uncontrolledImageScaleOverrides],
+  );
+  const prototypeMeasurementKey = useMemo(
+    () => getPrototypeMeasurementKey({
+      title: payload.title,
+      institution: payload.institution,
+      instructions: payload.instructions,
+    }),
+    [payload.institution, payload.instructions, payload.title],
   );
   const [metrics, setMetrics] = useState<PageMetrics | null>(null);
   const [renderState, setRenderState] = useState<RenderState | null>(null);
@@ -326,6 +444,11 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
   const fullMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fragmentMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const measurementRunRef = useRef(0);
+  const currentRenderState = isRenderStateCurrent(
+    metrics?.measurementKey,
+    renderState?.measurementKey,
+    prototypeMeasurementKey,
+  ) ? renderState : null;
 
   const imageQuestions = useMemo(() => {
     const firstOccurrenceBySourceId = new Map<number, { first: DisplayQuestion; image: DisplayQuestion | null }>();
@@ -355,38 +478,59 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
 
   useEffect(() => {
     let active = true;
+    let measureSequence = 0;
 
     async function measurePrototype() {
+      const sequence = ++measureSequence;
       await document.fonts.ready.catch(() => null);
       const body = prototypeBodyRef.current;
       const firstBody = prototypeFirstBodyRef.current;
       const left = prototypeColumnLeftRef.current;
       const right = prototypeColumnRightRef.current;
-      if (!active || !body || !firstBody || !left || !right) return;
+      if (!active || sequence !== measureSequence || !body || !firstBody || !left || !right) return;
 
       const bodyRect = body.getBoundingClientRect();
       const firstBodyRect = firstBody.getBoundingClientRect();
       const leftRect = left.getBoundingClientRect();
       const rightRect = right.getBoundingClientRect();
-
-      setMetrics({
+      const nextMetrics: PageMetrics = {
+        measurementKey: prototypeMeasurementKey,
         fullWidth: bodyRect.width,
         fullHeight: bodyRect.height,
         firstPageHeight: firstBodyRect.height,
         columnWidth: leftRect.width,
         leftColumnLeft: leftRect.left - bodyRect.left,
         rightColumnLeft: rightRect.left - bodyRect.left,
-      });
+      };
+
+      setMetrics((current) => current && pageMetricsEqual(current, nextMetrics) ? current : nextMetrics);
     }
 
-    measurePrototype();
+    void measurePrototype();
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(() => {
+          void measurePrototype();
+        });
+    const observedNodes = [
+      prototypeBodyRef.current,
+      prototypeFirstBodyRef.current,
+      prototypeColumnLeftRef.current,
+      prototypeColumnRightRef.current,
+    ];
+    for (const node of observedNodes) {
+      if (node) resizeObserver?.observe(node);
+    }
+
     return () => {
       active = false;
+      measureSequence += 1;
+      resizeObserver?.disconnect();
     };
-  }, []);
+  }, [prototypeMeasurementKey]);
 
   useEffect(() => {
-    if (!metrics) return;
+    if (!metrics || metrics.measurementKey !== prototypeMeasurementKey) return;
     const measurementRun = measurementRunRef.current + 1;
     measurementRunRef.current = measurementRun;
     let active = true;
@@ -583,6 +727,7 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
 
       if (!isCurrentRun()) return;
       setRenderState({
+        measurementKey: prototypeMeasurementKey,
         renderedSets,
         targetTotalPages,
         answerKeyWidth,
@@ -595,44 +740,53 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
     return () => {
       active = false;
     };
-  }, [displaySets, imageScaleOverrides, metrics, mode, payload.allowQuestionSplit, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.instructions, payload.questionLayouts, setId]);
+  }, [displaySets, imageScaleOverrides, metrics, mode, payload.allowQuestionSplit, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.questionLayouts, prototypeMeasurementKey, setId]);
 
   useEffect(() => {
-    const serialized = serializeQuestionImageScale(imageScaleOverrides);
+    if (embedded || isControlled) return;
+    const serialized = serializeQuestionImageScale(
+      buildImageScaleQueryOverrides(imageScaleOverrides, persistedImageScaleOverrides),
+      persistedImageScaleOverrides,
+    );
     const url = new URL(window.location.href);
     if (serialized) url.searchParams.set(QUESTION_IMAGE_SCALE_QUERY_KEY, serialized);
     else url.searchParams.delete(QUESTION_IMAGE_SCALE_QUERY_KEY);
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [imageScaleOverrides]);
+  }, [embedded, imageScaleOverrides, isControlled, persistedImageScaleOverrides]);
+
+  function commitImageScaleOverrides(next: QuestionImageScaleOverrides): void {
+    const normalized = normalizeQuestionImageScaleOverrides(next);
+    if (isControlled) {
+      onImageScaleChange?.(normalized);
+    } else {
+      setUncontrolledImageScaleOverrides(normalized);
+    }
+  }
 
   function updateImageScale(sourceQuestionId: number, rawValue: string): void {
-    const percent = normalizeQuestionImageScalePercent(Number(rawValue));
-    setImageScaleOverrides((current) => {
-      if (percent === DEFAULT_QUESTION_IMAGE_SCALE_PERCENT) {
-        if (!(sourceQuestionId in current)) return current;
-        const next = { ...current };
-        delete next[sourceQuestionId];
-        return next;
-      }
-      if (current[sourceQuestionId] === percent) return current;
-      return { ...current, [sourceQuestionId]: percent };
-    });
+    commitImageScaleOverrides(updateImageScaleOverride(imageScaleOverrides, sourceQuestionId, rawValue));
   }
 
   function resetImageScale(sourceQuestionId: number): void {
-    setImageScaleOverrides((current) => {
-      if (!(sourceQuestionId in current)) return current;
-      const next = { ...current };
-      delete next[sourceQuestionId];
-      return next;
-    });
+    commitImageScaleOverrides(resetImageScaleOverrides(imageScaleOverrides, sourceQuestionId));
+  }
+
+  /*
+   * Keep this helper local to the client component so the embedded builder can
+   * control scales without opting into URL synchronization.
+   */
+  function resetAllImageScales(): void {
+    commitImageScaleOverrides(resetImageScaleOverrides(imageScaleOverrides));
   }
 
   const directPdfQuery = new URLSearchParams();
   if (mode === "exam" && payload.versionNumber) {
     directPdfQuery.set("version", String(payload.versionNumber));
   }
-  const serializedImageScale = serializeQuestionImageScale(imageScaleOverrides);
+  const serializedImageScale = serializeQuestionImageScale(
+    buildImageScaleQueryOverrides(imageScaleOverrides, persistedImageScaleOverrides),
+    persistedImageScaleOverrides,
+  );
   if (serializedImageScale) directPdfQuery.set(QUESTION_IMAGE_SCALE_QUERY_KEY, serializedImageScale);
   const directPdfQueryString = directPdfQuery.toString();
   const directPdfHref = mode === "exam"
@@ -640,21 +794,24 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
     : `/api/pdf/${setId}${directPdfQueryString ? `?${directPdfQueryString}` : ""}`;
 
   return (
-    <div className="exam-print-shell">
+    <div className={`exam-print-shell${embedded ? " exam-print-shell--embedded" : ""}${!embedded && imageQuestions.length > 0 ? " exam-print-shell--has-image-controls" : ""}`}>
       <div className="exam-print-toolbar">
         <div>
           <strong>{payload.title}</strong>
           <div className="exam-print-toolbar-copy">
             {mode === "exam" ? "Prova completa" : `Set ${displaySets.find((set) => set.id === setId)?.label ?? ""}`} · formato A4
             {payload.versionNumber ? ` · versão ${payload.versionNumber}` : ""}
-            {renderState ? ` · ${renderState.targetTotalPages} página(s) por set` : ""}
+            {currentRenderState ? ` · ${currentRenderState.targetTotalPages} página(s) por set` : ""}
             {isRecalculating ? " · recalculando..." : ""}
           </div>
         </div>
         <div className="exam-print-toolbar-actions">
           {imageQuestions.length > 0 && (
-            <details className="exam-print-scale-controls">
-              <summary>Ajustar imagens</summary>
+            <aside className="exam-print-scale-sidebar" aria-label="Ajustar imagens">
+              <div className="exam-print-scale-sidebar-heading">
+                <strong>Ajustar imagens</strong>
+                <span>Controles sempre visíveis</span>
+              </div>
               <div className="exam-print-scale-panel">
                 <p className="exam-print-scale-help">
                   Reduza cada imagem entre {MIN_QUESTION_IMAGE_SCALE_PERCENT}% e {MAX_QUESTION_IMAGE_SCALE_PERCENT}% da largura segura calculada.
@@ -695,13 +852,13 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => setImageScaleOverrides({})}
+                  onClick={resetAllImageScales}
                   disabled={Object.keys(imageScaleOverrides).length === 0}
                 >
                   Resetar todas
                 </button>
               </div>
-            </details>
+            </aside>
           )}
           <div className="actions-row">
             <Link href={`/exports?exam=${payload.examId}${payload.versionNumber ? `&version=${payload.versionNumber}` : ""}`} className="btn btn-ghost" replace>
@@ -710,26 +867,26 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
             <a href={directPdfHref} className="btn btn-ghost">
               PDF direto
             </a>
-            <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={!renderState || isRecalculating}>
+            <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={!currentRenderState || isRecalculating}>
               Imprimir / Salvar PDF
             </button>
           </div>
         </div>
       </div>
 
-      {!renderState && (
+      {!currentRenderState && (
         <div className="card" style={{ marginBottom: "1rem" }}>
           Montando prova em HTML paginado...
         </div>
       )}
-      {renderState && isRecalculating && (
+      {currentRenderState && isRecalculating && (
         <div className="exam-print-recalculating" role="status" aria-live="polite">
           Recalculando paginação...
         </div>
       )}
 
       <div className="exam-print-preview">
-        {renderState?.renderedSets.map(({ set, pages }) =>
+        {currentRenderState?.renderedSets.map(({ set, pages }) =>
           pages.map((page, pageIndex) =>
             page.kind === "blank" ? (
               <BlankPrintPage key={`${set.id}-blank-${pageIndex}`} />
@@ -759,12 +916,13 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
                             left: `${placed.column === "left" ? metrics.leftColumnLeft : metrics.rightColumnLeft}px`,
                             width: `${metrics.columnWidth}px`,
                           };
-                    const renderPrefs = renderState.questionRenderPrefs[question.measureKey];
+                    const renderPrefs = currentRenderState.questionRenderPrefs[question.measureKey];
                     const fragmentProps = placed.optionStart !== undefined && placed.optionEnd !== undefined
                       ? {
                           optionStart: placed.optionStart,
                           optionEnd: placed.optionEnd,
                           continuation: placed.continuation ?? false,
+                          continuesToNextPage: placed.continuesToNextPage ?? false,
                         }
                       : undefined;
 
@@ -785,8 +943,8 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
                     );
                   })}
 
-                  {(page.kind === "answer-key" || page.showAnswerKey) && payload.answerKeyUrl && renderState.answerKeyWidth > 0 && (
-                    <div className="exam-print-answer-key" style={{ width: `${renderState.answerKeyWidth}px` }}>
+                  {(page.kind === "answer-key" || page.showAnswerKey) && payload.answerKeyUrl && currentRenderState.answerKeyWidth > 0 && (
+                    <div className="exam-print-answer-key" style={{ width: `${currentRenderState.answerKeyWidth}px` }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={payload.answerKeyUrl} alt="Gabarito" />
                     </div>
@@ -870,6 +1028,7 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
                               question={question}
                               optionStart={0}
                               optionEnd={end}
+                              continuesToNextPage={end < question.shuffledOptions.length}
                             />
                           </div>
                         );
@@ -891,6 +1050,7 @@ export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrid
                                 optionStart={start}
                                 optionEnd={end}
                                 continuation
+                                continuesToNextPage={end < question.shuffledOptions.length}
                               />
                             </div>
                           );

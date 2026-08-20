@@ -19,6 +19,10 @@ status: active
 
 ## Current UI architecture
 
+- `/exams` agora usa `VisualExamBuilder`: selecao exata, ordem canonica por tipo/largura, toggles acessiveis, escalas 25..100% no mesmo menu e preview A4 embedded por Set.
+- `buildDraftPrintPayload` e `draftSeed` mantem os sets do rascunho deterministicos; `ExamPrintClient` aceita escalas controladas e payloads que mudam durante a edicao.
+- Preview standalone tem sidebar fixa de imagem; fragmentos objetivos incompletos continuam em pagina fisica seguinte com marcador medido.
+
 - `(app)/layout.tsx` owns the normal shell composition: `Nav`, `CommandPalette`, `QueuePanel`, `IssueChatPanel` and main landmark.
 - `src/components/nav.tsx` provides grouped navigation, desktop collapse, mobile drawer, skip link, theme control and the visible keyboard shortcut.
 - `src/lib/state/ui-store.ts` persists theme and sidebar preferences under `unifil-ui-preferences`.

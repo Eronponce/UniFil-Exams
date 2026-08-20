@@ -7,6 +7,12 @@ import {
   parseQuestionImageScale,
   serializeQuestionImageScale,
 } from "@/lib/print/question-image-scale";
+import {
+  buildImageScaleQueryOverrides,
+  resetImageScaleOverrides,
+  resolveInitialImageScaleOverrides,
+  updateImageScaleOverride,
+} from "@/components/print/exam-print-client";
 
 describe("question image scale query helpers", () => {
   it("ignores malformed entries and keeps only valid positive IDs and percentages", () => {
@@ -21,6 +27,21 @@ describe("question image scale query helpers", () => {
 
   it("serializes by numeric ID and omits default values", () => {
     expect(serializeQuestionImageScale({ 48: 50, 3: 100, 12: 75 })).toBe("12:75,48:50");
+  });
+
+  it("keeps an explicit 100% reset when a persisted 75% base exists", () => {
+    const persisted = { 7: 75 };
+    const initial = resolveInitialImageScaleOverrides(persisted, {});
+    expect(serializeQuestionImageScale(initial, persisted)).toBe("");
+
+    const atDefault = updateImageScaleOverride(initial, 7, "100");
+    const atDefaultQuery = serializeQuestionImageScale(buildImageScaleQueryOverrides(atDefault, persisted), persisted);
+    expect(atDefaultQuery).toBe("7:100");
+
+    const reset = resetImageScaleOverrides(atDefault, 7);
+    expect(serializeQuestionImageScale(buildImageScaleQueryOverrides(reset, persisted), persisted)).toBe("7:100");
+    const resetAll = resetImageScaleOverrides({ 7: 60 });
+    expect(serializeQuestionImageScale(buildImageScaleQueryOverrides(resetAll, persisted), persisted)).toBe("7:100");
   });
 
   it("normalizes object input without accepting invalid values", () => {

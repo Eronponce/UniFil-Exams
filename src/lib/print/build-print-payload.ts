@@ -3,6 +3,7 @@ import path from "path";
 import type { Exam, ExamQuestionLayouts, ExamSet, QuestionLayout, QuestionOption, QuestionType } from "@/types";
 import { getQuestion } from "@/lib/db/questions";
 import { sanitizeRichText } from "@/lib/html/rich-text";
+import { normalizeQuestionImageScalePercent } from "@/lib/print/question-image-scale";
 import type { ExamVersion } from "@/lib/exam/version";
 
 export interface PrintQuestionPayload {
@@ -17,6 +18,8 @@ export interface PrintQuestionPayload {
   layoutOverride?: QuestionLayout | null;
   /** Resolved override first, then the persisted per-type layout. */
   layout?: QuestionLayout;
+  /** Persisted visual-draft scale, normalized to 100 when absent. */
+  imageScalePercent?: number;
 }
 
 export interface PrintSetPayload {
@@ -79,6 +82,7 @@ function buildPrintSet(set: ExamSet, exam: Exam): PrintSetPayload {
         shuffledOptions: sq.shuffledOptions,
         questionType: question.questionType,
         answerLines: question.answerLines,
+        imageScalePercent: normalizeQuestionImageScalePercent(exam.questionImageScaleOverrides?.[question.id]),
         layoutOverride: exam.questionLayoutOverrides[question.id] ?? null,
         layout: exam.questionLayoutOverrides[question.id] ?? exam.questionLayouts[question.questionType],
       };
@@ -107,6 +111,7 @@ function buildPrintSetFromSnapshot(set: ExamVersion["snapshot"]["sets"][number])
         shuffledOptions: [...question.shuffledOptions],
         questionType: question.questionType,
         answerLines: question.answerLines,
+        imageScalePercent: normalizeQuestionImageScalePercent(question.imageScalePercent),
         layoutOverride: question.layoutOverride,
         layout: question.layout,
       })),

@@ -3,6 +3,9 @@ import { clampAnswerKeyWidth, ANSWER_KEY_DEFAULT_WIDTH_PT } from "@/lib/pdf/answ
 import { normalizeExamQuestionLayouts } from "@/lib/exam/layout";
 import { normalizeExamInstructions } from "@/lib/exam/instructions";
 import {
+  isValidQuestionImageScalePercent,
+} from "@/lib/print/question-image-scale";
+import {
   buildExamVersionSnapshot,
   cloneExamVersionSnapshot,
   parseExamVersionSnapshot,
@@ -31,6 +34,11 @@ interface ExamRow {
 interface ExamQuestionLayoutRow {
   question_id: number;
   layout_override: string | null;
+}
+
+interface ExamQuestionImageScaleRow {
+  question_id: number;
+  image_scale_percent: number | null;
 }
 
 interface ExamVersionRow {
@@ -79,7 +87,12 @@ function setToModel(row: ExamSetRow, sqRows: ExamSetQuestionRow[]): ExamSet {
 
 const DEFAULT_INSTITUTION = "UniFil - Centro Universitário Filadélfia";
 
-function examToModel(er: ExamRow, sets: ExamSet[], questionLayoutOverrides: Record<number, QuestionLayout>): Exam {
+function examToModel(
+  er: ExamRow,
+  sets: ExamSet[],
+  questionLayoutOverrides: Record<number, QuestionLayout>,
+  questionImageScaleOverrides: Record<number, number>,
+): Exam {
   return {
     id: er.id,
     disciplineId: er.discipline_id,
@@ -96,6 +109,7 @@ function examToModel(er: ExamRow, sets: ExamSet[], questionLayoutOverrides: Reco
       dissertativa: er.layout_dissertativa,
     }),
     questionLayoutOverrides,
+    questionImageScaleOverrides,
     sets,
     createdAt: er.created_at,
   };
@@ -116,6 +130,19 @@ function loadQuestionLayoutOverrides(examId: number): Record<number, QuestionLay
   return overrides;
 }
 
+function loadQuestionImageScaleOverrides(examId: number): Record<number, number> {
+  const rows = getDb()
+    .prepare("SELECT question_id, image_scale_percent FROM exam_questions WHERE exam_id = ? AND image_scale_percent IS NOT NULL")
+    .all(examId) as ExamQuestionImageScaleRow[];
+  const overrides: Record<number, number> = {};
+  for (const row of rows) {
+    if (isValidQuestionImageScalePercent(row.image_scale_percent) && row.image_scale_percent !== 100) {
+      overrides[row.question_id] = row.image_scale_percent;
+    }
+  }
+  return overrides;
+}
+
 export function listExams(status: ExamStatusFilter = "ativas"): Exam[] {
   const db = getDb();
   const where = status === "todas" ? "" : " WHERE active = ?";
@@ -126,7 +153,12 @@ export function listExams(status: ExamStatusFilter = "ativas"): Exam[] {
     const sqRows = setRows.length
       ? (db.prepare(`SELECT * FROM exam_set_questions WHERE set_id IN (${setRows.map(() => "?").join(",")})`).all(...setRows.map((s) => s.id)) as ExamSetQuestionRow[])
       : [];
-    return examToModel(er, setRows.map((sr) => setToModel(sr, sqRows)), loadQuestionLayoutOverrides(er.id));
+    return examToModel(
+      er,
+      setRows.map((sr) => setToModel(sr, sqRows)),
+      loadQuestionLayoutOverrides(er.id),
+      loadQuestionImageScaleOverrides(er.id),
+    );
   });
 }
 
@@ -138,7 +170,12 @@ export function getExam(id: number): Exam | undefined {
   const sqRows = setRows.length
     ? (db.prepare(`SELECT * FROM exam_set_questions WHERE set_id IN (${setRows.map(() => "?").join(",")})`).all(...setRows.map((s) => s.id)) as ExamSetQuestionRow[])
     : [];
-  return examToModel(er, setRows.map((sr) => setToModel(sr, sqRows)), loadQuestionLayoutOverrides(id));
+  return examToModel(
+    er,
+    setRows.map((sr) => setToModel(sr, sqRows)),
+    loadQuestionLayoutOverrides(id),
+    loadQuestionImageScaleOverrides(id),
+  );
 }
 
 export function listAllExamQuestionIds(): number[] {
@@ -157,6 +194,7 @@ export function createExam(data: {
   questionIds: number[];
   questionLayouts?: Partial<ExamQuestionLayouts>;
   questionLayoutOverrides?: Record<number, QuestionLayout | null>;
+  questionImageScaleOverrides?: Record<number, number | null>;
 }): Exam {
   const db = getDb();
   const layouts = normalizeExamQuestionLayouts(data.questionLayouts);
@@ -166,6 +204,12 @@ export function createExam(data: {
     const questionId = Number(rawQuestionId);
     if (!selectedQuestionIds.has(questionId)) continue;
     if (layout === "column" || layout === "full") overrides.set(questionId, layout);
+  }
+  const imageScaleOverrides = new Map<number, number>();
+  for (const [rawQuestionId, value] of Object.entries(data.questionImageScaleOverrides ?? {})) {
+    const questionId = Number(rawQuestionId);
+    if (!selectedQuestionIds.has(questionId)) continue;
+    if (isValidQuestionImageScalePercent(value) && value !== 100) imageScaleOverrides.set(questionId, value);
   }
 
   let examId = 0;
@@ -188,8 +232,8 @@ export function createExam(data: {
         layouts.dissertativa,
       );
     examId = result.lastInsertRowid as number;
-    const insertQ = db.prepare("INSERT INTO exam_questions (exam_id, question_id, position, layout_override) VALUES (?, ?, ?, ?)");
-    data.questionIds.forEach((qid, pos) => insertQ.run(examId, qid, pos, overrides.get(qid) ?? null));
+    const insertQ = db.prepare("INSERT INTO exam_questions (exam_id, question_id, position, layout_override, image_scale_percent) VALUES (?, ?, ?, ?, ?)");
+    data.questionIds.forEach((qid, pos) => insertQ.run(examId, qid, pos, overrides.get(qid) ?? null, imageScaleOverrides.get(qid) ?? null));
   });
   create();
   return getExam(examId)!;
@@ -317,6 +361,8 @@ export interface ExamVersionEditorInput {
   allowQuestionSplit: boolean;
   questionLayouts: Partial<Record<keyof ExamQuestionLayouts, unknown>>;
   questionLayoutOverrides: Record<number, QuestionLayout | null>;
+  /** Undefined preserves current values; a defined map applies normalized values. */
+  questionImageScaleOverrides?: Record<number, number | null>;
   changeNote?: string;
 }
 
@@ -334,7 +380,27 @@ function normalizedOverrides(examId: number, input: Record<number, QuestionLayou
   return result;
 }
 
-function applyCurrentVersionSettings(examId: number, input: ExamVersionEditorInput, overrides: Record<number, QuestionLayout>): void {
+function normalizedImageScaleOverrides(examId: number, input: Record<number, number | null>): Record<number, number> {
+  const selected = new Set(
+    (getDb().prepare("SELECT question_id FROM exam_questions WHERE exam_id = ?").all(examId) as { question_id: number }[])
+      .map((row) => row.question_id),
+  );
+  const result: Record<number, number> = {};
+  for (const [rawId, value] of Object.entries(input)) {
+    const questionId = Number(rawId);
+    if (!selected.has(questionId)) continue;
+    // Invalid, null, and 100 all normalize to the non-persisted default.
+    result[questionId] = isValidQuestionImageScalePercent(value) ? value : 100;
+  }
+  return result;
+}
+
+function applyCurrentVersionSettings(
+  examId: number,
+  input: ExamVersionEditorInput,
+  overrides: Record<number, QuestionLayout>,
+  imageScaleOverrides?: Record<number, number>,
+): void {
   const db = getDb();
   const layouts = normalizeExamQuestionLayouts(input.questionLayouts);
   db.prepare(`UPDATE exams SET
@@ -354,6 +420,13 @@ function applyCurrentVersionSettings(examId: number, input: ExamVersionEditorInp
   db.prepare("UPDATE exam_questions SET layout_override = NULL WHERE exam_id = ?").run(examId);
   const update = db.prepare("UPDATE exam_questions SET layout_override = ? WHERE exam_id = ? AND question_id = ?");
   for (const [questionId, layout] of Object.entries(overrides)) update.run(layout, examId, Number(questionId));
+  if (imageScaleOverrides !== undefined) {
+    db.prepare("UPDATE exam_questions SET image_scale_percent = NULL WHERE exam_id = ?").run(examId);
+    const updateScale = db.prepare("UPDATE exam_questions SET image_scale_percent = ? WHERE exam_id = ? AND question_id = ?");
+    for (const [questionId, value] of Object.entries(imageScaleOverrides)) {
+      if (value !== 100) updateScale.run(value, examId, Number(questionId));
+    }
+  }
 }
 
 export function saveExamVersion(examId: number, input: ExamVersionEditorInput): ExamVersion {
@@ -369,7 +442,10 @@ export function saveExamVersion(examId: number, input: ExamVersionEditorInput): 
       insertVersion(examId, baseline, "Baseline legado");
     }
     const overrides = normalizedOverrides(examId, input.questionLayoutOverrides);
-    applyCurrentVersionSettings(examId, input, overrides);
+    const imageScaleOverrides = input.questionImageScaleOverrides === undefined
+      ? undefined
+      : normalizedImageScaleOverrides(examId, input.questionImageScaleOverrides);
+    applyCurrentVersionSettings(examId, input, overrides, imageScaleOverrides);
     const updated = getExam(examId);
     if (!updated) throw new Error("Prova não encontrada após atualização.");
     const snapshot = buildExamVersionSnapshot(updated, getQuestion);
@@ -395,19 +471,28 @@ export function restoreExamVersion(examId: number, versionNumber: number, change
       insertVersion(examId, buildExamVersionSnapshot(current, getQuestion), "Baseline legado");
     }
     const overrides: Record<number, QuestionLayout> = {};
+    const imageScaleInput: Record<number, number | null> = {};
     for (const set of snapshot.sets) {
       for (const question of set.questions) {
         if (question.layoutOverride) overrides[question.sourceQuestionId] = question.layoutOverride;
+        imageScaleInput[question.sourceQuestionId] = question.imageScalePercent ?? 100;
       }
     }
-    applyCurrentVersionSettings(examId, {
+    const input: ExamVersionEditorInput = {
       title: snapshot.title,
       institution: snapshot.institution,
       instructions: snapshot.instructions,
       allowQuestionSplit: snapshot.allowQuestionSplit,
       questionLayouts: snapshot.questionLayouts,
       questionLayoutOverrides: overrides,
-    }, normalizedOverrides(examId, overrides));
+      questionImageScaleOverrides: imageScaleInput,
+    };
+    applyCurrentVersionSettings(
+      examId,
+      input,
+      normalizedOverrides(examId, overrides),
+      normalizedImageScaleOverrides(examId, imageScaleInput),
+    );
     newVersionId = insertVersion(examId, snapshot, changeNote ?? `Restaurada da versão ${versionNumber}`);
   });
   tx();

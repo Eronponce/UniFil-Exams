@@ -8,6 +8,13 @@ status: active
 
 # Session Log
 
+## 2026-08-20 - Editor visual e continuacoes de impressao
+
+- Implementado o editor visual de `/exams` com selecao exata, grupos canonicos, botoes de ordem limitados ao subgrupo, largura por questao, sliders de imagem e tabs Set A..H.
+- `buildDraftPrintPayload` gera payloads sinteticos deterministicos para o preview embedded; `ExamPrintClient` agora aceita payloads/controlos de escala controlados e sidebar standalone fixa.
+- A paginacao de objetivas marca fragmentos incompletos e inicia cada continuacao na pagina fisica seguinte.
+- Testes focados: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/pdf-pages.test.ts src/tests/print-continuation.test.tsx` (15 testes passaram).
+
 ## 2026-08-19 - Imagens, filtro sem área e montagem compacta
 
 - `/questions/new` aceita imagem colada com `Ctrl/Cmd + V`, transforma o conteúdo do clipboard em arquivo do mesmo upload, exibe preview e oferece **Remover imagem** antes de salvar.

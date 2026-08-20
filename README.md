@@ -1,5 +1,11 @@
 # UniFil Exams
 
+## Editor visual de provas
+
+`/exams` carrega questoes auditadas por disciplina/area e oferece selecao exata, ordem canonica por tipo e largura, controles de imagem de 25% a 100% e preview A4 permanente por Set. Provas ja criadas continuam disponiveis em [`/exports`](/exports).
+
+No preview standalone, os controles de imagem ficam em uma sidebar fixa; no editor, a escala e controlada pelo proprio rascunho. Quebras de objetivas longas continuam na pagina fisica seguinte com marcador explicito.
+
 Banco local de questões para professores universitários. Suporta questões objetivas, verdadeiro/falso, numéricas e dissertativas, com criação manual ou via IA, auditoria, montagem de provas, randomização, exportação em PDF/CSV/PNG, fila global de tarefas e documentação Obsidian versionada.
 
 ## Pré-requisitos
