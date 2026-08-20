@@ -563,7 +563,7 @@ PY
 }
 ensure_restic_repository() {
   local check_status
-  local check_error
+  local check_erro
   ERROR_STAGE=repository-check
   if "$RESTIC_BIN" "${RESTIC_ARGS[@]}" --no-cache snapshots \
     > "$RUN_DIR/tmp/restic-repository-check.out" \

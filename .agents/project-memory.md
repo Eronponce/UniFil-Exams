@@ -35,6 +35,7 @@ status: active
 - The question bank has an explicit no-thematic-area filter covering normalized null/blank areas.
 - Exam creation has an opt-in compact order (default false): type order remains objective/VF/numeric/discursive, and each type persists randomized `column` questions before randomized `full` questions. Stored set position remains authoritative for every answer-key/trace export.
 - Printed question images fill their resolved question width but are proportionally capped at 25% of printable page area and 50% of page height.
+- The print preview exposes presentation-only per-source-question image scales from 25% to 100%; normalized non-default values live in `?imageScale=`, remeasure pagination, and flow into direct exam/set PDFs without changing SQLite or historical snapshots.
 
 ## Product IA
 

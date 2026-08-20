@@ -91,6 +91,7 @@ Notas:
 - Randomização de ordem das questões e das alternativas quando aplicável
 - Ordem compacta opcional: preserva a sequência dos tipos e agrupa meia página antes de largura total dentro de cada tipo
 - Largura por tipo e por questão; imagens acompanham a largura disponível sem exceder 25% da área imprimível
+- Preview de impressão permite reduzir cada imagem entre 25% e 100% da largura segura; o ajuste fica na URL e também é usado no PDF direto
 - PDF com seções contínuas, tentando aproveitar a sobra da página anterior
 - PDFs de sets com mesma quantidade par de páginas por lote, com páginas vazias antes do gabarito quando necessário
 - CSV de gabarito por set

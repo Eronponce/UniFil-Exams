@@ -308,7 +308,7 @@ printf 'FAKE_MIRROR_CONTENT_MUST_NOT_PRINT\n' > "$SECRET_MIRROR"
 printf 'FAKE_SUPABASE_CONTENT_MUST_NOT_PRINT\n' > "$SECRET_SUPABASE"
 printf 'FAKE_PASSWORD_CONTENT_MUST_NOT_PRINT\n' > "$PASSWORD_FILE"
 chmod 600 -- "$PASSWORD_FILE"
-write_mock_docker
+write_mock_docke
 write_mock_rclone
 write_mock_restic
 
@@ -318,7 +318,7 @@ RESTIC_REPOSITORY=rclone:unifil-drive:Servidor-Eron/backup-restic
 RESTIC_PASSWORD_FILE=$PASSWORD_FILE
 RESTIC_BIN=$MOCK_BIN/restic
 RCLONE_BIN=$MOCK_BIN/rclone
-DOCKER_BIN=$MOCK_BIN/docker
+DOCKER_BIN=$MOCK_BIN/docke
 PYTHON_BIN=$(command -v python3)
 UNIFIL_EXAMS_ROOT=$UNIFIL_ROOT
 CANVA_API_ROOT=$CANVA_ROOT

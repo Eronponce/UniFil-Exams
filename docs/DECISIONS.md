@@ -10,6 +10,12 @@ status: active
 
 Use this file for durable project decisions. Keep entries short and factual.
 
+## 2026-08-20 - Escala de imagens somente na visualização de impressão
+
+- Decisão: permitir que o professor reduza cada imagem da questão entre 100% e 25% da largura segura calculada; a escala é normalizada em `imageScale` na URL e reaplicada pelo preview e pelo PDF direto.
+- Motivo: oferecer controle de densidade sem alterar SQLite, snapshots de versão ou a regra automática segura de área/altura.
+- Impacto: a chave é por ID da questão de origem, portanto o mesmo ajuste acompanha cópias randomizadas entre sets; 100% é omitido da URL e resetar remove o override.
+
 ## 2026-04-22 - Start With Stack-Agnostic Scaffold
 - Decision: create documentation and agent context before choosing runtime stack.
 - Reason: repository is empty and product scope is not defined yet.

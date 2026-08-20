@@ -16,7 +16,7 @@ Options:
   --repo PATH  Absolute repository path written to a newly-created config.
   --help       Show this help.
 
-Existing config and password files are always preserved. The installer never
+Existing config and password files are always preserved. The installer neve
 prints a generated password or reads repository data.
 USAGE
 }

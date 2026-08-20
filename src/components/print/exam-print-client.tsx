@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   computeUniformTargetTotalPages,
@@ -15,6 +15,17 @@ import { getAnswerKeyWidthRatio } from "@/lib/pdf/answer-key-layout";
 import { richTextHasTable } from "@/lib/html/rich-text";
 import { MIN_ESSAY_TABLE_SCALE } from "@/lib/print/table-layout";
 import { getPrintQuestionImageWidth } from "@/lib/print/question-image-layout";
+import {
+  DEFAULT_QUESTION_IMAGE_SCALE_PERCENT,
+  MAX_QUESTION_IMAGE_SCALE_PERCENT,
+  MIN_QUESTION_IMAGE_SCALE_PERCENT,
+  QUESTION_IMAGE_SCALE_QUERY_KEY,
+  getQuestionImageScalePercent,
+  normalizeQuestionImageScaleOverrides,
+  normalizeQuestionImageScalePercent,
+  serializeQuestionImageScale,
+  type QuestionImageScaleOverrides,
+} from "@/lib/print/question-image-scale";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -22,6 +33,7 @@ interface ExamPrintClientProps {
   payload: PrintExamPayload;
   mode: "exam" | "set";
   setId?: number;
+  initialImageScaleOverrides?: QuestionImageScaleOverrides;
 }
 
 interface DisplayQuestion extends PrintQuestionPayload {
@@ -100,10 +112,15 @@ function getFragmentMeasureKey(
   return `${measureKey}-${layout}-${continuation ? "continuation" : "first"}-${start}-${end}`;
 }
 
+function getSourceQuestionId(question: PrintQuestionPayload): number {
+  return question.sourceQuestionId ?? question.id;
+}
+
 function applyMeasuredImageWidth(
   node: HTMLDivElement | null | undefined,
   containerWidth: number,
   pageMetrics: PageMetrics,
+  scalePercent: number,
 ): number | undefined {
   const image = node?.querySelector<HTMLImageElement>(".exam-print-question-image");
   if (!node || !image) return undefined;
@@ -114,6 +131,7 @@ function applyMeasuredImageWidth(
     containerWidth,
     pageWidth: pageMetrics.fullWidth,
     pageHeight: pageMetrics.fullHeight,
+    scalePercent,
   });
   node.style.setProperty("--question-image-width", `${width}px`);
   return width;
@@ -291,10 +309,14 @@ function BlankPrintPage() {
   return <section className="exam-print-page exam-print-page--blank" />;
 }
 
-export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) {
+export function ExamPrintClient({ payload, mode, setId, initialImageScaleOverrides }: ExamPrintClientProps) {
   const [displaySets] = useState<DisplaySet[]>(() => buildDisplaySets(payload.sets));
+  const [imageScaleOverrides, setImageScaleOverrides] = useState<QuestionImageScaleOverrides>(() =>
+    normalizeQuestionImageScaleOverrides(initialImageScaleOverrides),
+  );
   const [metrics, setMetrics] = useState<PageMetrics | null>(null);
   const [renderState, setRenderState] = useState<RenderState | null>(null);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const prototypeBodyRef = useRef<HTMLDivElement | null>(null);
   const prototypeFirstBodyRef = useRef<HTMLDivElement | null>(null);
   const prototypeColumnLeftRef = useRef<HTMLDivElement | null>(null);
@@ -303,6 +325,33 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
   const columnMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fullMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fragmentMeasureRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const measurementRunRef = useRef(0);
+
+  const imageQuestions = useMemo(() => {
+    const firstOccurrenceBySourceId = new Map<number, { first: DisplayQuestion; image: DisplayQuestion | null }>();
+    const visibleSets = displaySets.filter((set) => mode === "exam" || set.id === setId);
+    for (const set of visibleSets) {
+      for (const question of set.questions) {
+        const sourceQuestionId = getSourceQuestionId(question);
+        const existing = firstOccurrenceBySourceId.get(sourceQuestionId);
+        if (existing) {
+          if (!existing.image && question.imageUrl) existing.image = question;
+        } else {
+          firstOccurrenceBySourceId.set(sourceQuestionId, {
+            first: question,
+            image: question.imageUrl ? question : null,
+          });
+        }
+      }
+    }
+
+    return Array.from(firstOccurrenceBySourceId.entries())
+      .filter(([, occurrence]) => !!occurrence.image)
+      .map(([sourceQuestionId, occurrence]) => ({
+        sourceQuestionId,
+        displayNumber: occurrence.first.displayNumber,
+      }));
+  }, [displaySets, mode, setId]);
 
   useEffect(() => {
     let active = true;
@@ -338,15 +387,21 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
 
   useEffect(() => {
     if (!metrics) return;
+    const measurementRun = measurementRunRef.current + 1;
+    measurementRunRef.current = measurementRun;
     let active = true;
     const pageMetrics = metrics;
+    const isCurrentRun = () => active && measurementRunRef.current === measurementRun;
 
     async function buildPages() {
       await document.fonts.ready.catch(() => null);
+      if (!isCurrentRun()) return;
+      setIsRecalculating(true);
       await waitForImages(measurementRootRef.current);
+      if (!isCurrentRun()) return;
 
       const answerKeySize = await loadImageSize(payload.answerKeyUrl);
-      if (!active) return;
+      if (!isCurrentRun()) return;
 
       const configuredAnswerKeyWidth = payload.answerKeyUrl
         ? pageMetrics.fullWidth * getAnswerKeyWidthRatio(payload.answerKeyWidthPt)
@@ -375,8 +430,22 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
           const hasTable = getStatementIsFullWidth(question.statementHtml);
           const isTableQuestion = hasTable;
           const layout = question.layout ?? payload.questionLayouts[question.questionType];
-          const columnImageWidth = applyMeasuredImageWidth(columnNode, pageMetrics.columnWidth, pageMetrics);
-          const fullImageWidth = applyMeasuredImageWidth(fullNode, pageMetrics.fullWidth, pageMetrics);
+          const scalePercent = getQuestionImageScalePercent(
+            imageScaleOverrides,
+            getSourceQuestionId(question),
+          );
+          const columnImageWidth = applyMeasuredImageWidth(
+            columnNode,
+            pageMetrics.columnWidth,
+            pageMetrics,
+            scalePercent,
+          );
+          const fullImageWidth = applyMeasuredImageWidth(
+            fullNode,
+            pageMetrics.fullWidth,
+            pageMetrics,
+            scalePercent,
+          );
           const imageWidth = layout === "column" ? columnImageWidth : fullImageWidth;
 
           if (isTableQuestion && columnNode && fullNode) {
@@ -512,19 +581,63 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
       })
         .filter((entry) => mode === "exam" || entry.set.id === setId);
 
+      if (!isCurrentRun()) return;
       setRenderState({
         renderedSets,
         targetTotalPages,
         answerKeyWidth,
         questionRenderPrefs,
       });
+      setIsRecalculating(false);
     }
 
     buildPages();
     return () => {
       active = false;
     };
-  }, [displaySets, metrics, mode, payload.allowQuestionSplit, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.instructions, payload.questionLayouts, setId]);
+  }, [displaySets, imageScaleOverrides, metrics, mode, payload.allowQuestionSplit, payload.answerKeyUrl, payload.answerKeyWidthPt, payload.instructions, payload.questionLayouts, setId]);
+
+  useEffect(() => {
+    const serialized = serializeQuestionImageScale(imageScaleOverrides);
+    const url = new URL(window.location.href);
+    if (serialized) url.searchParams.set(QUESTION_IMAGE_SCALE_QUERY_KEY, serialized);
+    else url.searchParams.delete(QUESTION_IMAGE_SCALE_QUERY_KEY);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [imageScaleOverrides]);
+
+  function updateImageScale(sourceQuestionId: number, rawValue: string): void {
+    const percent = normalizeQuestionImageScalePercent(Number(rawValue));
+    setImageScaleOverrides((current) => {
+      if (percent === DEFAULT_QUESTION_IMAGE_SCALE_PERCENT) {
+        if (!(sourceQuestionId in current)) return current;
+        const next = { ...current };
+        delete next[sourceQuestionId];
+        return next;
+      }
+      if (current[sourceQuestionId] === percent) return current;
+      return { ...current, [sourceQuestionId]: percent };
+    });
+  }
+
+  function resetImageScale(sourceQuestionId: number): void {
+    setImageScaleOverrides((current) => {
+      if (!(sourceQuestionId in current)) return current;
+      const next = { ...current };
+      delete next[sourceQuestionId];
+      return next;
+    });
+  }
+
+  const directPdfQuery = new URLSearchParams();
+  if (mode === "exam" && payload.versionNumber) {
+    directPdfQuery.set("version", String(payload.versionNumber));
+  }
+  const serializedImageScale = serializeQuestionImageScale(imageScaleOverrides);
+  if (serializedImageScale) directPdfQuery.set(QUESTION_IMAGE_SCALE_QUERY_KEY, serializedImageScale);
+  const directPdfQueryString = directPdfQuery.toString();
+  const directPdfHref = mode === "exam"
+    ? `/api/pdf/exam/${payload.examId}${directPdfQueryString ? `?${directPdfQueryString}` : ""}`
+    : `/api/pdf/${setId}${directPdfQueryString ? `?${directPdfQueryString}` : ""}`;
 
   return (
     <div className="exam-print-shell">
@@ -535,24 +648,83 @@ export function ExamPrintClient({ payload, mode, setId }: ExamPrintClientProps) 
             {mode === "exam" ? "Prova completa" : `Set ${displaySets.find((set) => set.id === setId)?.label ?? ""}`} · formato A4
             {payload.versionNumber ? ` · versão ${payload.versionNumber}` : ""}
             {renderState ? ` · ${renderState.targetTotalPages} página(s) por set` : ""}
+            {isRecalculating ? " · recalculando..." : ""}
           </div>
         </div>
-        <div className="actions-row">
-          <Link href={`/exports?exam=${payload.examId}${payload.versionNumber ? `&version=${payload.versionNumber}` : ""}`} className="btn btn-ghost" replace>
-            Voltar
-          </Link>
-          <a href={mode === "exam" ? `/api/pdf/exam/${payload.examId}${payload.versionNumber ? `?version=${payload.versionNumber}` : ""}` : `/api/pdf/${setId}`} className="btn btn-ghost">
-            PDF direto
-          </a>
-          <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={!renderState}>
-            Imprimir / Salvar PDF
-          </button>
+        <div className="exam-print-toolbar-actions">
+          {imageQuestions.length > 0 && (
+            <details className="exam-print-scale-controls">
+              <summary>Ajustar imagens</summary>
+              <div className="exam-print-scale-panel">
+                <p className="exam-print-scale-help">
+                  Reduza cada imagem entre {MIN_QUESTION_IMAGE_SCALE_PERCENT}% e {MAX_QUESTION_IMAGE_SCALE_PERCENT}% da largura segura calculada.
+                </p>
+                <div className="exam-print-scale-list">
+                  {imageQuestions.map(({ sourceQuestionId, displayNumber }) => {
+                    const percent = getQuestionImageScalePercent(imageScaleOverrides, sourceQuestionId);
+                    const controlId = `exam-print-image-scale-${sourceQuestionId}`;
+                    return (
+                      <div className="exam-print-scale-row" key={sourceQuestionId}>
+                        <label htmlFor={controlId}>
+                          Questão {displayNumber}
+                          <output htmlFor={controlId}>{percent}%</output>
+                        </label>
+                        <input
+                          id={controlId}
+                          type="range"
+                          min={MIN_QUESTION_IMAGE_SCALE_PERCENT}
+                          max={MAX_QUESTION_IMAGE_SCALE_PERCENT}
+                          step="1"
+                          value={percent}
+                          aria-label={`Escala da imagem da questão ${displayNumber}`}
+                          aria-valuetext={`${percent}%`}
+                          onChange={(event) => updateImageScale(sourceQuestionId, event.currentTarget.value)}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => resetImageScale(sourceQuestionId)}
+                          disabled={percent === DEFAULT_QUESTION_IMAGE_SCALE_PERCENT}
+                        >
+                          Resetar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setImageScaleOverrides({})}
+                  disabled={Object.keys(imageScaleOverrides).length === 0}
+                >
+                  Resetar todas
+                </button>
+              </div>
+            </details>
+          )}
+          <div className="actions-row">
+            <Link href={`/exports?exam=${payload.examId}${payload.versionNumber ? `&version=${payload.versionNumber}` : ""}`} className="btn btn-ghost" replace>
+              Voltar
+            </Link>
+            <a href={directPdfHref} className="btn btn-ghost">
+              PDF direto
+            </a>
+            <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={!renderState || isRecalculating}>
+              Imprimir / Salvar PDF
+            </button>
+          </div>
         </div>
       </div>
 
       {!renderState && (
         <div className="card" style={{ marginBottom: "1rem" }}>
           Montando prova em HTML paginado...
+        </div>
+      )}
+      {renderState && isRecalculating && (
+        <div className="exam-print-recalculating" role="status" aria-live="polite">
+          Recalculando paginação...
         </div>
       )}
 

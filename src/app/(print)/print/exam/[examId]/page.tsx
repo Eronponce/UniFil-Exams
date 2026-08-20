@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { getExam, getExamVersion, hasExamVersions } from "@/lib/db/exams";
 import { buildPrintExamPayload } from "@/lib/print/build-print-payload";
 import { ExamPrintClient } from "@/components/print/exam-print-client";
+import { parseQuestionImageScale } from "@/lib/print/question-image-scale";
 
 export default async function PrintExamPage({
   params,
   searchParams,
 }: {
   params: Promise<{ examId: string }>;
-  searchParams: Promise<{ version?: string }>;
+  searchParams: Promise<{ version?: string; imageScale?: string }>;
 }) {
   const { examId } = await params;
   const sp = await searchParams;
@@ -26,5 +27,11 @@ export default async function PrintExamPage({
   const version = getExamVersion(exam.id, versionNumber);
   if ((sp.version !== undefined || hasExamVersions(exam.id)) && !version) notFound();
 
-  return <ExamPrintClient payload={buildPrintExamPayload(exam, version)} mode="exam" />;
+  return (
+    <ExamPrintClient
+      payload={buildPrintExamPayload(exam, version)}
+      mode="exam"
+      initialImageScaleOverrides={parseQuestionImageScale(sp.imageScale)}
+    />
+  );
 }

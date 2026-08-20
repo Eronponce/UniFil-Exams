@@ -53,4 +53,41 @@ describe("getPrintQuestionImageWidth", () => {
       ...PAGE,
     })).toBe(0);
   });
+
+  it("applies a presentation scale after the safe caps", () => {
+    const safeWidth = getPrintQuestionImageWidth({
+      naturalWidth: 613,
+      naturalHeight: 97,
+      containerWidth: 680,
+      ...PAGE,
+    });
+    const scaledWidth = getPrintQuestionImageWidth({
+      naturalWidth: 613,
+      naturalHeight: 97,
+      containerWidth: 680,
+      scalePercent: 50,
+      ...PAGE,
+    });
+
+    expect(scaledWidth).toBe(safeWidth / 2);
+    expect(scaledWidth).toBeLessThanOrEqual(safeWidth);
+  });
+
+  it("normalizes invalid scales to the safe default", () => {
+    const safeWidth = getPrintQuestionImageWidth({
+      naturalWidth: 553,
+      naturalHeight: 725,
+      containerWidth: 332,
+      ...PAGE,
+    });
+    const invalidScaleWidth = getPrintQuestionImageWidth({
+      naturalWidth: 553,
+      naturalHeight: 725,
+      containerWidth: 332,
+      scalePercent: 10,
+      ...PAGE,
+    });
+
+    expect(invalidScaleWidth).toBe(safeWidth);
+  });
 });

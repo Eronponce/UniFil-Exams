@@ -166,6 +166,21 @@ Data: 2026-04-22
 
 ---
 
+## US-20 · Escala de imagens no preview de impressão
+
+**Como** professor, **quero** reduzir individualmente imagens grandes na visualização da prova,
+**para** controlar a densidade sem alterar a prova salva ou suas versões históricas.
+
+**Critérios de aceite:**
+- Cada questão com imagem expõe um controle acessível de 25% a 100% da largura segura.
+- A medição e a paginação são refeitas enquanto o controle muda.
+- O ajuste é serializado em `imageScale`, usa o ID de origem e acompanha todos os sets/randomizações.
+- `PDF direto` e `window.print()` refletem o estado atual; nenhum valor é persistido no banco.
+
+**Status:** ✅ Implementado (2026-08-20)
+
+---
+
 ## Backlog Futuro
 
 | ID | Descrição | Prioridade |

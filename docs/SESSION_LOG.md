@@ -647,3 +647,10 @@ status: active
 - A restauração temporária transferiu 986,932 MiB; a execução corrigida teve pico de 295,6 MiB e zero swap. O diretório temporário foi removido automaticamente.
 - Um rate limit transitório do Google Drive foi recuperado automaticamente pelo rclone; o teste terminou com sucesso.
 - O timer `server-all-systems-backup.timer` permanece ativo para execução diária às 03:30 em `America/Sao_Paulo`, com atraso aleatório de até 10 minutos.
+
+## 2026-08-20 - Escala de imagem ao vivo no preview de impressão
+
+- Adicionado `question-image-scale.ts` para validar, normalizar e serializar `imageScale` por ID de questão; entradas inválidas são ignoradas, duplicatas válidas usam o último valor e 100% não é serializado.
+- O cálculo de largura mantém os caps de 25% da área imprimível e 50% da altura, aplicando o percentual somente depois deles.
+- O preview mede e pagina novamente durante o ajuste, identifica questões por `sourceQuestionId`, sincroniza a URL sem mutar versões e encaminha o mesmo estado aos PDFs de prova e set.
+- Validação inicial: `rtk npm test -- --run src/tests/question-image-layout.test.ts src/tests/question-image-scale.test.ts` e `rtk npm run typecheck` passaram.

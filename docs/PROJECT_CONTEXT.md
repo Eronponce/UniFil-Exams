@@ -36,6 +36,7 @@ status: active
 - Feedback de processos usa toast global para geração IA, salvamentos, uploads, importações, auditoria e criação de prova.
 - Montagem aceita quantidades, largura por tipo, largura individual, quebra opcional de objetivas longas e ordem aleatória compacta.
 - Imagens impressas acompanham a largura da questão e são reduzidas proporcionalmente ao ultrapassar 25% da área imprimível ou metade da altura da página.
+- O preview de impressão permite reduzir imagens individualmente de 100% a 25% da largura segura; o estado normalizado fica em `?imageScale=` e é encaminhado ao PDF direto sem tocar no banco ou em versões históricas.
 - Exportação PDF agora tenta encaixar seções subsequentes na sobra da página anterior antes de abrir nova página.
 - Exportação PDF usa contagem uniforme e par de páginas por set dentro do mesmo lote; PDF individual por set respeita o alvo do lote.
 - Documentação Obsidian versionável vive em `docs/`; comece por [[INDEX]].

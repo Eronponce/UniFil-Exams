@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { getExam } from "@/lib/db/exams";
 import { renderHtmlPageToPdfBuffer } from "@/lib/print/browser-pdf";
+import { parseQuestionImageScale, serializeQuestionImageScale } from "@/lib/print/question-image-scale";
 
 interface SetRow {
   id: number;
@@ -14,6 +15,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ setId: string }> }) {
   const { setId } = await params;
+  const requestUrl = new URL(req.url);
+  const serializedImageScale = serializeQuestionImageScale(
+    parseQuestionImageScale(requestUrl.searchParams.get("imageScale")),
+  );
   const row = getDb()
     .prepare("SELECT id, exam_id, label FROM exam_sets WHERE id = ?")
     .get(Number(setId)) as SetRow | undefined;
@@ -23,7 +28,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ setId: s
   if (!exam) return new NextResponse("Prova nao encontrada", { status: 404 });
 
   try {
-    const pdf = await renderHtmlPageToPdfBuffer(new URL(`/print/set/${setId}`, req.url).toString());
+    const printUrl = new URL(`/print/set/${setId}`, req.url);
+    if (serializedImageScale) printUrl.searchParams.set("imageScale", serializedImageScale);
+    const pdf = await renderHtmlPageToPdfBuffer(printUrl.toString());
     const safeName = exam.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `prova-${exam.id}`;
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
