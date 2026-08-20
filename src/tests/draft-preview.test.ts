@@ -97,7 +97,8 @@ describe("buildDraftPrintPayload", () => {
     expect(first.answerKeyUrl).toBe(DRAFT_ANSWER_KEY_PLACEHOLDER_URL);
     expect(decodeURIComponent(first.answerKeyUrl ?? "")).toContain("GABARITO");
     expect(decodeURIComponent(first.answerKeyUrl ?? "")).toContain("PLACEHOLDER");
-    expect(decodeURIComponent(first.answerKeyUrl ?? "")).toMatch(/width="420" height="1200"/);
+    expect(decodeURIComponent(first.answerKeyUrl ?? "")).toMatch(/width="1068" height="883"/);
+    expect(decodeURIComponent(first.answerKeyUrl ?? "")).toContain("1068 × 883 px");
   });
 
   it("reflects deselection, width, and default scale omission", () => {

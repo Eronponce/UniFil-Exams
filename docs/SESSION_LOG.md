@@ -673,7 +673,7 @@ status: active
 - `/exams` passou a usar painéis nativos recolhíveis para configuração e banco auditado; os resumos preservam contagens úteis.
 - O dropdown temático mantém uma seleção otimista local até a navegação confirmar o mesmo conjunto, evitando perda em dois cliques rápidos.
 - Os quatro campos visíveis de quantidade são derivados da seleção exata e alteram a seleção determinística, mantendo a ordem manual e limpando escala de imagem ao remover questões.
-- O preview do rascunho usa um SVG vertical `GABARITO / PLACEHOLDER TEMPORÁRIO` somente em memória, portanto a medição de paginação/paridade é real sem persistir URL.
+- O preview do rascunho usa um SVG `GABARITO / PLACEHOLDER TEMPORÁRIO` somente em memória, portanto a medição de paginação/paridade é real sem persistir URL.
 - O canvas A4 desktop tem viewport próprio com scroll chaining contido; o rail standalone de imagens ocupa a coluna sticky direita do layout desktop e entra no fluxo normal no responsivo, sem assumir altura fixa da barra, e continua oculto no modo embedded.
 - Validação focada: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/question-selection.test.ts` (17 testes passando).
 
@@ -684,3 +684,8 @@ status: active
 - `createExamAction` valida assinatura PNG/JPEG, persiste `answer_key_width_pt`, grava o arquivo como `public/gabaritos/<examId>.<ext>` e remove a prova recém-criada se arquivo/sets/versão falharem.
 - A rota histórica de upload reutiliza a mesma validação e escrita atômica por arquivo temporário.
 - Validação focada: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/visual-exam-action.test.ts src/tests/answer-key-upload.test.ts` (20 testes passando).
+
+## 2026-08-20 - Proporção do placeholder de gabarito
+
+- O placeholder sintético passou a medir `1068 × 883 px`, reproduzindo somente as dimensões/proporção da referência fornecida.
+- Nenhum pixel, texto ou elemento gráfico do arquivo de referência foi incorporado; o SVG continua sendo gerado pelo próprio sistema.
