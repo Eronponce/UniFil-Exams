@@ -10,6 +10,17 @@ const redirectWithToastMock = vi.hoisted(() => vi.fn((url: string, toast?: Recor
   throw new Error(`REDIRECT:${url}`);
 }));
 vi.mock("@/lib/toast", () => ({ redirectWithToast: redirectWithToastMock }));
+const answerKeyUploadMocks = vi.hoisted(() => ({
+  prepare: vi.fn(),
+  store: vi.fn(),
+  remove: vi.fn(),
+}));
+vi.mock("@/lib/uploads/answer-key", () => ({
+  AnswerKeyUploadError: class AnswerKeyUploadError extends Error {},
+  prepareAnswerKeyUpload: answerKeyUploadMocks.prepare,
+  storeAnswerKeyUpload: answerKeyUploadMocks.store,
+  removeAnswerKeyFiles: answerKeyUploadMocks.remove,
+}));
 
 import { createExamAction } from "@/lib/actions/exams";
 import { listExams } from "@/lib/db/exams";
@@ -21,6 +32,9 @@ beforeEach(() => {
   migrate();
   db.prepare("INSERT INTO disciplines (id, name, code) VALUES (1, 'História', 'HIS')").run();
   redirectWithToastMock.mockClear();
+  answerKeyUploadMocks.prepare.mockReset().mockResolvedValue(null);
+  answerKeyUploadMocks.store.mockReset();
+  answerKeyUploadMocks.remove.mockReset();
 });
 
 afterEach(() => db.close());
@@ -56,6 +70,9 @@ describe("createExamAction visual builder contract", () => {
     formData.set("institution", "UniFil");
     formData.set("quantitySets", "2");
     formData.set("draftSeed", "  visual-seed  ");
+    formData.set("answerKeyWidthPt", "425");
+    formData.set("answerKeyFile", new File(["imagem"], "gabarito.png", { type: "image/png" }));
+    answerKeyUploadMocks.prepare.mockResolvedValue({ extension: "png", bytes: Buffer.from("imagem") });
     formData.set("layoutObjetiva", "column");
     formData.set("layoutVF", "column");
     formData.set("layoutNumerica", "column");
@@ -76,6 +93,8 @@ describe("createExamAction visual builder contract", () => {
     const exam = listExams("todas")[0]!;
     const expectedOrder = [objectiveColumn.id, objectiveFull.id, vf.id, numeric.id, discursive.id];
     expect(exam.sets).toHaveLength(2);
+    expect(exam.answerKeyWidthPt).toBe(425);
+    expect(answerKeyUploadMocks.store).toHaveBeenCalledWith(exam.id, expect.objectContaining({ extension: "png" }));
     expect(exam.sets.map((set) => set.questions.map((question) => question.questionId))).toEqual([
       expectedOrder,
       expectedOrder,
@@ -143,6 +162,27 @@ describe("createExamAction visual builder contract", () => {
     expect(listExams("todas")).toHaveLength(0);
     expect(redirectWithToastMock.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({
       title: "Seleção visual desatualizada",
+    }));
+  });
+
+  it("removes the new exam if the attached answer key cannot be stored", async () => {
+    const question = addQuestion("objetiva");
+    const formData = new FormData();
+    formData.set("visualBuilder", "1");
+    formData.set("disciplineId", "1");
+    formData.set("title", "Falha de upload");
+    formData.set("answerKeyFile", new File(["imagem"], "gabarito.png", { type: "image/png" }));
+    formData.append("questionIds", String(question.id));
+    formData.append("manualQuestionOrder", String(question.id));
+    answerKeyUploadMocks.prepare.mockResolvedValue({ extension: "png", bytes: Buffer.from("imagem") });
+    answerKeyUploadMocks.store.mockImplementation(() => { throw new Error("disco indisponível"); });
+
+    await expect(createExamAction(formData)).rejects.toThrow("REDIRECT");
+
+    expect(listExams("todas")).toHaveLength(0);
+    expect(answerKeyUploadMocks.remove).toHaveBeenCalled();
+    expect(redirectWithToastMock.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({
+      title: "Não foi possível criar a prova",
     }));
   });
 });

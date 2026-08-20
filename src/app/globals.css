@@ -392,6 +392,18 @@ fieldset { min-width: 0; }
 .visual-exam-setup-summary-status { flex: 0 0 auto; color: var(--muted-strong); font-size: .76rem; font-weight: 700; }
 .visual-exam-setup-content { display: grid; gap: .8rem; padding: 0 1rem 1rem; }
 .visual-exam-setup-context { display: flex; flex-wrap: wrap; gap: .4rem .8rem; color: var(--muted-strong); font-size: .75rem; }
+.visual-exam-answer-key { display: grid; gap: .7rem; padding: .8rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-muted); }
+.visual-exam-answer-key-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+.visual-exam-answer-key-heading > div { display: grid; gap: .15rem; }
+.visual-exam-answer-key-heading strong { color: var(--text-strong); font-size: .82rem; }
+.visual-exam-answer-key-heading small { color: var(--muted); font-size: .7rem; }
+.visual-exam-answer-key-controls { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(260px, 1.2fr); gap: .8rem; align-items: center; }
+.visual-exam-answer-key-file { display: flex; align-items: center; min-width: 0; gap: .45rem; flex-wrap: wrap; }
+.visual-exam-answer-key-file > span { max-width: 100%; overflow: hidden; color: var(--muted); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.visual-exam-answer-key-scale { display: grid; gap: .35rem; color: var(--muted-strong); font-size: .72rem; }
+.visual-exam-answer-key-scale > span { display: flex; justify-content: space-between; gap: .7rem; }
+.visual-exam-answer-key-scale output { color: var(--text-strong); font-weight: 700; }
+.visual-exam-answer-key-scale input { width: 100%; accent-color: var(--primary); }
 .visual-exam-quantity-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; padding-top: .1rem; }
 .visual-exam-quantity-control { min-width: 0; }
 .visual-exam-quantity-control small { color: var(--muted); font-size: .68rem; }
@@ -642,6 +654,7 @@ fieldset { min-width: 0; }
   .visual-exam-preview-panel { position: static; max-height: none; }
   .visual-exam-preview-canvas { height: min(680px, calc(100vh - 8.5rem)); max-height: min(680px, calc(100vh - 8.5rem)); min-height: 280px; overflow: auto; overscroll-behavior: contain; }
   .visual-exam-quantity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .visual-exam-answer-key-controls { grid-template-columns: 1fr; }
   .exam-print-layout--has-image-controls { grid-template-columns: minmax(0, 1fr); }
   .exam-print-scale-sidebar { position: static; top: auto; z-index: auto; order: -1; width: 100%; height: auto; max-height: min(50vh, 420px); border: 1px solid #d1d5db; border-radius: 10px; }
   .exports-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }

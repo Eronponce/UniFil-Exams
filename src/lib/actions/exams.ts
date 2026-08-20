@@ -6,6 +6,7 @@ import {
   createExamSet,
   createExamVersion,
   deactivateExam,
+  deleteExam,
   reactivateExam,
   restoreExamVersion,
   saveExamVersion,
@@ -22,6 +23,14 @@ import { normalizeExamInstructions } from "@/lib/exam/instructions";
 import {
   isValidQuestionImageScalePercent,
 } from "@/lib/print/question-image-scale";
+import { clampAnswerKeyWidth } from "@/lib/pdf/answer-key-layout";
+import {
+  AnswerKeyUploadError,
+  prepareAnswerKeyUpload,
+  removeAnswerKeyFiles,
+  storeAnswerKeyUpload,
+  type PreparedAnswerKeyUpload,
+} from "@/lib/uploads/answer-key";
 
 const SET_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const DEFAULT_VISUAL_DRAFT_SEED = "visual-default";
@@ -80,6 +89,8 @@ export async function createExamAction(formData: FormData) {
   const visualBuilder = formData.get("visualBuilder") === "1";
   const draftSeed = normalizeExamDraftSeed(formData.get("draftSeed")) ?? DEFAULT_VISUAL_DRAFT_SEED;
   const instructions = normalizeExamInstructions(formData.get("instructions"));
+  const answerKeyWidthRaw = formData.get("answerKeyWidthPt");
+  const answerKeyWidthPt = clampAnswerKeyWidth(typeof answerKeyWidthRaw === "string" ? Number(answerKeyWidthRaw) : undefined);
   const questionLayouts = normalizeExamQuestionLayouts({
     objetiva: formData.get("layoutObjetiva"),
     verdadeiro_falso: formData.get("layoutVF"),
@@ -109,8 +120,21 @@ export async function createExamAction(formData: FormData) {
     params.set("layoutDissertativa", questionLayouts.dissertativa);
     params.set("allowQuestionSplit", allowQuestionSplit ? "1" : "0");
     params.set("compactQuestionOrder", compactQuestionOrder ? "1" : "0");
+    params.set("answerKeyWidthPt", String(answerKeyWidthPt));
     if (visualBuilder) params.set("visualBuilder", "1");
     return params;
+  }
+
+  let answerKeyUpload: PreparedAnswerKeyUpload | null = null;
+  try {
+    answerKeyUpload = await prepareAnswerKeyUpload(formData.get("answerKeyFile"));
+  } catch (error) {
+    const params = buildErrorParams("gabarito-invalido");
+    redirectWithToast(`/exams?${params.toString()}`, {
+      type: "error",
+      title: "Gabarito inválido",
+      description: error instanceof AnswerKeyUploadError ? error.message : "Não foi possível ler o arquivo do gabarito.",
+    });
   }
 
   if (!disciplineId || !title || allQuestionIds.length === 0) {
@@ -221,22 +245,34 @@ export async function createExamAction(formData: FormData) {
     institution,
     instructions,
     allowQuestionSplit,
+    answerKeyWidthPt,
     questionIds: selectedQuestionInfos.map((q) => q.id),
     questionLayouts,
     questionLayoutOverrides: initialQuestionLayoutOverrides,
     questionImageScaleOverrides: formQuestionImageScaleOverrides,
   });
 
-  for (const s of sets) {
-    createExamSet(exam.id, {
-      label: s.label,
-      questionOrder: s.questionOrder,
-      shuffledOptions: s.shuffledOptions,
-      correctShuffledIndices: s.correctShuffledIndices,
+  try {
+    if (answerKeyUpload) storeAnswerKeyUpload(exam.id, answerKeyUpload);
+    for (const s of sets) {
+      createExamSet(exam.id, {
+        label: s.label,
+        questionOrder: s.questionOrder,
+        shuffledOptions: s.shuffledOptions,
+        correctShuffledIndices: s.correctShuffledIndices,
+      });
+    }
+    createExamVersion(exam.id, "Versão inicial");
+  } catch {
+    removeAnswerKeyFiles(exam.id);
+    deleteExam(exam.id);
+    const params = buildErrorParams("falha-ao-salvar-gabarito");
+    redirectWithToast(`/exams?${params.toString()}`, {
+      type: "error",
+      title: "Não foi possível criar a prova",
+      description: "O gabarito ou os sets não puderam ser salvos. Nenhuma prova parcial foi mantida.",
     });
   }
-
-  createExamVersion(exam.id, "Versão inicial");
 
   revalidatePath("/exams");
   revalidatePath("/exports");

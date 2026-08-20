@@ -676,3 +676,11 @@ status: active
 - O preview do rascunho usa um SVG vertical `GABARITO / PLACEHOLDER TEMPORÁRIO` somente em memória, portanto a medição de paginação/paridade é real sem persistir URL.
 - O canvas A4 desktop tem viewport próprio com scroll chaining contido; o rail standalone de imagens ocupa a coluna sticky direita do layout desktop e entra no fluxo normal no responsivo, sem assumir altura fixa da barra, e continua oculto no modo embedded.
 - Validação focada: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/question-selection.test.ts` (17 testes passando).
+
+## 2026-08-20 - Gabarito anexado e redimensionável durante a montagem
+
+- O editor visual aceita um gabarito PNG/JPG de até 9 MB antes de criar a prova, mostra o nome do arquivo e permite removê-lo ou substituí-lo.
+- O `blob:` local substitui o placeholder no payload de preview; o slider usa o mesmo intervalo persistido de largura e dispara a paginação medida em tempo real.
+- `createExamAction` valida assinatura PNG/JPEG, persiste `answer_key_width_pt`, grava o arquivo como `public/gabaritos/<examId>.<ext>` e remove a prova recém-criada se arquivo/sets/versão falharem.
+- A rota histórica de upload reutiliza a mesma validação e escrita atômica por arquivo temporário.
+- Validação focada: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/visual-exam-action.test.ts src/tests/answer-key-upload.test.ts` (20 testes passando).

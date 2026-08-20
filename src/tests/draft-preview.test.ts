@@ -113,4 +113,14 @@ describe("buildDraftPrintPayload", () => {
     expect(payload.sets[0]?.questions.find((question) => question.id === 1)).toMatchObject({ layout: "column" });
     expect(payload.sets[0]?.questions.find((question) => question.id === 1)).not.toHaveProperty("imageScalePercent");
   });
+
+  it("uses an attached draft answer key and its live width instead of the placeholder", () => {
+    const payload = buildDraftPrintPayload(questions, makeDraft({
+      answerKeyUrl: "blob:answer-key-preview",
+      answerKeyWidthPt: 425,
+    }));
+
+    expect(payload.answerKeyUrl).toBe("blob:answer-key-preview");
+    expect(payload.answerKeyWidthPt).toBe(425);
+  });
 });

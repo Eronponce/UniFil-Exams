@@ -5,6 +5,14 @@ import { RichText } from "@/components/rich-text";
 import { ExamPrintClient } from "@/components/print/exam-print-client";
 import { createExamAction } from "@/lib/actions/exams";
 import { buildDraftPrintPayload, type DraftPreviewQuestion } from "@/lib/exam/draft-preview";
+import {
+  ANSWER_KEY_DEFAULT_WIDTH_PT,
+  ANSWER_KEY_MAX_WIDTH_PT,
+  ANSWER_KEY_MIN_WIDTH_PT,
+  ANSWER_KEY_WIDTH_STEP_PT,
+  clampAnswerKeyWidth,
+  getAnswerKeyWidthPercent,
+} from "@/lib/pdf/answer-key-layout";
 import { useWorkspaceStore } from "@/lib/state/workspace-store";
 import {
   DEFAULT_QUESTION_IMAGE_SCALE_PERCENT,
@@ -63,6 +71,7 @@ export interface VisualExamBuilderProps {
   initialManualQuestionOrder?: readonly number[];
   initialLayoutOverrides?: Readonly<Record<number, QuestionLayout>>;
   initialImageScaleOverrides?: Readonly<Record<number, number>>;
+  initialAnswerKeyWidthPt?: number;
   error?: string;
 }
 
@@ -207,6 +216,7 @@ export function VisualExamBuilder({
   initialManualQuestionOrder,
   initialLayoutOverrides,
   initialImageScaleOverrides,
+  initialAnswerKeyWidthPt = ANSWER_KEY_DEFAULT_WIDTH_PT,
   error,
 }: VisualExamBuilderProps) {
   const questionById = useMemo(() => new Map(questions.map((question) => [question.id, question])), [questions]);
@@ -228,8 +238,13 @@ export function VisualExamBuilder({
   const [instructions, setInstructions] = useState(initialInstructions);
   const [quantitySets, setQuantitySets] = useState(initialQuantitySets);
   const [allowQuestionSplit, setAllowQuestionSplit] = useState(initialAllowQuestionSplit === "1");
+  const [answerKeyWidthPt, setAnswerKeyWidthPt] = useState(() => clampAnswerKeyWidth(initialAnswerKeyWidthPt));
+  const [answerKeyPreviewUrl, setAnswerKeyPreviewUrl] = useState<string | null>(null);
+  const [answerKeyFilename, setAnswerKeyFilename] = useState<string | null>(null);
+  const [answerKeyError, setAnswerKeyError] = useState<string | null>(null);
   const [activeSetIndex, setActiveSetIndex] = useState(0);
   const previewFitRef = useRef<HTMLDivElement | null>(null);
+  const answerKeyInputRef = useRef<HTMLInputElement | null>(null);
   const updateExam = useWorkspaceStore((state) => state.updateExam);
 
   const normalizedOrder = useMemo(
@@ -265,8 +280,10 @@ export function VisualExamBuilder({
       layoutOverrides,
       imageScaleOverrides,
       draftSeed: initialDraftSeed,
+      answerKeyWidthPt,
+      answerKeyUrl: answerKeyPreviewUrl,
     }),
-    [allowQuestionSplit, imageScaleOverrides, initialDraftSeed, institution, instructions, layoutOverrides, normalizedOrder, previewQuestions, quantitySets, questionLayouts, selectedIds, title],
+    [allowQuestionSplit, answerKeyPreviewUrl, answerKeyWidthPt, imageScaleOverrides, initialDraftSeed, institution, instructions, layoutOverrides, normalizedOrder, previewQuestions, quantitySets, questionLayouts, selectedIds, title],
   );
   const activePreviewSetIndex = Math.min(activeSetIndex, Math.max(0, previewPayload.sets.length - 1));
 
@@ -292,6 +309,35 @@ export function VisualExamBuilder({
       imageScaleOverrides,
     });
   }, [allowQuestionSplit, imageScaleOverrides, initialDraftSeed, institution, layoutOverrides, normalizedOrder, quantityByType, quantitySets, selectedIds, title, updateExam]);
+
+  useEffect(() => () => {
+    if (answerKeyPreviewUrl) URL.revokeObjectURL(answerKeyPreviewUrl);
+  }, [answerKeyPreviewUrl]);
+
+  function selectAnswerKeyFile(file: File | undefined): void {
+    if (!file) return;
+    if (file.size > 9 * 1024 * 1024) {
+      setAnswerKeyError("O gabarito deve ter no máximo 9 MB.");
+      if (answerKeyInputRef.current) answerKeyInputRef.current.value = "";
+      return;
+    }
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (!extension || !["png", "jpg", "jpeg"].includes(extension)) {
+      setAnswerKeyError("Use uma imagem PNG ou JPG.");
+      if (answerKeyInputRef.current) answerKeyInputRef.current.value = "";
+      return;
+    }
+    setAnswerKeyError(null);
+    setAnswerKeyFilename(file.name);
+    setAnswerKeyPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function removeAnswerKeyFile(): void {
+    if (answerKeyInputRef.current) answerKeyInputRef.current.value = "";
+    setAnswerKeyFilename(null);
+    setAnswerKeyError(null);
+    setAnswerKeyPreviewUrl(null);
+  }
 
   function toggleSelection(id: number): void {
     const question = questionById.get(id);
@@ -472,6 +518,59 @@ export function VisualExamBuilder({
               <input name="quantitySets" className="form-input" type="number" min={1} max={8} value={quantitySets} onChange={(event) => setQuantitySets(event.currentTarget.value)} />
             </label>
           </div>
+
+          <section className="visual-exam-answer-key" aria-labelledby="visual-exam-answer-key-heading">
+            <div className="visual-exam-answer-key-heading">
+              <div>
+                <strong id="visual-exam-answer-key-heading">Gabarito da última página</strong>
+                <small>Anexe PNG/JPG de até 9 MB e ajuste a largura vendo a paginação mudar no preview.</small>
+              </div>
+              <span className={`badge${answerKeyFilename ? " badge-success" : ""}`}>
+                {answerKeyFilename ? "Anexado ao rascunho" : "Placeholder ativo"}
+              </span>
+            </div>
+
+            <div className="visual-exam-answer-key-controls">
+              <div className="visual-exam-answer-key-file">
+                <label className="btn btn-ghost btn-sm">
+                  {answerKeyFilename ? "Substituir gabarito" : "Anexar gabarito"}
+                  <input
+                    ref={answerKeyInputRef}
+                    className="sr-only"
+                    name="answerKeyFile"
+                    type="file"
+                    accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                    onChange={(event) => selectAnswerKeyFile(event.currentTarget.files?.[0])}
+                  />
+                </label>
+                {answerKeyFilename && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={removeAnswerKeyFile}>
+                    Remover
+                  </button>
+                )}
+                <span title={answerKeyFilename ?? undefined}>{answerKeyFilename ?? "Nenhum arquivo escolhido"}</span>
+              </div>
+
+              <label className="visual-exam-answer-key-scale">
+                <span>
+                  Largura do gabarito
+                  <output htmlFor="visual-answer-key-width">{answerKeyWidthPt}pt · {getAnswerKeyWidthPercent(answerKeyWidthPt)}%</output>
+                </span>
+                <input
+                  id="visual-answer-key-width"
+                  name="answerKeyWidthPt"
+                  type="range"
+                  min={ANSWER_KEY_MIN_WIDTH_PT}
+                  max={ANSWER_KEY_MAX_WIDTH_PT}
+                  step={ANSWER_KEY_WIDTH_STEP_PT}
+                  value={answerKeyWidthPt}
+                  onChange={(event) => setAnswerKeyWidthPt(clampAnswerKeyWidth(Number(event.currentTarget.value)))}
+                  aria-label="Tamanho do gabarito"
+                />
+              </label>
+            </div>
+            {answerKeyError && <span className="form-error" role="alert">{answerKeyError}</span>}
+          </section>
 
           <div className="visual-exam-quantity-grid" aria-label="Quantidade por tipo">
             {TYPE_CONTROLS.map(({ type, name, label }) => (

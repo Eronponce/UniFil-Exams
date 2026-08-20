@@ -29,6 +29,7 @@ export interface DraftPreviewDraft {
   imageScaleOverrides?: Readonly<Record<number, number>>;
   draftSeed: string | number;
   answerKeyWidthPt?: number;
+  answerKeyUrl?: string | null;
 }
 
 const SET_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
@@ -204,7 +205,7 @@ export function buildDraftPrintPayload(
       ...draft.questionLayouts,
     },
     logoUrl: null,
-    answerKeyUrl: DRAFT_ANSWER_KEY_PLACEHOLDER_URL,
+    answerKeyUrl: draft.answerKeyUrl || DRAFT_ANSWER_KEY_PLACEHOLDER_URL,
     sets,
   };
 }

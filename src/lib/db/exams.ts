@@ -191,6 +191,7 @@ export function createExam(data: {
   institution?: string;
   instructions?: string;
   allowQuestionSplit?: boolean;
+  answerKeyWidthPt?: number;
   questionIds: number[];
   questionLayouts?: Partial<ExamQuestionLayouts>;
   questionLayoutOverrides?: Record<number, QuestionLayout | null>;
@@ -224,7 +225,7 @@ export function createExam(data: {
         data.title,
         data.institution ?? DEFAULT_INSTITUTION,
         data.allowQuestionSplit ? 1 : 0,
-        ANSWER_KEY_DEFAULT_WIDTH_PT,
+        clampAnswerKeyWidth(data.answerKeyWidthPt ?? ANSWER_KEY_DEFAULT_WIDTH_PT),
         normalizeExamInstructions(data.instructions),
         layouts.objetiva,
         layouts.verdadeiro_falso,

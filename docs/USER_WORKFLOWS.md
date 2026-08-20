@@ -64,14 +64,15 @@ O UniFil Exams foi organizado para reduzir a troca de contexto do professor. A t
 1. Abra `/exams` e selecione a disciplina.
 2. Opcionalmente filtre áreas temáticas e ajuste a seleção de questões auditadas.
 3. Defina título, instituição, quantidade de sets, contagem e largura padrão por tipo; marque largura total em questões específicas quando necessário.
-4. Para reduzir espaço vazio, marque **Agrupar questões por largura para economizar espaço**. Cada set mantém `objetiva → V/F → numérica → dissertativa` e, dentro de cada tipo, sorteia primeiro `column` e depois `full`.
-5. Gere a prova; a ordem gravada no set é usada igualmente na impressão, no gabarito e na rastreabilidade.
-6. Em falha de validação, os campos de montagem e a opção compacta são recuperados pelos parâmetros existentes.
+4. Opcionalmente anexe o gabarito PNG/JPG no próprio editor e ajuste sua largura. O preview substitui o placeholder imediatamente e recalcula a paginação.
+5. Para reduzir espaço vazio, mantenha a ordem compacta por tipo e largura. Cada set preserva `objetiva → V/F → numérica → dissertativa` e, dentro de cada tipo, posiciona primeiro `column` e depois `full`.
+6. Gere a prova; ordem, largura do gabarito e arquivo anexado são persistidos antes do redirecionamento para Exportações.
+7. Em falha de validação, os campos textuais e a largura são recuperados pelos parâmetros existentes; o navegador exige escolher novamente qualquer arquivo local.
 
 ## 7. Entregar PDF, CSV e ZIP
 
 1. Em `/exports`, escolha a prova criada.
-2. Anexe ou substitua o gabarito EvalBee e ajuste a largura se necessário.
+2. Se não anexou o gabarito durante a montagem, anexe-o aqui; esta tela também permite substituir o arquivo e reajustar a largura.
 3. Abra o preview HTML A4 para conferir questões, sets e a última página. Imagens acompanham a largura da questão, mas não podem ocupar mais de 25% da área imprimível; fontes muito altas também ficam limitadas a metade da altura da página.
 4. Baixe PDF direto, CSV por set/todos os sets e ZIP (um PDF por set).
 5. Use o “Gabarito Completo” para uma última conferência antes de imprimir.

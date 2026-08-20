@@ -7,9 +7,9 @@ import type { Question } from "@/types";
 
 vi.mock("@/lib/actions/exams", () => ({ createExamAction: vi.fn() }));
 vi.mock("@/components/print/exam-print-client", () => ({
-  ExamPrintClient: ({ payload, setId }: { payload: { sets: Array<{ id: number; questions: Array<{ id: number }> }> }; setId?: number }) => {
+  ExamPrintClient: ({ payload, setId }: { payload: { answerKeyUrl: string | null; answerKeyWidthPt: number; sets: Array<{ id: number; questions: Array<{ id: number }> }> }; setId?: number }) => {
     const set = payload.sets.find((candidate) => candidate.id === setId) ?? payload.sets[0];
-    return <div data-testid="embedded-preview">{set?.questions.map((question) => question.id).join(",")}</div>;
+    return <div data-testid="embedded-preview" data-answer-key-url={payload.answerKeyUrl} data-answer-key-width={payload.answerKeyWidthPt}>{set?.questions.map((question) => question.id).join(",")}</div>;
   },
 }));
 
@@ -117,6 +117,31 @@ describe("VisualExamBuilder", () => {
     expect(within(setGroup).getByRole("button", { name: "Set B" })).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(within(setGroup).getByRole("button", { name: "Set B" }));
     expect(within(setGroup).getByRole("button", { name: "Set B" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("attaches, previews, resizes, and removes the draft answer key", () => {
+    const createObjectUrl = vi.fn(() => "blob:draft-answer-key");
+    const revokeObjectUrl = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectUrl });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectUrl });
+    renderBuilder();
+
+    const fileInput = screen.getByLabelText("Anexar gabarito");
+    const file = new File([new Uint8Array([137, 80, 78, 71])], "gabarito.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    const preview = screen.getByTestId("embedded-preview");
+    expect(createObjectUrl).toHaveBeenCalledWith(file);
+    expect(preview).toHaveAttribute("data-answer-key-url", "blob:draft-answer-key");
+    expect(screen.getByText("gabarito.png")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("slider", { name: "Tamanho do gabarito" }), { target: { value: "425" } });
+    expect(preview).toHaveAttribute("data-answer-key-width", "425");
+    expect(document.querySelector<HTMLInputElement>('input[name="answerKeyWidthPt"]')).toHaveValue("425");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remover" }));
+    expect(screen.getByTestId("embedded-preview").getAttribute("data-answer-key-url")).toContain("data:image/svg+xml");
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:draft-answer-key");
   });
 
   it("keeps visible type quantities bidirectional with exact selection", () => {

@@ -19,6 +19,7 @@ interface ExamsSearchParams {
   quantitySets?: string;
   allowQuestionSplit?: string;
   draftSeed?: string;
+  answerKeyWidthPt?: string;
 }
 
 function makeDraftSeed(disciplineId: number | undefined, questionIds: readonly number[]): string {
@@ -81,6 +82,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
           initialInstructions={sp.instructions ?? "Leia atentamente cada questão e assinale apenas uma alternativa quando aplicável."}
           initialQuantitySets={sp.quantitySets ?? "2"}
           initialAllowQuestionSplit={sp.allowQuestionSplit ?? ""}
+          initialAnswerKeyWidthPt={Number(sp.answerKeyWidthPt)}
           initialDraftSeed={draftSeed}
           error={sp.error && sp.error !== "campos-obrigatorios" ? decodeURIComponent(sp.error) : undefined}
         />
