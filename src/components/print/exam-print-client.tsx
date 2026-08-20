@@ -792,9 +792,12 @@ export function ExamPrintClient({
   const directPdfHref = mode === "exam"
     ? `/api/pdf/exam/${payload.examId}${directPdfQueryString ? `?${directPdfQueryString}` : ""}`
     : `/api/pdf/${setId}${directPdfQueryString ? `?${directPdfQueryString}` : ""}`;
+  const PrintMain = embedded ? "div" : "main";
 
   return (
     <div className={`exam-print-shell${embedded ? " exam-print-shell--embedded" : ""}${!embedded && imageQuestions.length > 0 ? " exam-print-shell--has-image-controls" : ""}`}>
+      <div className={`exam-print-layout${!embedded && imageQuestions.length > 0 ? " exam-print-layout--has-image-controls" : ""}`}>
+        <PrintMain className="exam-print-main">
       <div className="exam-print-toolbar">
         <div>
           <strong>{payload.title}</strong>
@@ -806,60 +809,6 @@ export function ExamPrintClient({
           </div>
         </div>
         <div className="exam-print-toolbar-actions">
-          {imageQuestions.length > 0 && (
-            <aside className="exam-print-scale-sidebar" aria-label="Ajustar imagens">
-              <div className="exam-print-scale-sidebar-heading">
-                <strong>Ajustar imagens</strong>
-                <span>Controles sempre visíveis</span>
-              </div>
-              <div className="exam-print-scale-panel">
-                <p className="exam-print-scale-help">
-                  Reduza cada imagem entre {MIN_QUESTION_IMAGE_SCALE_PERCENT}% e {MAX_QUESTION_IMAGE_SCALE_PERCENT}% da largura segura calculada.
-                </p>
-                <div className="exam-print-scale-list">
-                  {imageQuestions.map(({ sourceQuestionId, displayNumber }) => {
-                    const percent = getQuestionImageScalePercent(imageScaleOverrides, sourceQuestionId);
-                    const controlId = `exam-print-image-scale-${sourceQuestionId}`;
-                    return (
-                      <div className="exam-print-scale-row" key={sourceQuestionId}>
-                        <label htmlFor={controlId}>
-                          Questão {displayNumber}
-                          <output htmlFor={controlId}>{percent}%</output>
-                        </label>
-                        <input
-                          id={controlId}
-                          type="range"
-                          min={MIN_QUESTION_IMAGE_SCALE_PERCENT}
-                          max={MAX_QUESTION_IMAGE_SCALE_PERCENT}
-                          step="1"
-                          value={percent}
-                          aria-label={`Escala da imagem da questão ${displayNumber}`}
-                          aria-valuetext={`${percent}%`}
-                          onChange={(event) => updateImageScale(sourceQuestionId, event.currentTarget.value)}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => resetImageScale(sourceQuestionId)}
-                          disabled={percent === DEFAULT_QUESTION_IMAGE_SCALE_PERCENT}
-                        >
-                          Resetar
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={resetAllImageScales}
-                  disabled={Object.keys(imageScaleOverrides).length === 0}
-                >
-                  Resetar todas
-                </button>
-              </div>
-            </aside>
-          )}
           <div className="actions-row">
             <Link href={`/exports?exam=${payload.examId}${payload.versionNumber ? `&version=${payload.versionNumber}` : ""}`} className="btn btn-ghost" replace>
               Voltar
@@ -946,7 +895,10 @@ export function ExamPrintClient({
                   {(page.kind === "answer-key" || page.showAnswerKey) && payload.answerKeyUrl && currentRenderState.answerKeyWidth > 0 && (
                     <div className="exam-print-answer-key" style={{ width: `${currentRenderState.answerKeyWidth}px` }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={payload.answerKeyUrl} alt="Gabarito" />
+                      <img
+                        src={payload.answerKeyUrl}
+                        alt={payload.answerKeyUrl.startsWith("data:image/svg+xml") ? "GABARITO · PLACEHOLDER temporário" : "Gabarito"}
+                      />
                     </div>
                   )}
                 </div>
@@ -1062,6 +1014,63 @@ export function ExamPrintClient({
               )),
             )}
           </div>
+        )}
+      </div>
+        </PrintMain>
+
+        {imageQuestions.length > 0 && (
+          <aside className="exam-print-scale-sidebar" aria-label="Ajustar imagens">
+            <div className="exam-print-scale-sidebar-heading">
+              <strong>Ajustar imagens</strong>
+              <span>Controles sempre visíveis</span>
+            </div>
+            <div className="exam-print-scale-panel">
+              <p className="exam-print-scale-help">
+                Reduza cada imagem entre {MIN_QUESTION_IMAGE_SCALE_PERCENT}% e {MAX_QUESTION_IMAGE_SCALE_PERCENT}% da largura segura calculada.
+              </p>
+              <div className="exam-print-scale-list">
+                {imageQuestions.map(({ sourceQuestionId, displayNumber }) => {
+                  const percent = getQuestionImageScalePercent(imageScaleOverrides, sourceQuestionId);
+                  const controlId = `exam-print-image-scale-${sourceQuestionId}`;
+                  return (
+                    <div className="exam-print-scale-row" key={sourceQuestionId}>
+                      <label htmlFor={controlId}>
+                        Questão {displayNumber}
+                        <output htmlFor={controlId}>{percent}%</output>
+                      </label>
+                      <input
+                        id={controlId}
+                        type="range"
+                        min={MIN_QUESTION_IMAGE_SCALE_PERCENT}
+                        max={MAX_QUESTION_IMAGE_SCALE_PERCENT}
+                        step="1"
+                        value={percent}
+                        aria-label={`Escala da imagem da questão ${displayNumber}`}
+                        aria-valuetext={`${percent}%`}
+                        onChange={(event) => updateImageScale(sourceQuestionId, event.currentTarget.value)}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => resetImageScale(sourceQuestionId)}
+                        disabled={percent === DEFAULT_QUESTION_IMAGE_SCALE_PERCENT}
+                      >
+                        Resetar
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={resetAllImageScales}
+                disabled={Object.keys(imageScaleOverrides).length === 0}
+              >
+                Resetar todas
+              </button>
+            </div>
+          </aside>
         )}
       </div>
     </div>

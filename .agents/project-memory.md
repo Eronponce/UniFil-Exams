@@ -21,7 +21,9 @@ status: active
 
 - `/exams` agora usa `VisualExamBuilder`: selecao exata, ordem canonica por tipo/largura, toggles acessiveis, escalas 25..100% no mesmo menu e preview A4 embedded por Set.
 - `buildDraftPrintPayload` e `draftSeed` mantem os sets do rascunho deterministicos; `ExamPrintClient` aceita escalas controladas e payloads que mudam durante a edicao.
-- Preview standalone tem sidebar fixa de imagem; fragmentos objetivos incompletos continuam em pagina fisica seguinte com marcador medido.
+- Preview standalone tem rail dockada de imagem; no desktop ocupa coluna sticky direita e, em telas responsivas, entra no fluxo normal; fragmentos objetivos incompletos continuam em pagina fisica seguinte com marcador medido.
+- `/exams` agora organiza configuração e banco auditado em `details` recolhíveis, mantém quantidades visíveis iguais à seleção exata por tipo, mostra posição global de cada questão e usa um placeholder SVG vertical apenas no payload de preview para exercitar a paginação/paridade do gabarito.
+- O canvas A4 embedded tem viewport desktop com scroll chaining contido; a rail standalone de imagens ocupa uma coluna sticky direita no desktop, entra no fluxo normal no responsivo, começa no limite real da composição e permanece escondida em embedded.
 
 - `(app)/layout.tsx` owns the normal shell composition: `Nav`, `CommandPalette`, `QueuePanel`, `IssueChatPanel` and main landmark.
 - `src/components/nav.tsx` provides grouped navigation, desktop collapse, mobile drawer, skip link, theme control and the visible keyboard shortcut.

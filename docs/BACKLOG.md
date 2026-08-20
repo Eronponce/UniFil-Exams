@@ -14,7 +14,7 @@ Data: 2026-04-22
 
 **Status:** Implementado (2026-08-20)
 
-Selecao exata de questoes auditadas, ordem manual canonica por tipo/largura, largura individual, escala de imagem e preview embedded por Set vivem no mesmo rascunho deterministico.
+Selecao exata de questoes auditadas, ordem manual canonica por tipo/largura, largura individual, escala de imagem e preview embedded por Set vivem no mesmo rascunho deterministico. A entrega tambem inclui paineis recolhiveis, quantidades bidirecionais, posicao global, dropdown tematico opt-in, placeholder de gabarito draft-only, viewport A4 limitado e rail standalone sticky na coluna direita no desktop, em fluxo normal no responsivo, sem sobreposicao da barra de impressao.
 
 ## US-22 - Continuacao de objetiva na pagina seguinte
 

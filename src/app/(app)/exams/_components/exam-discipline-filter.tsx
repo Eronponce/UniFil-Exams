@@ -71,7 +71,13 @@ export function ExamDisciplineFilter({
         </div>
 
         <div className="form-group" style={{ flex: 1 }}>
-          <ThematicAreaFilter areas={areas} selectedAreas={normalizeThematicAreas(selectedAreas)} onChange={setAreas} />
+          <ThematicAreaFilter
+            areas={areas}
+            selectedAreas={normalizeThematicAreas(selectedAreas)}
+            onChange={setAreas}
+            presentation="dropdown"
+            syncKey={`discipline:${searchParams.get("discipline") ?? ""}`}
+          />
         </div>
       </div>
 

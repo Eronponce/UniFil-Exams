@@ -21,6 +21,13 @@ const TYPE_LABEL: Record<QuestionType, string> = {
   dissertativa: "Dissertativa",
 };
 
+const TYPE_CONTROLS: Array<{ type: QuestionType; name: string; label: string }> = [
+  { type: "objetiva", name: "numObjetivas", label: "Objetivas" },
+  { type: "verdadeiro_falso", name: "numVF", label: "Verdadeiro/Falso" },
+  { type: "numerica", name: "numNumericas", label: "Numéricas" },
+  { type: "dissertativa", name: "numDissertativas", label: "Dissertativas" },
+];
+
 const TYPE_LAYOUT_DEFAULT: Record<QuestionType, QuestionLayout> = {
   objetiva: "column",
   verdadeiro_falso: "column",
@@ -43,6 +50,7 @@ const GROUP_INDEX = new Map(GROUPS.map((group, index) => [group.key, index]));
 
 export interface VisualExamBuilderProps {
   disciplineId?: number;
+  disciplineName?: string;
   areas?: readonly string[];
   questions: readonly Question[];
   initialTitle?: string;
@@ -186,6 +194,7 @@ export function calculateEmbeddedPreviewFit(
 
 export function VisualExamBuilder({
   disciplineId,
+  disciplineName,
   areas = [],
   questions,
   initialTitle = "",
@@ -237,6 +246,11 @@ export function VisualExamBuilder({
     for (const question of selectedQuestions) counts[question.questionType] += 1;
     return counts;
   }, [selectedQuestions]);
+  const availableByType = useMemo(() => {
+    const counts: Record<QuestionType, number> = { objetiva: 0, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 };
+    for (const question of questions) counts[question.questionType] += 1;
+    return counts;
+  }, [questions]);
   const questionLayouts = TYPE_LAYOUT_DEFAULT;
   const previewPayload = useMemo(
     () => buildDraftPrintPayload(previewQuestions, {
@@ -299,6 +313,41 @@ export function VisualExamBuilder({
       }
       return next;
     });
+  }
+
+  function setTypeQuantity(type: QuestionType, rawValue: string): void {
+    const parsed = Number.parseInt(rawValue, 10);
+    const target = Math.min(
+      Math.max(Number.isFinite(parsed) ? parsed : 0, 0),
+      availableByType[type],
+    );
+    const selectedOfType = normalizedOrder.filter((id) => questionById.get(id)?.questionType === type);
+    const selectedSet = new Set(selectedIds);
+    const idsToRemove = selectedOfType.slice(target);
+    const idsToAdd = questions
+      .filter((question) => question.questionType === type && !selectedSet.has(question.id))
+      .slice(0, Math.max(0, target - selectedOfType.length))
+      .map((question) => question.id);
+
+    if (idsToRemove.length === 0 && idsToAdd.length === 0) return;
+
+    const nextSelected = new Set(selectedIds);
+    for (const id of idsToRemove) nextSelected.delete(id);
+    for (const id of idsToAdd) nextSelected.add(id);
+
+    setSelectedIds(nextSelected);
+    setOrder((currentOrder) => {
+      let nextOrder = currentOrder.filter((id) => nextSelected.has(id));
+      for (const id of idsToAdd) nextOrder = insertAtGroupEnd(nextOrder, id, questionById, layoutOverrides);
+      return nextOrder;
+    });
+    if (idsToRemove.length > 0) {
+      setImageScaleOverrides((currentOverrides) => {
+        const nextOverrides = { ...currentOverrides };
+        for (const id of idsToRemove) delete nextOverrides[id];
+        return nextOverrides;
+      });
+    }
   }
 
   function toggleLayout(id: number): void {
@@ -368,17 +417,12 @@ export function VisualExamBuilder({
       <input type="hidden" name="visualBuilder" value="1" />
       <input type="hidden" name="disciplineId" value={disciplineId ?? ""} />
       <input type="hidden" name="draftSeed" value={initialDraftSeed} />
-      <input type="hidden" name="quantitySets" value={quantitySets} />
       <input type="hidden" name="allowQuestionSplit" value={allowQuestionSplit ? "1" : "0"} />
       <input type="hidden" name="compactQuestionOrder" value="1" />
       <input type="hidden" name="layoutObjetiva" value="column" />
       <input type="hidden" name="layoutVF" value="column" />
       <input type="hidden" name="layoutNumerica" value="column" />
       <input type="hidden" name="layoutDissertativa" value="full" />
-      <input type="hidden" name="numObjetivas" value={quantityByType.objetiva} />
-      <input type="hidden" name="numVF" value={quantityByType.verdadeiro_falso} />
-      <input type="hidden" name="numNumericas" value={quantityByType.numerica} />
-      <input type="hidden" name="numDissertativas" value={quantityByType.dissertativa} />
       {areas.map((area) => <input key={area} type="hidden" name="area" value={area} />)}
       {normalizedOrder.map((id) => <input key={`selected-${id}`} type="hidden" name="questionIds" value={id} />)}
       {normalizedOrder.map((id) => <input key={`order-${id}`} type="hidden" name="manualQuestionOrder" value={id} />)}
@@ -389,18 +433,26 @@ export function VisualExamBuilder({
         <input key={`scale-${question.id}`} type="hidden" name={`imageScale-${question.id}`} value={imageScaleOverrides[question.id]} />
       ))}
 
-      <div className="visual-exam-builder-grid">
-        <section className="visual-exam-editor card">
-          <div className="visual-exam-builder-heading">
-            <div>
-              <p className="eyebrow">Editor visual</p>
-              <h2>Nova prova</h2>
-              <p className="form-help">Escolha questões auditadas, organize a ordem e confira o A4 antes de gerar.</p>
-            </div>
-            <span className="badge">{selectedQuestions.length} selecionada(s)</span>
-          </div>
+      <details className="visual-exam-setup card" open>
+        <summary className="visual-exam-setup-summary">
+          <span className="visual-exam-setup-summary-copy">
+            <span className="eyebrow">Editor visual</span>
+            <strong role="heading" aria-level={2}>Nova prova</strong>
+            <small>Escolha questões auditadas, organize a ordem e confira o A4 antes de gerar.</small>
+          </span>
+          <span className="visual-exam-setup-summary-status">
+            {selectedQuestions.length} selecionada(s) · {quantitySets || 1} set(s)
+          </span>
+        </summary>
 
+        <div className="visual-exam-setup-content">
           {error && <div className="form-error" role="alert">Erro: {error}</div>}
+
+          <div className="visual-exam-setup-context" aria-label="Contexto da seleção">
+            {disciplineId && <span><strong>Disciplina:</strong> {disciplineName ?? disciplineId}</span>}
+            {areas.length > 0 && <span><strong>Áreas:</strong> {areas.join(", ")}</span>}
+            {areas.length === 0 && <span><strong>Áreas:</strong> todas</span>}
+          </div>
 
           <div className="visual-exam-metadata">
             <label className="form-group">
@@ -417,22 +469,46 @@ export function VisualExamBuilder({
             </label>
             <label className="form-group visual-exam-sets-input">
               <span className="form-label">Sets</span>
-              <input className="form-input" type="number" min={1} max={8} value={quantitySets} onChange={(event) => setQuantitySets(event.currentTarget.value)} />
-            </label>
-            <label className="exam-editor-checkbox">
-              <input type="checkbox" checked={allowQuestionSplit} onChange={(event) => setAllowQuestionSplit(event.currentTarget.checked)} />
-              <span><strong>Permitir quebra de objetivas longas</strong><small>A continuação sempre começa na próxima página.</small></span>
+              <input name="quantitySets" className="form-input" type="number" min={1} max={8} value={quantitySets} onChange={(event) => setQuantitySets(event.currentTarget.value)} />
             </label>
           </div>
 
-          <section className="visual-exam-pool" aria-labelledby="visual-exam-pool-heading">
-            <div className="visual-exam-section-heading">
-              <div>
-                <h3 id="visual-exam-pool-heading">Banco auditado</h3>
-                <p className="form-help">{questions.length} disponível(is) · marque as questões que entram na prova.</p>
-              </div>
-              <span className="badge">{selectedQuestions.length} selecionada(s)</span>
-            </div>
+          <div className="visual-exam-quantity-grid" aria-label="Quantidade por tipo">
+            {TYPE_CONTROLS.map(({ type, name, label }) => (
+              <label className="form-group visual-exam-quantity-control" key={type}>
+                <span className="form-label">{label}</span>
+                <input
+                  name={name}
+                  className="form-input"
+                  type="number"
+                  min={0}
+                  max={availableByType[type]}
+                  value={quantityByType[type]}
+                  onChange={(event) => setTypeQuantity(type, event.currentTarget.value)}
+                  aria-label={`Quantidade de ${label}`}
+                />
+                <small>{availableByType[type]} disponível(is)</small>
+              </label>
+            ))}
+          </div>
+
+          <label className="exam-editor-checkbox">
+            <input type="checkbox" checked={allowQuestionSplit} onChange={(event) => setAllowQuestionSplit(event.currentTarget.checked)} />
+            <span><strong>Permitir quebra de objetivas longas</strong><small>A continuação sempre começa na próxima página.</small></span>
+          </label>
+        </div>
+      </details>
+
+      <div className="visual-exam-builder-grid">
+        <section className="visual-exam-editor card">
+          <details className="visual-exam-pool" open>
+            <summary className="visual-exam-panel-summary">
+              <span className="visual-exam-panel-summary-copy">
+                <span role="heading" aria-level={3}>Banco auditado</span>
+                <small>Marque as questões que entram na prova.</small>
+              </span>
+              <span className="badge">{questions.length} disponível(is) · {selectedQuestions.length} selecionada(s)</span>
+            </summary>
             <div className="visual-exam-pool-list">
               {questions.map((question) => (
                 <label className={`visual-exam-pool-row${selectedIds.has(question.id) ? " is-selected" : ""}`} key={question.id}>
@@ -450,7 +526,7 @@ export function VisualExamBuilder({
                 </label>
               ))}
             </div>
-          </section>
+          </details>
 
           <section className="visual-exam-order" aria-labelledby="visual-exam-order-heading">
             <div className="visual-exam-section-heading">
@@ -474,6 +550,7 @@ export function VisualExamBuilder({
                       <ol>
                         {groupQuestions.map((question) => {
                           const scale = normalizeQuestionImageScalePercent(imageScaleOverrides[question.id]);
+                          const position = normalizedOrder.indexOf(question.id) + 1;
                           const atTop = isBoundary(normalizedOrder, question.id, -1, questionById, layoutOverrides);
                           const atBottom = isBoundary(normalizedOrder, question.id, 1, questionById, layoutOverrides);
                           return (
@@ -481,6 +558,7 @@ export function VisualExamBuilder({
                               <div className="visual-exam-order-copy">
                                 <strong>Questão {question.id}</strong>
                                 <span>{TYPE_LABEL[question.questionType]} · {group.layout === "column" ? "meia página" : "largura total"}</span>
+                                <small>Posição {position} na prova</small>
                               </div>
                               <div className="visual-exam-order-actions">
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOrder((current) => moveWithinGroup(current, question.id, -1, questionById, layoutOverrides))} disabled={atTop} aria-label={`Mover questão ${question.id} para cima`}>↑</button>

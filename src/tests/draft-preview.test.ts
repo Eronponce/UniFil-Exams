@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDraftPrintPayload, resolveDraftPreviewSeed, type DraftPreviewDraft, type DraftPreviewQuestion } from "@/lib/exam/draft-preview";
+import { buildDraftPrintPayload, DRAFT_ANSWER_KEY_PLACEHOLDER_URL, resolveDraftPreviewSeed, type DraftPreviewDraft, type DraftPreviewQuestion } from "@/lib/exam/draft-preview";
 
 const questions: DraftPreviewQuestion[] = [
   {
@@ -94,6 +94,10 @@ describe("buildDraftPrintPayload", () => {
       layoutOverride: "full",
       imageScalePercent: 65,
     });
+    expect(first.answerKeyUrl).toBe(DRAFT_ANSWER_KEY_PLACEHOLDER_URL);
+    expect(decodeURIComponent(first.answerKeyUrl ?? "")).toContain("GABARITO");
+    expect(decodeURIComponent(first.answerKeyUrl ?? "")).toContain("PLACEHOLDER");
+    expect(decodeURIComponent(first.answerKeyUrl ?? "")).toMatch(/width="420" height="1200"/);
   });
 
   it("reflects deselection, width, and default scale omission", () => {

@@ -29,6 +29,9 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const disciplines = listDisciplines();
   const selectedDisciplineId = sp.discipline ? Number(sp.discipline) : undefined;
+  const selectedDisciplineName = selectedDisciplineId
+    ? disciplines.find((discipline) => discipline.id === selectedDisciplineId)?.name
+    : undefined;
   const selectedAreas = normalizeThematicAreas(sp.area);
   const auditedQuestions = selectedDisciplineId
     ? listQuestionsFiltered({ audited: true, disciplineId: selectedDisciplineId, thematicAreas: selectedAreas })
@@ -70,6 +73,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
         <VisualExamBuilder
           key={JSON.stringify({ discipline: selectedDisciplineId, areas: [...selectedAreas].sort(), ids: auditedQuestions.map((question) => question.id) })}
           disciplineId={selectedDisciplineId}
+          disciplineName={selectedDisciplineName}
           areas={selectedAreas}
           questions={auditedQuestions}
           initialTitle={sp.title ?? ""}

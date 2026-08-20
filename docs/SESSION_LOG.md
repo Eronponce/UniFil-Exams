@@ -17,9 +17,9 @@ status: active
 ## 2026-08-20 - Editor visual e continuacoes de impressao
 
 - Implementado o editor visual de `/exams` com selecao exata, grupos canonicos, botoes de ordem limitados ao subgrupo, largura por questao, sliders de imagem e tabs Set A..H.
-- `buildDraftPrintPayload` gera payloads sinteticos deterministicos para o preview embedded; `ExamPrintClient` agora aceita payloads/controlos de escala controlados e sidebar standalone fixa.
+- `buildDraftPrintPayload` gera payloads sinteticos deterministicos para o preview embedded; `ExamPrintClient` agora aceita payloads/controlos de escala controlados e rail standalone dockada (sticky no desktop, fluxo normal no responsivo).
 - A paginacao de objetivas marca fragmentos incompletos e inicia cada continuacao na pagina fisica seguinte.
-- Testes focados: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/pdf-pages.test.ts src/tests/print-continuation.test.tsx` (15 testes passaram).
+- Testes focados: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/question-selection.test.ts` (17 testes passaram).
 
 ## 2026-08-19 - Imagens, filtro sem área e montagem compacta
 
@@ -667,3 +667,12 @@ status: active
 - O cálculo de largura mantém os caps de 25% da área imprimível e 50% da altura, aplicando o percentual somente depois deles.
 - O preview mede e pagina novamente durante o ajuste, identifica questões por `sourceQuestionId`, sincroniza a URL sem mutar versões e encaminha o mesmo estado aos PDFs de prova e set.
 - Validação inicial: `rtk npm test -- --run src/tests/question-image-layout.test.ts src/tests/question-image-scale.test.ts` e `rtk npm run typecheck` passaram.
+
+## 2026-08-20 - Editor visual compacto e preview A4 do rascunho
+
+- `/exams` passou a usar painéis nativos recolhíveis para configuração e banco auditado; os resumos preservam contagens úteis.
+- O dropdown temático mantém uma seleção otimista local até a navegação confirmar o mesmo conjunto, evitando perda em dois cliques rápidos.
+- Os quatro campos visíveis de quantidade são derivados da seleção exata e alteram a seleção determinística, mantendo a ordem manual e limpando escala de imagem ao remover questões.
+- O preview do rascunho usa um SVG vertical `GABARITO / PLACEHOLDER TEMPORÁRIO` somente em memória, portanto a medição de paginação/paridade é real sem persistir URL.
+- O canvas A4 desktop tem viewport próprio com scroll chaining contido; o rail standalone de imagens ocupa a coluna sticky direita do layout desktop e entra no fluxo normal no responsivo, sem assumir altura fixa da barra, e continua oculto no modo embedded.
+- Validação focada: `rtk npm test -- --run src/tests/visual-exam-builder.test.tsx src/tests/draft-preview.test.ts src/tests/question-selection.test.ts` (17 testes passando).
