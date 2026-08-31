@@ -689,3 +689,12 @@ status: active
 
 - O placeholder sintético passou a medir `1068 × 883 px`, reproduzindo somente as dimensões/proporção da referência fornecida.
 - Nenhum pixel, texto ou elemento gráfico do arquivo de referência foi incorporado; o SVG continua sendo gerado pelo próprio sistema.
+
+## 2026-08-31 - Edição visual versionada e salvamento do preview
+
+- `/exams/[id]/edit` reutiliza o mesmo `VisualExamBuilder` da criação, preenchido com disciplina, seleção, ordem, sets, larguras, escalas, quebra de questões e gabarito da prova existente.
+- O histórico anterior continua disponível em painel recolhível, com preview, PDF e restauração como nova versão.
+- O salvamento visual valida a seleção completa e recompõe `exam_questions` e os sets na mesma transação da nova versão; IDs de sets com o mesmo rótulo são preservados para manter links estáveis.
+- O preview standalone de prova ganhou `Salvar tamanhos`; ele envia os valores efetivos de todas as imagens, inclusive `100%`, e cria uma versão imutável em vez de manter o ajuste somente na URL.
+- O tamanho do gabarito agora participa de `saveExamVersion` e também é restaurado com versões históricas.
+- Validação focada: 3 arquivos, 25 testes; typecheck passou.

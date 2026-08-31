@@ -134,6 +134,44 @@ describe("exam versions", () => {
     expect(listExamVersions(exam.id).map((version) => version.versionNumber)).toEqual([3, 2, 1]);
   });
 
+  it("replaces visual composition atomically while preserving the existing set A identity", () => {
+    const { exam, question } = addExam();
+    const second = addQuestion("<p>Segunda questão</p>");
+    const originalSetId = getExam(exam.id)!.sets[0]!.id;
+    const order = [second.id, question.id];
+    const identity = [0, 1, 2, 3, 4];
+
+    const saved = saveExamVersion(exam.id, {
+      title: "Prova recomposta",
+      institution: "UniFil",
+      instructions: "Instruções",
+      allowQuestionSplit: false,
+      answerKeyWidthPt: 425,
+      questionLayouts: { objetiva: "column" },
+      questionLayoutOverrides: { [second.id]: "full" },
+      questionImageScaleOverrides: { [question.id]: 55, [second.id]: 100 },
+      composition: {
+        questionIds: order,
+        sets: [
+          { label: "A", questionOrder: order, shuffledOptions: [identity, identity], correctShuffledIndices: [0, 0] },
+          { label: "B", questionOrder: order, shuffledOptions: [identity, identity], correctShuffledIndices: [0, 0] },
+        ],
+      },
+      changeNote: "Editor visual",
+    });
+
+    const updated = getExam(exam.id)!;
+    expect(updated.answerKeyWidthPt).toBe(425);
+    expect(updated.sets).toHaveLength(2);
+    expect(updated.sets.find((set) => set.label === "A")?.id).toBe(originalSetId);
+    expect(updated.sets.map((set) => set.questions.map((item) => item.questionId))).toEqual([order, order]);
+    expect(updated.questionLayoutOverrides).toEqual({ [second.id]: "full" });
+    expect(updated.questionImageScaleOverrides).toEqual({ [question.id]: 55 });
+    expect(saved.snapshot.sets).toHaveLength(2);
+    expect(saved.snapshot.sets[0]?.questions.map((item) => item.sourceQuestionId)).toEqual(order);
+    expect(getExamVersion(exam.id, 1)?.snapshot.sets[0]?.questions).toHaveLength(1);
+  });
+
   it("preserves image scales in live models, immutable snapshots, print payloads, saves, and restores", () => {
     const selected = addQuestion("<p>Imagem</p>");
     const other = addQuestion("<p>Outra</p>");

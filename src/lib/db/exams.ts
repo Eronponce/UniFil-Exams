@@ -360,11 +360,87 @@ export interface ExamVersionEditorInput {
   institution: string;
   instructions: string;
   allowQuestionSplit: boolean;
+  answerKeyWidthPt?: number;
   questionLayouts: Partial<Record<keyof ExamQuestionLayouts, unknown>>;
   questionLayoutOverrides: Record<number, QuestionLayout | null>;
   /** Undefined preserves current values; a defined map applies normalized values. */
   questionImageScaleOverrides?: Record<number, number | null>;
+  /** When present, replaces the current question selection and every generated set atomically. */
+  composition?: {
+    questionIds: number[];
+    sets: ExamSetInput[];
+  };
   changeNote?: string;
+}
+
+function validateComposition(input: NonNullable<ExamVersionEditorInput["composition"]>): void {
+  const questionIds = input.questionIds.filter((id) => Number.isSafeInteger(id) && id > 0);
+  const selected = new Set(questionIds);
+  if (questionIds.length === 0 || selected.size !== input.questionIds.length) {
+    throw new Error("A composição da prova contém questões inválidas ou repetidas.");
+  }
+  if (input.sets.length < 1 || input.sets.length > 8) {
+    throw new Error("A prova deve ter entre 1 e 8 sets.");
+  }
+  const labels = new Set<string>();
+  for (const set of input.sets) {
+    const label = set.label.trim();
+    if (!label || labels.has(label)) throw new Error("Os sets da prova precisam ter rótulos únicos.");
+    labels.add(label);
+    const order = new Set(set.questionOrder);
+    const exactSelection = set.questionOrder.length === selected.size
+      && order.size === selected.size
+      && [...selected].every((questionId) => order.has(questionId));
+    if (!exactSelection
+      || set.shuffledOptions.length !== set.questionOrder.length
+      || set.correctShuffledIndices.length !== set.questionOrder.length) {
+      throw new Error(`O set ${label} não corresponde à seleção completa da prova.`);
+    }
+  }
+}
+
+function replaceExamComposition(
+  examId: number,
+  composition: NonNullable<ExamVersionEditorInput["composition"]>,
+): void {
+  const db = getDb();
+  db.prepare("DELETE FROM exam_questions WHERE exam_id = ?").run(examId);
+  const insertExamQuestion = db.prepare(
+    "INSERT INTO exam_questions (exam_id, question_id, position, layout_override, image_scale_percent) VALUES (?, ?, ?, NULL, NULL)",
+  );
+  composition.questionIds.forEach((questionId, position) => insertExamQuestion.run(examId, questionId, position));
+
+  const existingSets = db.prepare("SELECT id, label FROM exam_sets WHERE exam_id = ? ORDER BY id").all(examId) as Array<{ id: number; label: string }>;
+  const unusedSetIds = new Set(existingSets.map((set) => set.id));
+  const setByLabel = new Map(existingSets.map((set) => [set.label, set]));
+  const insertSet = db.prepare("INSERT INTO exam_sets (exam_id, label) VALUES (?, ?)");
+  const clearSetQuestions = db.prepare("DELETE FROM exam_set_questions WHERE set_id = ?");
+  const insertSetQuestion = db.prepare(
+    "INSERT INTO exam_set_questions (set_id, question_id, position, shuffled_options, correct_shuffled_index) VALUES (?, ?, ?, ?, ?)",
+  );
+
+  for (const set of composition.sets) {
+    const label = set.label.trim();
+    const existing = setByLabel.get(label);
+    const setId = existing?.id ?? Number(insertSet.run(examId, label).lastInsertRowid);
+    unusedSetIds.delete(setId);
+    clearSetQuestions.run(setId);
+    set.questionOrder.forEach((questionId, position) => {
+      insertSetQuestion.run(
+        setId,
+        questionId,
+        position,
+        JSON.stringify(set.shuffledOptions[position] ?? []),
+        set.correctShuffledIndices[position] ?? 0,
+      );
+    });
+  }
+
+  const deleteSet = db.prepare("DELETE FROM exam_sets WHERE id = ?");
+  for (const setId of unusedSetIds) {
+    clearSetQuestions.run(setId);
+    deleteSet.run(setId);
+  }
 }
 
 function normalizedOverrides(examId: number, input: Record<number, QuestionLayout | null>): Record<number, QuestionLayout> {
@@ -401,17 +477,19 @@ function applyCurrentVersionSettings(
   input: ExamVersionEditorInput,
   overrides: Record<number, QuestionLayout>,
   imageScaleOverrides?: Record<number, number>,
+  currentAnswerKeyWidthPt = ANSWER_KEY_DEFAULT_WIDTH_PT,
 ): void {
   const db = getDb();
   const layouts = normalizeExamQuestionLayouts(input.questionLayouts);
   db.prepare(`UPDATE exams SET
-    title = ?, institution = ?, instructions = ?, allow_question_split = ?,
+    title = ?, institution = ?, instructions = ?, allow_question_split = ?, answer_key_width_pt = ?,
     layout_objetiva = ?, layout_verdadeiro_falso = ?, layout_numerica = ?, layout_dissertativa = ?
     WHERE id = ?`).run(
     input.title.trim(),
     input.institution.trim() || DEFAULT_INSTITUTION,
     normalizeExamInstructions(input.instructions),
     input.allowQuestionSplit ? 1 : 0,
+    clampAnswerKeyWidth(input.answerKeyWidthPt ?? currentAnswerKeyWidthPt),
     layouts.objetiva,
     layouts.verdadeiro_falso,
     layouts.numerica,
@@ -434,6 +512,7 @@ export function saveExamVersion(examId: number, input: ExamVersionEditorInput): 
   const current = getExam(examId);
   if (!current) throw new Error("Prova não encontrada.");
   if (!input.title.trim()) throw new Error("O título da prova é obrigatório.");
+  if (input.composition) validateComposition(input.composition);
 
   const db = getDb();
   let newVersionId = 0;
@@ -442,11 +521,12 @@ export function saveExamVersion(examId: number, input: ExamVersionEditorInput): 
       const baseline = buildExamVersionSnapshot(current, getQuestion);
       insertVersion(examId, baseline, "Baseline legado");
     }
+    if (input.composition) replaceExamComposition(examId, input.composition);
     const overrides = normalizedOverrides(examId, input.questionLayoutOverrides);
     const imageScaleOverrides = input.questionImageScaleOverrides === undefined
       ? undefined
       : normalizedImageScaleOverrides(examId, input.questionImageScaleOverrides);
-    applyCurrentVersionSettings(examId, input, overrides, imageScaleOverrides);
+    applyCurrentVersionSettings(examId, input, overrides, imageScaleOverrides, current.answerKeyWidthPt);
     const updated = getExam(examId);
     if (!updated) throw new Error("Prova não encontrada após atualização.");
     const snapshot = buildExamVersionSnapshot(updated, getQuestion);
@@ -484,6 +564,7 @@ export function restoreExamVersion(examId: number, versionNumber: number, change
       institution: snapshot.institution,
       instructions: snapshot.instructions,
       allowQuestionSplit: snapshot.allowQuestionSplit,
+      answerKeyWidthPt: snapshot.answerKeyWidthPt,
       questionLayouts: snapshot.questionLayouts,
       questionLayoutOverrides: overrides,
       questionImageScaleOverrides: imageScaleInput,
@@ -493,6 +574,7 @@ export function restoreExamVersion(examId: number, versionNumber: number, change
       input,
       normalizedOverrides(examId, overrides),
       normalizedImageScaleOverrides(examId, imageScaleInput),
+      current.answerKeyWidthPt,
     );
     newVersionId = insertVersion(examId, snapshot, changeNote ?? `Restaurada da versão ${versionNumber}`);
   });

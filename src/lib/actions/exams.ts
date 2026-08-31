@@ -7,6 +7,7 @@ import {
   createExamVersion,
   deactivateExam,
   deleteExam,
+  getExam,
   reactivateExam,
   restoreExamVersion,
   saveExamVersion,
@@ -383,17 +384,9 @@ export async function saveExamVersionAction(formData: FormData) {
     });
   }
 
+  let savedVersion: ReturnType<typeof saveExamVersion>;
   try {
-    const version = saveExamVersion(examId, input);
-    revalidatePath(`/exams/${examId}/edit`);
-    revalidatePath("/exams");
-    revalidatePath("/exports");
-    revalidatePath(`/print/exam/${examId}`);
-    redirectWithToast(`/exams/${examId}/edit?version=${version.versionNumber}`, {
-      type: "success",
-      title: "Nova versão salva",
-      description: `Versão ${version.versionNumber} criada sem alterar o histórico anterior.`,
-    });
+    savedVersion = saveExamVersion(examId, input);
   } catch (error) {
     redirectWithToast(`/exams/${examId}/edit`, {
       type: "error",
@@ -401,6 +394,182 @@ export async function saveExamVersionAction(formData: FormData) {
       description: error instanceof Error ? error.message : "Erro inesperado ao salvar a versão.",
     });
   }
+  revalidatePath(`/exams/${examId}/edit`);
+  revalidatePath("/exams");
+  revalidatePath("/exports");
+  revalidatePath(`/print/exam/${examId}`);
+  redirectWithToast(`/exams/${examId}/edit?version=${savedVersion.versionNumber}`, {
+    type: "success",
+    title: "Nova versão salva",
+    description: `Versão ${savedVersion.versionNumber} criada sem alterar o histórico anterior.`,
+  });
+}
+
+export async function saveVisualExamVersionAction(formData: FormData) {
+  const examId = Number(formData.get("examId"));
+  const exam = Number.isSafeInteger(examId) && examId > 0 ? getExam(examId) : undefined;
+  if (!exam) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Prova inválida",
+      description: "Não foi possível identificar a prova para edição visual.",
+    });
+  }
+
+  const title = typeof formData.get("title") === "string" ? String(formData.get("title")).trim() : "";
+  const institution = typeof formData.get("institution") === "string" ? String(formData.get("institution")).trim() : "";
+  const instructions = normalizeExamInstructions(formData.get("instructions"));
+  const allowQuestionSplit = formData.get("allowQuestionSplit") === "1";
+  const draftSeed = normalizeExamDraftSeed(formData.get("draftSeed")) ?? `edit-${exam.id}`;
+  const quantitySets = Math.min(Math.max(Number(formData.get("quantitySets")) || 1, 1), 8);
+  const questionLayouts = normalizeExamQuestionLayouts({
+    objetiva: formData.get("layoutObjetiva"),
+    verdadeiro_falso: formData.get("layoutVF"),
+    numerica: formData.get("layoutNumerica"),
+    dissertativa: formData.get("layoutDissertativa"),
+  });
+  const answerKeyWidthPt = clampAnswerKeyWidth(Number(formData.get("answerKeyWidthPt")));
+  const submittedQuestionIds = readPositiveIntegerIds(formData, "questionIds");
+  const requestedOrder = readPositiveIntegerIds(formData, "manualQuestionOrder");
+  const submittedLayouts = readFormQuestionLayoutOverrides(formData);
+  const imageScaleFields = readFormQuestionImageScaleOverrides(formData);
+  const currentQuestionIds = new Set(exam.sets.flatMap((set) => set.questions.map((question) => question.questionId)));
+  const loadedQuestions = submittedQuestionIds
+    .map((questionId) => getQuestion(questionId))
+    .filter((question) => question !== undefined);
+  const eligibleQuestions = loadedQuestions.filter((question) =>
+    question.disciplineId === exam.disciplineId
+    && ((question.audited && !question.rejected) || currentQuestionIds.has(question.id)),
+  );
+  const questionInfos = eligibleQuestions.map((question) => ({
+    id: question.id,
+    correctIndex: question.correctIndex,
+    questionType: question.questionType,
+    layout: submittedLayouts[question.id] ?? questionLayouts[question.questionType],
+  }));
+  const orderedQuestions = normalizeManualQuestionOrder(questionInfos, requestedOrder);
+  const submittedSet = new Set(submittedQuestionIds);
+  const orderedSet = new Set(orderedQuestions.map((question) => question.id));
+  const exactSelection = submittedQuestionIds.length > 0
+    && submittedSet.size === orderedSet.size
+    && [...submittedSet].every((questionId) => orderedSet.has(questionId));
+  if (!title || !exactSelection) {
+    redirectWithToast(`/exams/${exam.id}/edit`, {
+      type: "error",
+      title: title ? "Seleção visual desatualizada" : "Título obrigatório",
+      description: title
+        ? "Uma questão selecionada não existe mais, mudou de disciplina ou deixou de estar disponível. Recarregue e tente novamente."
+        : "Informe o título antes de salvar a prova.",
+    });
+  }
+
+  let answerKeyUpload: PreparedAnswerKeyUpload | null = null;
+  try {
+    answerKeyUpload = await prepareAnswerKeyUpload(formData.get("answerKeyFile"));
+  } catch (error) {
+    redirectWithToast(`/exams/${exam.id}/edit`, {
+      type: "error",
+      title: "Gabarito inválido",
+      description: error instanceof AnswerKeyUploadError ? error.message : "Não foi possível validar o gabarito anexado.",
+    });
+  }
+
+  const labels = SET_LETTERS.slice(0, quantitySets);
+  const generatedSets = buildSets(orderedQuestions, labels, {
+    manualQuestionOrder: orderedQuestions.map((question) => question.id),
+    seed: draftSeed,
+  });
+  const explicitLayoutOverrides = Object.fromEntries(
+    orderedQuestions
+      .filter((question) => question.layout !== questionLayouts[question.questionType])
+      .map((question) => [question.id, question.layout!]),
+  );
+
+  let savedVersion: ReturnType<typeof saveExamVersion>;
+  try {
+    savedVersion = saveExamVersion(exam.id, {
+      title,
+      institution,
+      instructions,
+      allowQuestionSplit,
+      answerKeyWidthPt,
+      questionLayouts,
+      questionLayoutOverrides: explicitLayoutOverrides,
+      questionImageScaleOverrides: imageScaleFields.hasFields ? imageScaleFields.values : {},
+      composition: {
+        questionIds: orderedQuestions.map((question) => question.id),
+        sets: generatedSets,
+      },
+      changeNote: "Edição pelo editor visual",
+    });
+    if (answerKeyUpload) storeAnswerKeyUpload(exam.id, answerKeyUpload);
+    else if (formData.get("removeAnswerKey") === "1") removeAnswerKeyFiles(exam.id);
+
+  } catch (error) {
+    redirectWithToast(`/exams/${exam.id}/edit`, {
+      type: "error",
+      title: "Não foi possível salvar",
+      description: error instanceof Error ? error.message : "Erro inesperado ao salvar a edição visual.",
+    });
+  }
+  revalidatePath(`/exams/${exam.id}/edit`);
+  revalidatePath("/exams");
+  revalidatePath("/exports");
+  revalidatePath(`/print/exam/${exam.id}`);
+  redirectWithToast(`/exams/${exam.id}/edit?version=${savedVersion.versionNumber}`, {
+    type: "success",
+    title: "Prova salva",
+    description: `Versão ${savedVersion.versionNumber} criada com o preview, a ordem e os tamanhos atuais.`,
+  });
+}
+
+export async function saveExamPreviewImageScalesAction(formData: FormData) {
+  const examId = Number(formData.get("examId"));
+  const exam = Number.isSafeInteger(examId) && examId > 0 ? getExam(examId) : undefined;
+  if (!exam) {
+    redirectWithToast("/exams", {
+      type: "error",
+      title: "Prova inválida",
+      description: "Não foi possível identificar a prova do preview.",
+    });
+  }
+  const imageScaleFields = readFormQuestionImageScaleOverrides(formData);
+  if (!imageScaleFields.hasFields) {
+    redirectWithToast(`/print/exam/${exam.id}`, {
+      type: "error",
+      title: "Nenhum tamanho para salvar",
+      description: "Esta prova não possui imagens ajustáveis.",
+    });
+  }
+
+  let savedVersion: ReturnType<typeof saveExamVersion>;
+  try {
+    savedVersion = saveExamVersion(exam.id, {
+      title: exam.title,
+      institution: exam.institution,
+      instructions: exam.instructions,
+      allowQuestionSplit: exam.allowQuestionSplit,
+      answerKeyWidthPt: exam.answerKeyWidthPt,
+      questionLayouts: exam.questionLayouts,
+      questionLayoutOverrides: exam.questionLayoutOverrides,
+      questionImageScaleOverrides: imageScaleFields.values,
+      changeNote: "Tamanhos das imagens salvos pelo preview",
+    });
+  } catch (error) {
+    redirectWithToast(`/print/exam/${exam.id}`, {
+      type: "error",
+      title: "Não foi possível salvar os tamanhos",
+      description: error instanceof Error ? error.message : "Erro inesperado ao salvar o preview.",
+    });
+  }
+  revalidatePath(`/exams/${exam.id}/edit`);
+  revalidatePath("/exports");
+  revalidatePath(`/print/exam/${exam.id}`);
+  redirectWithToast(`/print/exam/${exam.id}?version=${savedVersion.versionNumber}`, {
+    type: "success",
+    title: "Tamanhos salvos",
+    description: `Os ajustes foram gravados na versão ${savedVersion.versionNumber}.`,
+  });
 }
 
 export async function restoreExamVersionAction(formData: FormData) {
@@ -414,17 +583,9 @@ export async function restoreExamVersionAction(formData: FormData) {
     });
   }
 
+  let restoredVersion: ReturnType<typeof restoreExamVersion>;
   try {
-    const version = restoreExamVersion(examId, versionNumber);
-    revalidatePath(`/exams/${examId}/edit`);
-    revalidatePath("/exams");
-    revalidatePath("/exports");
-    revalidatePath(`/print/exam/${examId}`);
-    redirectWithToast(`/exams/${examId}/edit?version=${version.versionNumber}`, {
-      type: "success",
-      title: "Versão restaurada",
-      description: `A versão ${versionNumber} foi restaurada como a nova versão ${version.versionNumber}.`,
-    });
+    restoredVersion = restoreExamVersion(examId, versionNumber);
   } catch (error) {
     redirectWithToast(`/exams/${examId}/edit`, {
       type: "error",
@@ -432,4 +593,13 @@ export async function restoreExamVersionAction(formData: FormData) {
       description: error instanceof Error ? error.message : "Erro inesperado ao restaurar a versão.",
     });
   }
+  revalidatePath(`/exams/${examId}/edit`);
+  revalidatePath("/exams");
+  revalidatePath("/exports");
+  revalidatePath(`/print/exam/${examId}`);
+  redirectWithToast(`/exams/${examId}/edit?version=${restoredVersion.versionNumber}`, {
+    type: "success",
+    title: "Versão restaurada",
+    description: `A versão ${versionNumber} foi restaurada como a nova versão ${restoredVersion.versionNumber}.`,
+  });
 }

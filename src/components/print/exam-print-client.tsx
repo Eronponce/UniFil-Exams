@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { saveExamPreviewImageScalesAction } from "@/lib/actions/exams";
 import {
   computeUniformTargetTotalPages,
   planUniformAnswerKeyPlacement,
@@ -816,6 +817,22 @@ export function ExamPrintClient({
             <a href={directPdfHref} className="btn btn-ghost">
               PDF direto
             </a>
+            {mode === "exam" && imageQuestions.length > 0 && (
+              <form action={saveExamPreviewImageScalesAction}>
+                <input type="hidden" name="examId" value={payload.examId} />
+                {imageQuestions.map(({ sourceQuestionId }) => (
+                  <input
+                    key={sourceQuestionId}
+                    type="hidden"
+                    name={`imageScale-${sourceQuestionId}`}
+                    value={getQuestionImageScalePercent(imageScaleOverrides, sourceQuestionId)}
+                  />
+                ))}
+                <button type="submit" className="btn btn-ghost" disabled={isRecalculating}>
+                  Salvar tamanhos
+                </button>
+              </form>
+            )}
             <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={!currentRenderState || isRecalculating}>
               Imprimir / Salvar PDF
             </button>

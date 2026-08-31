@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RichText } from "@/components/rich-text";
 import { ExamPrintClient } from "@/components/print/exam-print-client";
-import { createExamAction } from "@/lib/actions/exams";
+import { createExamAction, saveVisualExamVersionAction } from "@/lib/actions/exams";
 import { buildDraftPrintPayload, type DraftPreviewQuestion } from "@/lib/exam/draft-preview";
 import {
   ANSWER_KEY_DEFAULT_WIDTH_PT,
@@ -57,6 +57,8 @@ const GROUPS: Array<{ key: string; type: QuestionType; layout: QuestionLayout; l
 const GROUP_INDEX = new Map(GROUPS.map((group, index) => [group.key, index]));
 
 export interface VisualExamBuilderProps {
+  mode?: "create" | "edit";
+  examId?: number;
   disciplineId?: number;
   disciplineName?: string;
   areas?: readonly string[];
@@ -72,6 +74,7 @@ export interface VisualExamBuilderProps {
   initialLayoutOverrides?: Readonly<Record<number, QuestionLayout>>;
   initialImageScaleOverrides?: Readonly<Record<number, number>>;
   initialAnswerKeyWidthPt?: number;
+  initialAnswerKeyUrl?: string | null;
   error?: string;
 }
 
@@ -202,6 +205,8 @@ export function calculateEmbeddedPreviewFit(
 }
 
 export function VisualExamBuilder({
+  mode = "create",
+  examId,
   disciplineId,
   disciplineName,
   areas = [],
@@ -217,6 +222,7 @@ export function VisualExamBuilder({
   initialLayoutOverrides,
   initialImageScaleOverrides,
   initialAnswerKeyWidthPt = ANSWER_KEY_DEFAULT_WIDTH_PT,
+  initialAnswerKeyUrl = null,
   error,
 }: VisualExamBuilderProps) {
   const questionById = useMemo(() => new Map(questions.map((question) => [question.id, question])), [questions]);
@@ -239,9 +245,10 @@ export function VisualExamBuilder({
   const [quantitySets, setQuantitySets] = useState(initialQuantitySets);
   const [allowQuestionSplit, setAllowQuestionSplit] = useState(initialAllowQuestionSplit === "1");
   const [answerKeyWidthPt, setAnswerKeyWidthPt] = useState(() => clampAnswerKeyWidth(initialAnswerKeyWidthPt));
-  const [answerKeyPreviewUrl, setAnswerKeyPreviewUrl] = useState<string | null>(null);
-  const [answerKeyFilename, setAnswerKeyFilename] = useState<string | null>(null);
+  const [answerKeyPreviewUrl, setAnswerKeyPreviewUrl] = useState<string | null>(initialAnswerKeyUrl);
+  const [answerKeyFilename, setAnswerKeyFilename] = useState<string | null>(initialAnswerKeyUrl ? "Gabarito atual" : null);
   const [answerKeyError, setAnswerKeyError] = useState<string | null>(null);
+  const [removeAnswerKey, setRemoveAnswerKey] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(0);
   const previewFitRef = useRef<HTMLDivElement | null>(null);
   const answerKeyInputRef = useRef<HTMLInputElement | null>(null);
@@ -311,7 +318,7 @@ export function VisualExamBuilder({
   }, [allowQuestionSplit, imageScaleOverrides, initialDraftSeed, institution, layoutOverrides, normalizedOrder, quantityByType, quantitySets, selectedIds, title, updateExam]);
 
   useEffect(() => () => {
-    if (answerKeyPreviewUrl) URL.revokeObjectURL(answerKeyPreviewUrl);
+    if (answerKeyPreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(answerKeyPreviewUrl);
   }, [answerKeyPreviewUrl]);
 
   function selectAnswerKeyFile(file: File | undefined): void {
@@ -330,6 +337,7 @@ export function VisualExamBuilder({
     setAnswerKeyError(null);
     setAnswerKeyFilename(file.name);
     setAnswerKeyPreviewUrl(URL.createObjectURL(file));
+    setRemoveAnswerKey(false);
   }
 
   function removeAnswerKeyFile(): void {
@@ -337,6 +345,7 @@ export function VisualExamBuilder({
     setAnswerKeyFilename(null);
     setAnswerKeyError(null);
     setAnswerKeyPreviewUrl(null);
+    setRemoveAnswerKey(true);
   }
 
   function toggleSelection(id: number): void {
@@ -459,8 +468,10 @@ export function VisualExamBuilder({
   }, [activePreviewSetIndex, previewPayload.sets.length]);
 
   return (
-    <form action={createExamAction} className="visual-exam-builder" data-testid="visual-exam-builder">
+    <form action={mode === "edit" ? saveVisualExamVersionAction : createExamAction} className="visual-exam-builder" data-testid="visual-exam-builder">
       <input type="hidden" name="visualBuilder" value="1" />
+      {mode === "edit" && <input type="hidden" name="examId" value={examId ?? ""} />}
+      {mode === "edit" && <input type="hidden" name="removeAnswerKey" value={removeAnswerKey ? "1" : "0"} />}
       <input type="hidden" name="disciplineId" value={disciplineId ?? ""} />
       <input type="hidden" name="draftSeed" value={initialDraftSeed} />
       <input type="hidden" name="allowQuestionSplit" value={allowQuestionSplit ? "1" : "0"} />
@@ -475,16 +486,16 @@ export function VisualExamBuilder({
       {normalizedOrder.map((id) => (
         <input key={`layout-${id}`} type="hidden" name={`layoutOverride-${id}`} value={layoutOverrides[id] ?? TYPE_LAYOUT_DEFAULT[questionById.get(id)?.questionType ?? "objetiva"]} />
       ))}
-      {selectedQuestions.filter((question) => question.imageUrl && imageScaleOverrides[question.id] !== undefined).map((question) => (
-        <input key={`scale-${question.id}`} type="hidden" name={`imageScale-${question.id}`} value={imageScaleOverrides[question.id]} />
+      {selectedQuestions.filter((question) => question.imageUrl).map((question) => (
+        <input key={`scale-${question.id}`} type="hidden" name={`imageScale-${question.id}`} value={normalizeQuestionImageScalePercent(imageScaleOverrides[question.id])} />
       ))}
 
       <details className="visual-exam-setup card" open>
         <summary className="visual-exam-setup-summary">
           <span className="visual-exam-setup-summary-copy">
             <span className="eyebrow">Editor visual</span>
-            <strong role="heading" aria-level={2}>Nova prova</strong>
-            <small>Escolha questões auditadas, organize a ordem e confira o A4 antes de gerar.</small>
+            <strong role="heading" aria-level={2}>{mode === "edit" ? "Editar prova" : "Nova prova"}</strong>
+            <small>Escolha questões auditadas, organize a ordem e confira o A4 antes de {mode === "edit" ? "salvar" : "gerar"}.</small>
           </span>
           <span className="visual-exam-setup-summary-status">
             {selectedQuestions.length} selecionada(s) · {quantitySets || 1} set(s)
@@ -691,7 +702,7 @@ export function VisualExamBuilder({
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={!disciplineId || selectedQuestions.length === 0 || !title.trim()}>
-              Gerar prova
+              {mode === "edit" ? "Salvar nova versão" : "Gerar prova"}
             </button>
             <span className="form-help">{selectedQuestions.length} questão(ões) · {quantitySets || 1} set(s)</span>
           </div>

@@ -25,6 +25,7 @@ status: active
 - `/exams` agora organiza configuração e banco auditado em `details` recolhíveis, mantém quantidades visíveis iguais à seleção exata por tipo, mostra posição global de cada questão e usa um placeholder SVG sintético de `1068 × 883 px` apenas no payload de preview para exercitar a paginação/paridade do gabarito.
 - O canvas A4 embedded tem viewport desktop com scroll chaining contido; a rail standalone de imagens ocupa uma coluna sticky direita no desktop, entra no fluxo normal no responsivo, começa no limite real da composição e permanece escondida em embedded.
 - O editor visual aceita gabarito PNG/JPG de até 9 MB antes da criação, usa `blob:` no preview em tempo real, persiste a largura junto da prova e grava o arquivo somente depois de validar sua assinatura.
+- A edição de prova reutiliza o editor visual completo da criação. Seleção, ordem canônica, quantidade de sets, larguras, escalas e gabarito são salvos como nova versão; o preview standalone também possui `Salvar tamanhos` para persistir ajustes de imagens, inclusive resetes a 100%.
 
 - `(app)/layout.tsx` owns the normal shell composition: `Nav`, `CommandPalette`, `QueuePanel`, `IssueChatPanel` and main landmark.
 - `src/components/nav.tsx` provides grouped navigation, desktop collapse, mobile drawer, skip link, theme control and the visible keyboard shortcut.

@@ -5,7 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PrintExamPayload } from "@/lib/print/build-print-payload";
 import type { Question } from "@/types";
 
-vi.mock("@/lib/actions/exams", () => ({ createExamAction: vi.fn() }));
+vi.mock("@/lib/actions/exams", () => ({
+  createExamAction: vi.fn(),
+  saveVisualExamVersionAction: vi.fn(),
+  saveExamPreviewImageScalesAction: vi.fn(),
+}));
 vi.mock("@/components/print/exam-print-client", () => ({
   ExamPrintClient: ({ payload, setId }: { payload: { answerKeyUrl: string | null; answerKeyWidthPt: number; sets: Array<{ id: number; questions: Array<{ id: number }> }> }; setId?: number }) => {
     const set = payload.sets.find((candidate) => candidate.id === setId) ?? payload.sets[0];
@@ -162,6 +166,34 @@ describe("VisualExamBuilder", () => {
     expect(objectiveQuantity).toHaveValue(1);
   });
 
+  it("reuses the visual creation surface in edit mode with the saved composition", () => {
+    render(
+      <VisualExamBuilder
+        mode="edit"
+        examId={42}
+        disciplineId={1}
+        questions={questions}
+        initialDraftSeed="edit-42"
+        initialTitle="Prova existente"
+        initialInstitution="UniFil"
+        initialQuantitySets="1"
+        initialSelectedQuestionIds={[1, 3]}
+        initialManualQuestionOrder={[1, 3]}
+        initialImageScaleOverrides={{ 1: 70 }}
+        initialAnswerKeyUrl="/api/upload/gabarito/42/file"
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Editar prova" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar nova versão" })).toBeInTheDocument();
+    expect(document.querySelector<HTMLInputElement>('input[name="examId"]')).toHaveValue("42");
+    expect(document.querySelector<HTMLInputElement>('input[name="questionIds"][value="1"]')).toBeInTheDocument();
+    expect(document.querySelector<HTMLInputElement>('input[name="questionIds"][value="2"]')).not.toBeInTheDocument();
+    expect(document.querySelector<HTMLInputElement>('input[name="imageScale-1"]')).toHaveValue("70");
+    expect(screen.getByTestId("embedded-preview")).toHaveAttribute("data-answer-key-url", "/api/upload/gabarito/42/file");
+    expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).not.toBeChecked();
+  });
+
   it("collapses setup and audited-bank panels while retaining useful summaries and positions", () => {
     renderBuilder();
 
@@ -215,6 +247,42 @@ describe("VisualExamBuilder", () => {
       expect(embedded.container.querySelector("main.exam-print-main")).not.toBeInTheDocument();
       expect(embedded.container.querySelector("div.exam-print-main")).toBeInTheDocument();
       embedded.unmount();
+    } finally {
+      if (previousFonts) Object.defineProperty(document, "fonts", previousFonts);
+      else Reflect.deleteProperty(document, "fonts");
+    }
+  });
+
+  it("offers persisted image-size saving in the standalone exam preview", async () => {
+    const { ExamPrintClient } = await vi.importActual<typeof import("@/components/print/exam-print-client")>("@/components/print/exam-print-client");
+    const payload: PrintExamPayload = {
+      ...landmarkPayload,
+      examId: 42,
+      sets: [{
+        id: 9,
+        label: "A",
+        questions: [{
+          id: 7,
+          sourceQuestionId: 7,
+          statementHtml: "<p>Questão com imagem</p>",
+          imageUrl: "/uploads/questions/7.png",
+          options: ["A", "B", "C", "D", "E"].map((text, index) => ({ index, text })),
+          shuffledOptions: [0, 1, 2, 3, 4],
+          questionType: "objetiva",
+          answerLines: 0,
+          layout: "column",
+          imageScalePercent: 65,
+        }],
+      }],
+    };
+    const previousFonts = Object.getOwnPropertyDescriptor(document, "fonts");
+    Object.defineProperty(document, "fonts", { configurable: true, value: { ready: new Promise<void>(() => undefined) } });
+
+    try {
+      render(<ExamPrintClient payload={payload} mode="exam" />);
+      expect(screen.getByRole("button", { name: "Salvar tamanhos" })).toBeInTheDocument();
+      expect(document.querySelector<HTMLInputElement>('input[name="examId"]')).toHaveValue("42");
+      expect(document.querySelector<HTMLInputElement>('input[name="imageScale-7"]')).toHaveValue("65");
     } finally {
       if (previousFonts) Object.defineProperty(document, "fonts", previousFonts);
       else Reflect.deleteProperty(document, "fonts");

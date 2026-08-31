@@ -22,8 +22,8 @@ vi.mock("@/lib/uploads/answer-key", () => ({
   removeAnswerKeyFiles: answerKeyUploadMocks.remove,
 }));
 
-import { createExamAction } from "@/lib/actions/exams";
-import { listExams } from "@/lib/db/exams";
+import { createExamAction, saveExamPreviewImageScalesAction, saveVisualExamVersionAction } from "@/lib/actions/exams";
+import { getExam, listExamVersions, listExams } from "@/lib/db/exams";
 import { migrate } from "@/lib/db/schema";
 import { auditQuestion, createQuestion, getQuestion } from "@/lib/db/questions";
 
@@ -184,6 +184,76 @@ describe("createExamAction visual builder contract", () => {
     expect(redirectWithToastMock.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({
       title: "Não foi possível criar a prova",
     }));
+  });
+
+  it("persists preview image sizes, including an explicit reset to 100 percent", async () => {
+    const question = addQuestion("objetiva", 0, "/uploads/objective.png");
+    const createData = new FormData();
+    createData.set("visualBuilder", "1");
+    createData.set("disciplineId", "1");
+    createData.set("title", "Escala no preview");
+    createData.set("quantitySets", "1");
+    createData.append("questionIds", String(question.id));
+    createData.append("manualQuestionOrder", String(question.id));
+    createData.set(`imageScale-${question.id}`, "75");
+    await expect(createExamAction(createData)).rejects.toThrow("REDIRECT");
+
+    const exam = listExams("todas")[0]!;
+    expect(exam.questionImageScaleOverrides).toEqual({ [question.id]: 75 });
+    const previewData = new FormData();
+    previewData.set("examId", String(exam.id));
+    previewData.set(`imageScale-${question.id}`, "100");
+    await expect(saveExamPreviewImageScalesAction(previewData)).rejects.toThrow("REDIRECT");
+
+    expect(getExam(exam.id)?.questionImageScaleOverrides).toEqual({});
+    expect(listExamVersions(exam.id)).toHaveLength(2);
+    expect(redirectWithToastMock.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({ title: "Tamanhos salvos" }));
+  });
+
+  it("saves the visual edit selection, order, sets, widths, and scales as a new version", async () => {
+    const first = addQuestion("objetiva", 0, "/uploads/first.png");
+    const second = addQuestion("objetiva", 1);
+    const createData = new FormData();
+    createData.set("visualBuilder", "1");
+    createData.set("disciplineId", "1");
+    createData.set("title", "Antes da edição");
+    createData.append("questionIds", String(first.id));
+    createData.append("manualQuestionOrder", String(first.id));
+    await expect(createExamAction(createData)).rejects.toThrow("REDIRECT");
+    const exam = listExams("todas")[0]!;
+
+    const editData = new FormData();
+    editData.set("examId", String(exam.id));
+    editData.set("title", "Depois da edição");
+    editData.set("institution", "UniFil");
+    editData.set("instructions", "Leia com atenção");
+    editData.set("quantitySets", "2");
+    editData.set("draftSeed", `edit-${exam.id}`);
+    editData.set("answerKeyWidthPt", "425");
+    editData.set("layoutObjetiva", "column");
+    editData.set("layoutVF", "column");
+    editData.set("layoutNumerica", "column");
+    editData.set("layoutDissertativa", "full");
+    for (const question of [second, first]) {
+      editData.append("questionIds", String(question.id));
+      editData.append("manualQuestionOrder", String(question.id));
+    }
+    editData.set(`layoutOverride-${second.id}`, "full");
+    editData.set(`layoutOverride-${first.id}`, "column");
+    editData.set(`imageScale-${first.id}`, "60");
+    await expect(saveVisualExamVersionAction(editData)).rejects.toThrow("REDIRECT");
+
+    const updated = getExam(exam.id)!;
+    expect(updated.title).toBe("Depois da edição");
+    expect(updated.answerKeyWidthPt).toBe(425);
+    expect(updated.sets).toHaveLength(2);
+    expect(updated.sets.map((set) => set.questions.map((item) => item.questionId))).toEqual([
+      [first.id, second.id],
+      [first.id, second.id],
+    ]);
+    expect(updated.questionLayoutOverrides).toEqual({ [second.id]: "full" });
+    expect(updated.questionImageScaleOverrides).toEqual({ [first.id]: 60 });
+    expect(listExamVersions(exam.id)).toHaveLength(2);
   });
 });
 

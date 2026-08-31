@@ -2,179 +2,97 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getExam, getExamVersion, listExamVersions } from "@/lib/db/exams";
-import { getQuestion } from "@/lib/db/questions";
-import { getExamQuestionIdsInSetAOrder } from "@/lib/exam/reference-set";
-import { RichText } from "@/components/rich-text";
 import { PageHeader } from "@/components/ui";
-import { restoreExamVersionAction, saveExamVersionAction } from "@/lib/actions/exams";
-import { ImageScaleField } from "./_components/image-scale-field";
-import {
-  DEFAULT_QUESTION_IMAGE_SCALE_PERCENT,
-  MAX_QUESTION_IMAGE_SCALE_PERCENT,
-  MIN_QUESTION_IMAGE_SCALE_PERCENT,
-  normalizeQuestionImageScalePercent,
-} from "@/lib/print/question-image-scale";
+import { getDiscipline } from "@/lib/db/disciplines";
+import { getExam, listExamVersions } from "@/lib/db/exams";
+import { getQuestion } from "@/lib/db/questions";
+import { listQuestionsFiltered } from "@/lib/db/questions-filter";
+import { getExamQuestionIdsInSetAOrder } from "@/lib/exam/reference-set";
+import { buildPrintExamPayload } from "@/lib/print/build-print-payload";
+import { restoreExamVersionAction } from "@/lib/actions/exams";
+import { VisualExamBuilder } from "../../_components/visual-exam-builder";
 
-const TYPE_LABEL: Record<string, string> = {
-  objetiva: "Objetiva",
-  verdadeiro_falso: "V/F",
-  numerica: "Numérica",
-  dissertativa: "Dissertativa",
-};
-
-function normalizeSelectedVersion(value: string | undefined): number | undefined {
-  if (!value || !/^\d+$/.test(value)) return undefined;
-  const number = Number(value);
-  return Number.isSafeInteger(number) && number > 0 ? number : undefined;
-}
-
-export default async function ExamEditPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ version?: string }>;
-}) {
+export default async function ExamEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const sp = await searchParams;
   const examId = Number(id);
   const exam = Number.isSafeInteger(examId) && examId > 0 ? getExam(examId) : undefined;
   if (!exam) notFound();
 
+  const discipline = getDiscipline(exam.disciplineId);
+  const selectedQuestionIds = getExamQuestionIdsInSetAOrder(exam.sets);
+  const currentQuestions = selectedQuestionIds
+    .map((questionId) => getQuestion(questionId))
+    .filter((question): question is NonNullable<typeof question> => question !== undefined);
+  const auditedQuestions = listQuestionsFiltered({ disciplineId: exam.disciplineId, audited: true });
+  const availableById = new Map([...auditedQuestions, ...currentQuestions].map((question) => [question.id, question]));
+  const availableQuestions = [...availableById.values()].sort((left, right) => left.id - right.id);
+  const answerKeyUrl = buildPrintExamPayload(exam).answerKeyUrl;
   const versions = listExamVersions(exam.id);
-  const selectedVersionNumber = normalizeSelectedVersion(sp.version);
-  const selectedVersion = selectedVersionNumber ? getExamVersion(exam.id, selectedVersionNumber) : undefined;
-  const questionIds = getExamQuestionIdsInSetAOrder(exam.sets);
-  const questions = questionIds.map((questionId) => getQuestion(questionId)).filter((question): question is NonNullable<typeof question> => question != null);
 
   return (
     <>
       <PageHeader
         eyebrow="Avaliações · Editar"
         title={`Editar ${exam.title}`}
-        description="Cada salvamento cria uma versão imutável. Sets e questões continuam rastreáveis ao banco de origem."
-        actions={<Link href={`/exports?exam=${exam.id}`} className="btn btn-ghost">← Exportações</Link>}
+        description="A mesma montagem visual da criação, agora salvando cada alteração como uma versão rastreável."
+        actions={(
+          <div className="actions-row">
+            <Link href={`/print/exam/${exam.id}`} className="btn btn-ghost">Abrir preview</Link>
+            <Link href={`/exports?exam=${exam.id}`} className="btn btn-ghost">← Exportações</Link>
+          </div>
+        )}
       />
 
-      <div className="exam-editor-layout">
-        <form action={saveExamVersionAction} className="card exam-editor-form">
-          <input type="hidden" name="examId" value={exam.id} />
-          <div className="exam-editor-status-row">
-            <span className={`badge ${exam.active ? "badge-success" : "badge-warning"}`}>{exam.active ? "Prova ativa" : "Prova inativa"}</span>
-            {selectedVersion && <span className="badge">Visualizando histórico: versão {selectedVersion.versionNumber}</span>}
-          </div>
+      <VisualExamBuilder
+        key={`edit-${exam.id}`}
+        mode="edit"
+        examId={exam.id}
+        disciplineId={exam.disciplineId}
+        disciplineName={discipline?.name}
+        questions={availableQuestions}
+        initialTitle={exam.title}
+        initialInstitution={exam.institution}
+        initialInstructions={exam.instructions}
+        initialQuantitySets={String(exam.sets.length)}
+        initialAllowQuestionSplit={exam.allowQuestionSplit ? "1" : ""}
+        initialDraftSeed={`edit-${exam.id}`}
+        initialSelectedQuestionIds={selectedQuestionIds}
+        initialManualQuestionOrder={selectedQuestionIds}
+        initialLayoutOverrides={exam.questionLayoutOverrides}
+        initialImageScaleOverrides={exam.questionImageScaleOverrides}
+        initialAnswerKeyWidthPt={exam.answerKeyWidthPt}
+        initialAnswerKeyUrl={answerKeyUrl}
+      />
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="exam-title">Título *</label>
-            <input id="exam-title" name="title" className="form-input" defaultValue={exam.title} required />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="exam-institution">Instituição</label>
-            <input id="exam-institution" name="institution" className="form-input" defaultValue={exam.institution} />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="exam-instructions">Instruções da primeira página</label>
-            <textarea id="exam-instructions" name="instructions" className="form-textarea exam-editor-instructions" defaultValue={exam.instructions} required />
-            <p className="form-help">Este bloco aparece e é medido na primeira página de cada set.</p>
-          </div>
-
-          <section className="exam-editor-section">
-            <h2>Layout e paginação</h2>
-            <div className="exam-editor-layout-grid">
-              {([
-                ["Objetiva", "layoutObjetiva", exam.questionLayouts.objetiva],
-                ["V/F", "layoutVF", exam.questionLayouts.verdadeiro_falso],
-                ["Numérica", "layoutNumerica", exam.questionLayouts.numerica],
-                ["Dissertativa", "layoutDissertativa", exam.questionLayouts.dissertativa],
-              ] as const).map(([label, name, value]) => (
-                <label key={name} className="form-group">
-                  <span className="form-label">{label}</span>
-                  <select name={name} className="form-select" defaultValue={value}>
-                    <option value="column">Meia página</option>
-                    <option value="full">Largura total</option>
-                  </select>
-                </label>
-              ))}
+      <details className="card exam-editor-history">
+        <summary className="visual-exam-panel-summary">
+          <span className="visual-exam-panel-summary-copy">
+            <span role="heading" aria-level={2}>Histórico de versões</span>
+            <small>Versões anteriores permanecem imutáveis e podem ser restauradas.</small>
+          </span>
+          <span className="badge">{versions.length} versão(ões)</span>
+        </summary>
+        <div className="exam-editor-version-list">
+          {versions.map((version) => (
+            <div key={version.id} className="exam-editor-version">
+              <div className="exam-editor-version-heading">
+                <strong>Versão {version.versionNumber}</strong>
+                <time dateTime={version.createdAt}>{version.createdAt}</time>
+              </div>
+              <p>{version.changeNote || "Sem nota"}</p>
+              <div className="actions-row">
+                <Link href={`/print/exam/${exam.id}?version=${version.versionNumber}`} className="btn btn-ghost btn-sm">Preview</Link>
+                <a href={`/api/pdf/exam/${exam.id}?version=${version.versionNumber}`} className="btn btn-ghost btn-sm">PDF</a>
+                <form action={restoreExamVersionAction}>
+                  <input type="hidden" name="examId" value={exam.id} />
+                  <input type="hidden" name="versionNumber" value={version.versionNumber} />
+                  <button type="submit" className="btn btn-ghost btn-sm">Restaurar como nova</button>
+                </form>
+              </div>
             </div>
-            <label className="exam-editor-checkbox">
-              <input type="checkbox" name="allowQuestionSplit" value="1" defaultChecked={exam.allowQuestionSplit} />
-              <span><strong>Permitir quebra de questões objetivas longas</strong><small>Alternativas continuam inteiras e a continuação é identificada.</small></span>
-            </label>
-          </section>
-
-          <section className="exam-editor-section">
-            <h2>Largura individual</h2>
-            <p className="form-help">“Herdar” usa o layout do tipo. Uma escolha aqui vence o layout por tipo apenas para esta questão.</p>
-            <div className="exam-editor-question-list">
-              {questions.map((question, index) => (
-                <div key={question.id} className="exam-editor-question-row">
-                  <div className="exam-editor-question-copy">
-                    <strong>Q{index + 1} · {TYPE_LABEL[question.questionType] ?? question.questionType} · ID {question.id}</strong>
-                    <RichText html={question.statement} />
-                  </div>
-                  <div className="exam-editor-question-control">
-                    <label className="form-label" htmlFor={`layout-override-${question.id}`}>Largura</label>
-                    <select id={`layout-override-${question.id}`} name={`layoutOverride-${question.id}`} className="form-select" defaultValue={exam.questionLayoutOverrides[question.id] ?? ""}>
-                      <option value="">Herdar do tipo</option>
-                      <option value="column">Meia página</option>
-                      <option value="full">Largura total</option>
-                    </select>
-                    {question.imageUrl && (
-                      <>
-                        <ImageScaleField
-                          questionId={question.id}
-                          initialValue={normalizeQuestionImageScalePercent(exam.questionImageScaleOverrides?.[question.id] ?? DEFAULT_QUESTION_IMAGE_SCALE_PERCENT)}
-                          min={MIN_QUESTION_IMAGE_SCALE_PERCENT}
-                          max={MAX_QUESTION_IMAGE_SCALE_PERCENT}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="exam-change-note">Nota da alteração</label>
-            <input id="exam-change-note" name="changeNote" className="form-input" placeholder="Ex.: Ajuste das instruções e largura da Q3" />
-          </div>
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">Salvar como nova versão</button>
-            <Link href={`/exports?exam=${exam.id}`} className="btn btn-ghost">Cancelar</Link>
-          </div>
-        </form>
-
-        <aside className="card exam-editor-history">
-          <h2>Histórico</h2>
-          <p className="form-help">Versões antigas não são sobrescritas. Restaurar também cria uma nova versão.</p>
-          {versions.length === 0 ? (
-            <div className="exam-editor-empty-history">Ainda não há versões. Este exame legado receberá baseline antes do primeiro salvamento.</div>
-          ) : (
-            <div className="exam-editor-version-list">
-              {versions.map((version) => (
-                <div key={version.id} className={`exam-editor-version ${version.versionNumber === selectedVersion?.versionNumber ? "is-selected" : ""}`}>
-                  <div className="exam-editor-version-heading">
-                    <strong>Versão {version.versionNumber}</strong>
-                    <time dateTime={version.createdAt}>{version.createdAt}</time>
-                  </div>
-                  <p>{version.changeNote || "Sem nota"}</p>
-                  <div className="actions-row">
-                    <Link href={`/print/exam/${exam.id}?version=${version.versionNumber}`} className="btn btn-ghost btn-sm">Preview</Link>
-                    <a href={`/api/pdf/exam/${exam.id}?version=${version.versionNumber}`} className="btn btn-ghost btn-sm">PDF</a>
-                    <form action={restoreExamVersionAction}>
-                      <input type="hidden" name="examId" value={exam.id} />
-                      <input type="hidden" name="versionNumber" value={version.versionNumber} />
-                      <button type="submit" className="btn btn-sm btn-ghost">Restaurar como nova</button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </aside>
-      </div>
+          ))}
+        </div>
+      </details>
     </>
   );
 }
