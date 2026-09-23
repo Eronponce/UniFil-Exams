@@ -26,6 +26,7 @@ status: active
 - O canvas A4 embedded tem viewport desktop com scroll chaining contido; a rail standalone de imagens ocupa uma coluna sticky direita no desktop, entra no fluxo normal no responsivo, começa no limite real da composição e permanece escondida em embedded.
 - O editor visual aceita gabarito PNG/JPG de até 9 MB antes da criação, usa `blob:` no preview em tempo real, persiste a largura junto da prova e grava o arquivo somente depois de validar sua assinatura.
 - A edição de prova reutiliza o editor visual completo da criação. Seleção, ordem canônica, quantidade de sets, larguras, escalas e gabarito são salvos como nova versão; o preview standalone também possui `Salvar tamanhos` para persistir ajustes de imagens, inclusive resetes a 100%.
+- O banco auditado do editor visual separa `Entra` (seleção) de `Fora` (exclusão só nesta prova, estado local não persistido); excluídas não contam como disponíveis e a quantidade por tipo nunca as re-adiciona. O campo de quantidade resolve cada tecla contra a seleção do foco.
 
 - `(app)/layout.tsx` owns the normal shell composition: `Nav`, `CommandPalette`, `QueuePanel`, `IssueChatPanel` and main landmark.
 - `src/components/nav.tsx` provides grouped navigation, desktop collapse, mobile drawer, skip link, theme control and the visible keyboard shortcut.

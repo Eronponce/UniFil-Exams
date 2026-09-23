@@ -698,3 +698,11 @@ status: active
 - O preview standalone de prova ganhou `Salvar tamanhos`; ele envia os valores efetivos de todas as imagens, inclusive `100%`, e cria uma versão imutável em vez de manter o ajuste somente na URL.
 - O tamanho do gabarito agora participa de `saveExamVersion` e também é restaurado com versões históricas.
 - Validação focada: 3 arquivos, 25 testes; typecheck passou.
+
+## 2026-09-23 - Questões fora da prova no banco auditado
+
+- Cada linha do banco auditado em `/exams` e `/exams/[id]/edit` tem duas checkboxes: `Entra` (seleção) e `Fora` (exclusão desta prova). Marcar `Fora` desmarca e desabilita `Entra`.
+- Questões fora saem do contador `disponível(is)` por tipo, do `max` do campo de quantidade e do auto-preenchimento; alterar a quantidade nunca as traz de volta.
+- Causa do "reset": digitar `10` sobre `11` passava por `1`, removendo 10 questões e re-adicionando pela ordem do banco. Agora cada tecla é resolvida contra a seleção capturada no foco do campo.
+- A exclusão é estado do editor (não persistida na prova nem na versão).
+- Validação: `rtk npm test -- --run` (39 arquivos, 215 testes), `rtk npm run typecheck` e `rtk npm run lint` passaram.

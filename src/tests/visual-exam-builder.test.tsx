@@ -166,6 +166,72 @@ describe("VisualExamBuilder", () => {
     expect(objectiveQuantity).toHaveValue(1);
   });
 
+  it("keeps questions marked out of this exam unavailable to quantity changes", () => {
+    render(
+      <VisualExamBuilder
+        disciplineId={1}
+        questions={[
+          ...questions,
+          baseQuestion({ id: 6, statement: "<p>Objetiva 3</p>" }),
+          baseQuestion({ id: 7, statement: "<p>Objetiva 4</p>" }),
+        ]}
+        initialDraftSeed="visual-test"
+        initialTitle="Prova visual"
+      />,
+    );
+
+    const objectiveQuantity = screen.getByRole("spinbutton", { name: "Quantidade de Objetivas" });
+    expect(objectiveQuantity).toHaveValue(4);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Deixar questão 2 fora desta prova" }));
+
+    expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).toBeDisabled();
+    expect(objectiveQuantity).toHaveValue(3);
+    expect(objectiveQuantity).toHaveAttribute("max", "3");
+    expect(screen.getByText("3 disponível(is) · 1 fora")).toBeInTheDocument();
+    expect(screen.getByText("6 disponível(is) · 6 selecionada(s) · 1 fora")).toBeInTheDocument();
+
+    fireEvent.change(objectiveQuantity, { target: { value: "0" } });
+    fireEvent.change(objectiveQuantity, { target: { value: "4" } });
+    expect(objectiveQuantity).toHaveValue(3);
+    expect(document.querySelector<HTMLInputElement>('input[name="questionIds"][value="2"]')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Deixar questão 2 fora desta prova" }));
+    expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).not.toBeChecked();
+    expect(objectiveQuantity).toHaveAttribute("max", "4");
+  });
+
+  it("resolves typed quantities against the focus-time selection", () => {
+    render(
+      <VisualExamBuilder
+        disciplineId={1}
+        questions={[
+          ...questions,
+          baseQuestion({ id: 6, statement: "<p>Objetiva 3</p>" }),
+          baseQuestion({ id: 7, statement: "<p>Objetiva 4</p>" }),
+        ]}
+        initialDraftSeed="visual-test"
+        initialTitle="Prova visual"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar questão 2" }));
+    const objectiveQuantity = screen.getByRole("spinbutton", { name: "Quantidade de Objetivas" });
+    expect(objectiveQuantity).toHaveValue(3);
+
+    fireEvent.focus(objectiveQuantity);
+    fireEvent.change(objectiveQuantity, { target: { value: "" } });
+    fireEvent.change(objectiveQuantity, { target: { value: "2" } });
+    fireEvent.blur(objectiveQuantity);
+
+    const selectedObjectives = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="questionIds"]'))
+      .map((input) => input.value)
+      .filter((id) => ["1", "2", "6", "7"].includes(id));
+    expect(selectedObjectives).toEqual(["1", "6"]);
+    expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).not.toBeChecked();
+  });
+
   it("reuses the visual creation surface in edit mode with the saved composition", () => {
     render(
       <VisualExamBuilder

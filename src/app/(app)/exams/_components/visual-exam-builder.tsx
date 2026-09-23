@@ -250,6 +250,13 @@ export function VisualExamBuilder({
   const [answerKeyError, setAnswerKeyError] = useState<string | null>(null);
   const [removeAnswerKey, setRemoveAnswerKey] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(0);
+  const [excludedIds, setExcludedIds] = useState<Set<number>>(() => new Set());
+  const quantityBaselineRef = useRef<{
+    type: QuestionType;
+    selectedIds: ReadonlySet<number>;
+    order: readonly number[];
+    imageScaleOverrides: Readonly<Record<number, number>>;
+  } | null>(null);
   const previewFitRef = useRef<HTMLDivElement | null>(null);
   const answerKeyInputRef = useRef<HTMLInputElement | null>(null);
   const updateExam = useWorkspaceStore((state) => state.updateExam);
@@ -270,9 +277,14 @@ export function VisualExamBuilder({
   }, [selectedQuestions]);
   const availableByType = useMemo(() => {
     const counts: Record<QuestionType, number> = { objetiva: 0, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 };
-    for (const question of questions) counts[question.questionType] += 1;
+    for (const question of questions) if (!excludedIds.has(question.id)) counts[question.questionType] += 1;
     return counts;
-  }, [questions]);
+  }, [excludedIds, questions]);
+  const excludedByType = useMemo(() => {
+    const counts: Record<QuestionType, number> = { objetiva: 0, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 };
+    for (const question of questions) if (excludedIds.has(question.id)) counts[question.questionType] += 1;
+    return counts;
+  }, [excludedIds, questions]);
   const questionLayouts = TYPE_LAYOUT_DEFAULT;
   const previewPayload = useMemo(
     () => buildDraftPrintPayload(previewQuestions, {
@@ -348,26 +360,46 @@ export function VisualExamBuilder({
     setRemoveAnswerKey(true);
   }
 
-  function toggleSelection(id: number): void {
-    const question = questionById.get(id);
-    if (!question) return;
+  function deselect(id: number): void {
     setSelectedIds((current) => {
+      if (!current.has(id)) return current;
       const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-        setOrder((currentOrder) => currentOrder.filter((currentId) => currentId !== id));
-        setImageScaleOverrides((currentOverrides) => {
-          if (!(id in currentOverrides)) return currentOverrides;
-          const nextOverrides = { ...currentOverrides };
-          delete nextOverrides[id];
-          return nextOverrides;
-        });
-      } else {
-        next.add(id);
-        setOrder((currentOrder) => insertAtGroupEnd(currentOrder, id, questionById, layoutOverrides));
-      }
+      next.delete(id);
       return next;
     });
+    setOrder((currentOrder) => currentOrder.filter((currentId) => currentId !== id));
+    setImageScaleOverrides((currentOverrides) => {
+      if (!(id in currentOverrides)) return currentOverrides;
+      const nextOverrides = { ...currentOverrides };
+      delete nextOverrides[id];
+      return nextOverrides;
+    });
+  }
+
+  function toggleSelection(id: number): void {
+    if (!questionById.has(id) || excludedIds.has(id)) return;
+    if (selectedIds.has(id)) {
+      deselect(id);
+      return;
+    }
+    setSelectedIds((current) => new Set(current).add(id));
+    setOrder((currentOrder) => insertAtGroupEnd(currentOrder, id, questionById, layoutOverrides));
+  }
+
+  function toggleExclusion(id: number): void {
+    if (!questionById.has(id)) return;
+    const next = new Set(excludedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+      deselect(id);
+    }
+    setExcludedIds(next);
+  }
+
+  function beginQuantityEdit(type: QuestionType): void {
+    quantityBaselineRef.current = { type, selectedIds, order: normalizedOrder, imageScaleOverrides };
   }
 
   function setTypeQuantity(type: QuestionType, rawValue: string): void {
@@ -376,33 +408,30 @@ export function VisualExamBuilder({
       Math.max(Number.isFinite(parsed) ? parsed : 0, 0),
       availableByType[type],
     );
-    const selectedOfType = normalizedOrder.filter((id) => questionById.get(id)?.questionType === type);
-    const selectedSet = new Set(selectedIds);
+    // Typing "10" over "11" passes through "1"; resolving every keystroke
+    // against the focus-time selection keeps intermediate values from
+    // discarding manual picks and refilling from bank order.
+    const baseline = quantityBaselineRef.current?.type === type
+      ? quantityBaselineRef.current
+      : { selectedIds, order: normalizedOrder, imageScaleOverrides };
+    const selectedOfType = baseline.order.filter((id) => questionById.get(id)?.questionType === type);
     const idsToRemove = selectedOfType.slice(target);
     const idsToAdd = questions
-      .filter((question) => question.questionType === type && !selectedSet.has(question.id))
+      .filter((question) => question.questionType === type && !baseline.selectedIds.has(question.id) && !excludedIds.has(question.id))
       .slice(0, Math.max(0, target - selectedOfType.length))
       .map((question) => question.id);
 
-    if (idsToRemove.length === 0 && idsToAdd.length === 0) return;
-
-    const nextSelected = new Set(selectedIds);
+    const nextSelected = new Set(baseline.selectedIds);
     for (const id of idsToRemove) nextSelected.delete(id);
     for (const id of idsToAdd) nextSelected.add(id);
+    let nextOrder = baseline.order.filter((id) => nextSelected.has(id));
+    for (const id of idsToAdd) nextOrder = insertAtGroupEnd(nextOrder, id, questionById, layoutOverrides);
+    const nextOverrides = { ...baseline.imageScaleOverrides };
+    for (const id of idsToRemove) delete nextOverrides[id];
 
     setSelectedIds(nextSelected);
-    setOrder((currentOrder) => {
-      let nextOrder = currentOrder.filter((id) => nextSelected.has(id));
-      for (const id of idsToAdd) nextOrder = insertAtGroupEnd(nextOrder, id, questionById, layoutOverrides);
-      return nextOrder;
-    });
-    if (idsToRemove.length > 0) {
-      setImageScaleOverrides((currentOverrides) => {
-        const nextOverrides = { ...currentOverrides };
-        for (const id of idsToRemove) delete nextOverrides[id];
-        return nextOverrides;
-      });
-    }
+    setOrder(nextOrder);
+    setImageScaleOverrides(nextOverrides);
   }
 
   function toggleLayout(id: number): void {
@@ -594,10 +623,15 @@ export function VisualExamBuilder({
                   min={0}
                   max={availableByType[type]}
                   value={quantityByType[type]}
+                  onFocus={() => beginQuantityEdit(type)}
+                  onBlur={() => { quantityBaselineRef.current = null; }}
                   onChange={(event) => setTypeQuantity(type, event.currentTarget.value)}
                   aria-label={`Quantidade de ${label}`}
                 />
-                <small>{availableByType[type]} disponível(is)</small>
+                <small>
+                  {availableByType[type]} disponível(is)
+                  {excludedByType[type] > 0 && ` · ${excludedByType[type]} fora`}
+                </small>
               </label>
             ))}
           </div>
@@ -615,26 +649,50 @@ export function VisualExamBuilder({
             <summary className="visual-exam-panel-summary">
               <span className="visual-exam-panel-summary-copy">
                 <span role="heading" aria-level={3}>Banco auditado</span>
-                <small>Marque as questões que entram na prova.</small>
+                <small>Entra = vai para a prova. Fora = não conta como disponível nesta prova.</small>
               </span>
-              <span className="badge">{questions.length} disponível(is) · {selectedQuestions.length} selecionada(s)</span>
+              <span className="badge">
+                {questions.length - excludedIds.size} disponível(is) · {selectedQuestions.length} selecionada(s)
+                {excludedIds.size > 0 && ` · ${excludedIds.size} fora`}
+              </span>
             </summary>
             <div className="visual-exam-pool-list">
-              {questions.map((question) => (
-                <label className={`visual-exam-pool-row${selectedIds.has(question.id) ? " is-selected" : ""}`} key={question.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(question.id)}
-                    onChange={() => toggleSelection(question.id)}
-                    aria-label={`Selecionar questão ${question.id}`}
-                  />
-                  <span className="visual-exam-pool-copy">
-                    <strong>Questão {question.id} · {TYPE_LABEL[question.questionType]}</strong>
-                    <span className="visual-exam-pool-statement"><RichText html={question.statement} /></span>
-                    {question.imageUrl && <span className="visual-exam-image-tag">Imagem</span>}
-                  </span>
-                </label>
-              ))}
+              {questions.map((question) => {
+                const selected = selectedIds.has(question.id);
+                const excluded = excludedIds.has(question.id);
+                const selectId = `visual-exam-pool-select-${question.id}`;
+                return (
+                  <div className={`visual-exam-pool-row${selected ? " is-selected" : ""}${excluded ? " is-excluded" : ""}`} key={question.id}>
+                    <div className="visual-exam-pool-toggles">
+                      <label className="visual-exam-pool-toggle">
+                        <input
+                          id={selectId}
+                          type="checkbox"
+                          checked={selected}
+                          disabled={excluded}
+                          onChange={() => toggleSelection(question.id)}
+                          aria-label={`Selecionar questão ${question.id}`}
+                        />
+                        <span>Entra</span>
+                      </label>
+                      <label className="visual-exam-pool-toggle visual-exam-pool-toggle--exclude">
+                        <input
+                          type="checkbox"
+                          checked={excluded}
+                          onChange={() => toggleExclusion(question.id)}
+                          aria-label={`Deixar questão ${question.id} fora desta prova`}
+                        />
+                        <span>Fora</span>
+                      </label>
+                    </div>
+                    <label className="visual-exam-pool-copy" htmlFor={selectId}>
+                      <strong>Questão {question.id} · {TYPE_LABEL[question.questionType]}{excluded && " · fora desta prova"}</strong>
+                      <span className="visual-exam-pool-statement"><RichText html={question.statement} /></span>
+                      {question.imageUrl && <span className="visual-exam-image-tag">Imagem</span>}
+                    </label>
+                  </div>
+                );
+              })}
             </div>
           </details>
 
