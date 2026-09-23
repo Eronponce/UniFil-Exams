@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { RichText } from "@/components/rich-text";
 import { ExamPrintClient } from "@/components/print/exam-print-client";
 import { createExamAction, saveVisualExamVersionAction } from "@/lib/actions/exams";
@@ -55,6 +55,24 @@ const GROUPS: Array<{ key: string; type: QuestionType; layout: QuestionLayout; l
 ];
 
 const GROUP_INDEX = new Map(GROUPS.map((group, index) => [group.key, index]));
+const TYPE_INDEX = new Map(TYPE_CONTROLS.map((control, index) => [control.type, index]));
+
+type PoolStatusFilter = "all" | "selected" | "unselected" | "excluded";
+
+const POOL_STATUS_OPTIONS: Array<{ value: PoolStatusFilter; label: string }> = [
+  { value: "all", label: "Todas as situações" },
+  { value: "selected", label: "Na prova" },
+  { value: "unselected", label: "Não selecionadas" },
+  { value: "excluded", label: "Fora desta prova" },
+];
+
+function normalizeSearchText(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function questionSearchText(question: Question): string {
+  return normalizeSearchText(`${question.id} ${question.statement.replace(/<[^>]*>/g, " ")}`);
+}
 
 export interface VisualExamBuilderProps {
   mode?: "create" | "edit";
@@ -251,6 +269,9 @@ export function VisualExamBuilder({
   const [removeAnswerKey, setRemoveAnswerKey] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(0);
   const [excludedIds, setExcludedIds] = useState<Set<number>>(() => new Set());
+  const [poolType, setPoolType] = useState<QuestionType | "all">("all");
+  const [poolStatus, setPoolStatus] = useState<PoolStatusFilter>("all");
+  const [poolQuery, setPoolQuery] = useState("");
   const quantityBaselineRef = useRef<{
     type: QuestionType;
     selectedIds: ReadonlySet<number>;
@@ -280,6 +301,28 @@ export function VisualExamBuilder({
     for (const question of questions) if (!excludedIds.has(question.id)) counts[question.questionType] += 1;
     return counts;
   }, [excludedIds, questions]);
+  const totalByType = useMemo(() => {
+    const counts: Record<QuestionType, number> = { objetiva: 0, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 };
+    for (const question of questions) counts[question.questionType] += 1;
+    return counts;
+  }, [questions]);
+  const poolQuestions = useMemo(
+    () => questions
+      .map((question) => ({ question, searchText: questionSearchText(question) }))
+      .sort((left, right) => (TYPE_INDEX.get(left.question.questionType) ?? 0) - (TYPE_INDEX.get(right.question.questionType) ?? 0)),
+    [questions],
+  );
+  const normalizedPoolQuery = normalizeSearchText(poolQuery.trim());
+  const poolFiltersActive = poolType !== "all" || poolStatus !== "all" || normalizedPoolQuery !== "";
+  const visiblePoolQuestions = poolQuestions
+    .filter(({ question, searchText }) => {
+      if (poolType !== "all" && question.questionType !== poolType) return false;
+      if (poolStatus === "selected" && !selectedIds.has(question.id)) return false;
+      if (poolStatus === "unselected" && (selectedIds.has(question.id) || excludedIds.has(question.id))) return false;
+      if (poolStatus === "excluded" && !excludedIds.has(question.id)) return false;
+      return normalizedPoolQuery === "" || searchText.includes(normalizedPoolQuery);
+    })
+    .map(({ question }) => question);
   const excludedByType = useMemo(() => {
     const counts: Record<QuestionType, number> = { objetiva: 0, verdadeiro_falso: 0, numerica: 0, dissertativa: 0 };
     for (const question of questions) if (excludedIds.has(question.id)) counts[question.questionType] += 1;
@@ -398,6 +441,18 @@ export function VisualExamBuilder({
     setExcludedIds(next);
   }
 
+  function clearPoolFilters(): void {
+    setPoolType("all");
+    setPoolStatus("all");
+    setPoolQuery("");
+  }
+
+  function preventImplicitSubmit(event: KeyboardEvent<HTMLFormElement>): void {
+    // Enter in a text/number field would create or save the whole exam; only
+    // the explicit submit button should do that.
+    if (event.key === "Enter" && event.target instanceof HTMLInputElement && event.target.type !== "file") event.preventDefault();
+  }
+
   function beginQuantityEdit(type: QuestionType): void {
     quantityBaselineRef.current = { type, selectedIds, order: normalizedOrder, imageScaleOverrides };
   }
@@ -497,7 +552,7 @@ export function VisualExamBuilder({
   }, [activePreviewSetIndex, previewPayload.sets.length]);
 
   return (
-    <form action={mode === "edit" ? saveVisualExamVersionAction : createExamAction} className="visual-exam-builder" data-testid="visual-exam-builder">
+    <form action={mode === "edit" ? saveVisualExamVersionAction : createExamAction} className="visual-exam-builder" data-testid="visual-exam-builder" onKeyDown={preventImplicitSubmit}>
       <input type="hidden" name="visualBuilder" value="1" />
       {mode === "edit" && <input type="hidden" name="examId" value={examId ?? ""} />}
       {mode === "edit" && <input type="hidden" name="removeAnswerKey" value={removeAnswerKey ? "1" : "0"} />}
@@ -522,7 +577,7 @@ export function VisualExamBuilder({
       <details className="visual-exam-setup card" open>
         <summary className="visual-exam-setup-summary">
           <span className="visual-exam-setup-summary-copy">
-            <span className="eyebrow">Editor visual</span>
+            <span className="section-eyebrow">Editor visual</span>
             <strong role="heading" aria-level={2}>{mode === "edit" ? "Editar prova" : "Nova prova"}</strong>
             <small>Escolha questões auditadas, organize a ordem e confira o A4 antes de {mode === "edit" ? "salvar" : "gerar"}.</small>
           </span>
@@ -541,7 +596,7 @@ export function VisualExamBuilder({
           </div>
 
           <div className="visual-exam-metadata">
-            <label className="form-group">
+            <label className="form-group visual-exam-metadata-wide">
               <span className="form-label">Título *</span>
               <input name="title" className="form-input" value={title} onChange={(event) => setTitle(event.currentTarget.value)} required />
             </label>
@@ -549,13 +604,13 @@ export function VisualExamBuilder({
               <span className="form-label">Instituição</span>
               <input name="institution" className="form-input" value={institution} onChange={(event) => setInstitution(event.currentTarget.value)} />
             </label>
-            <label className="form-group">
-              <span className="form-label">Instruções da primeira página</span>
-              <textarea name="instructions" className="form-textarea" value={instructions} onChange={(event) => setInstructions(event.currentTarget.value)} rows={3} required />
-            </label>
             <label className="form-group visual-exam-sets-input">
               <span className="form-label">Sets</span>
               <input name="quantitySets" className="form-input" type="number" min={1} max={8} value={quantitySets} onChange={(event) => setQuantitySets(event.currentTarget.value)} />
+            </label>
+            <label className="form-group visual-exam-metadata-wide">
+              <span className="form-label">Instruções da primeira página</span>
+              <textarea name="instructions" className="form-textarea" value={instructions} onChange={(event) => setInstructions(event.currentTarget.value)} rows={3} required />
             </label>
           </div>
 
@@ -649,15 +704,45 @@ export function VisualExamBuilder({
             <summary className="visual-exam-panel-summary">
               <span className="visual-exam-panel-summary-copy">
                 <span role="heading" aria-level={3}>Banco auditado</span>
-                <small>Entra = vai para a prova. Fora = não conta como disponível nesta prova.</small>
+                <small>Entra: vai para a prova · Fora: sai do disponível desta prova.</small>
               </span>
               <span className="badge">
                 {questions.length - excludedIds.size} disponível(is) · {selectedQuestions.length} selecionada(s)
                 {excludedIds.size > 0 && ` · ${excludedIds.size} fora`}
               </span>
             </summary>
+            <div className="visual-exam-pool-toolbar">
+              <input
+                type="search"
+                className="form-input"
+                value={poolQuery}
+                onChange={(event) => setPoolQuery(event.currentTarget.value)}
+                placeholder="Buscar por número ou enunciado"
+                aria-label="Buscar no banco auditado"
+              />
+              <select className="form-select" value={poolStatus} onChange={(event) => setPoolStatus(event.currentTarget.value as PoolStatusFilter)} aria-label="Filtrar por situação">
+                {POOL_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <div className="visual-exam-pool-type-filter" role="group" aria-label="Filtrar por tipo">
+                <button type="button" className={`btn btn-sm ${poolType === "all" ? "btn-primary" : "btn-ghost"}`} aria-pressed={poolType === "all"} onClick={() => setPoolType("all")}>
+                  Todas <span>{questions.length}</span>
+                </button>
+                {TYPE_CONTROLS.filter(({ type }) => totalByType[type] > 0).map(({ type, label }) => (
+                  <button type="button" key={type} className={`btn btn-sm ${poolType === type ? "btn-primary" : "btn-ghost"}`} aria-pressed={poolType === type} onClick={() => setPoolType(type)}>
+                    {label} <span>{totalByType[type]}</span>
+                  </button>
+                ))}
+              </div>
+              {poolFiltersActive && (
+                <p className="visual-exam-pool-filter-status">
+                  Mostrando {visiblePoolQuestions.length} de {questions.length}
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={clearPoolFilters}>Limpar filtros</button>
+                </p>
+              )}
+            </div>
             <div className="visual-exam-pool-list">
-              {questions.map((question) => {
+              {visiblePoolQuestions.length === 0 && <p className="visual-exam-pool-empty">Nenhuma questão corresponde aos filtros.</p>}
+              {visiblePoolQuestions.map((question) => {
                 const selected = selectedIds.has(question.id);
                 const excluded = excludedIds.has(question.id);
                 const selectId = `visual-exam-pool-select-${question.id}`;
@@ -700,7 +785,7 @@ export function VisualExamBuilder({
             <div className="visual-exam-section-heading">
               <div>
                 <h3 id="visual-exam-order-heading">Ordem, largura e imagens</h3>
-                <p className="form-help">Subir e descer atua somente dentro do mesmo tipo e largura.</p>
+                <p className="form-hint">Subir e descer atua somente dentro do mesmo tipo e largura.</p>
               </div>
               <span className="badge">Ordem canônica</span>
             </div>
@@ -762,14 +847,14 @@ export function VisualExamBuilder({
             <button type="submit" className="btn btn-primary" disabled={!disciplineId || selectedQuestions.length === 0 || !title.trim()}>
               {mode === "edit" ? "Salvar nova versão" : "Gerar prova"}
             </button>
-            <span className="form-help">{selectedQuestions.length} questão(ões) · {quantitySets || 1} set(s)</span>
+            <span className="form-hint">{selectedQuestions.length} questão(ões) · {quantitySets || 1} set(s)</span>
           </div>
         </section>
 
         <aside className="visual-exam-preview-panel" aria-label="Pré-visualização A4">
           <div className="visual-exam-preview-heading">
             <div>
-              <p className="eyebrow">Preview permanente</p>
+              <p className="section-eyebrow">Preview permanente</p>
               <h2>Formato A4</h2>
             </div>
             <div className="visual-exam-set-tabs" role="group" aria-label="Sets da pré-visualização">

@@ -152,8 +152,8 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
                 <Link
                   key={e.id}
                   href={`/exports?exam=${e.id}`}
-                  className="btn btn-ghost"
-                  style={{ display: "block", marginBottom: "0.4rem", textAlign: "left", background: selectedExam?.id === e.id ? "#f3f4f6" : "transparent" }}
+                  className={`btn btn-ghost exports-exam-link${selectedExam?.id === e.id ? " is-active" : ""}`}
+                  aria-current={selectedExam?.id === e.id ? "page" : undefined}
                 >
                   {e.title}{!e.active ? " · inativa" : ""}
                 </Link>

@@ -17,7 +17,8 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 
 export function QueuePanel() {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  // null = automatic: open only while tasks are running, so an idle panel does not cover the page.
+  const [expandedOverride, setExpandedOverride] = useState<boolean | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const knownStatuses = useRef<Map<string, TaskStatus>>(new Map());
@@ -54,6 +55,7 @@ export function QueuePanel() {
   const activeTasks = tasks.filter((task) => task.status === "pending" || task.status === "processing");
   const recentDone = tasks.filter((task) => task.status === "done" || task.status === "error" || task.status === "cancelled");
   const visible = [...activeTasks, ...recentDone.slice(0, 5)];
+  const expanded = expandedOverride ?? activeTasks.length > 0;
 
   function handleCancel(id: string) {
     startTransition(async () => {
@@ -65,7 +67,7 @@ export function QueuePanel() {
 
   return (
     <section className="activity-panel queue-panel" aria-label="Painel de tarefas">
-      <button type="button" className="activity-panel-toggle" aria-expanded={expanded} aria-controls="queue-panel-content" onClick={() => setExpanded((current) => !current)}>
+      <button type="button" className="activity-panel-toggle" aria-expanded={expanded} aria-controls="queue-panel-content" onClick={() => setExpandedOverride(!expanded)}>
         <span className="activity-panel-title">
           <span className={`activity-dot${activeTasks.length > 0 ? " is-active" : ""}`} />
           {activeTasks.length > 0 ? `Painel de tarefas · ${activeTasks.length} ativa${activeTasks.length !== 1 ? "s" : ""}` : `Painel de tarefas · ${visible.length > 0 ? "concluída" : "vazio"}`}

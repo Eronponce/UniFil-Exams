@@ -706,3 +706,18 @@ status: active
 - Causa do "reset": digitar `10` sobre `11` passava por `1`, removendo 10 questões e re-adicionando pela ordem do banco. Agora cada tecla é resolvida contra a seleção capturada no foco do campo.
 - A exclusão é estado do editor (não persistida na prova nem na versão).
 - Validação: `rtk npm test -- --run` (39 arquivos, 215 testes), `rtk npm run typecheck` e `rtk npm run lint` passaram.
+
+## 2026-09-23 - Auditoria visual das páginas de montagem (Chromium)
+
+- Auditoria read-only em produção (`/exams`, `/exams/[id]/edit`, `/print/exam`, `/print/set`, `/exports`, gabarito comentado) em 1440px e 390px; nenhum erro de console ou HTTP. Verificação interativa feita só em worktree local com banco sintético.
+- Mobile (≤860px) estava inutilizável em todas as páginas do app: `.shell` era flex em linha, então a barra móvel ocupava a largura e o `main` ficava com 32px fora da tela. Agora empilha em coluna.
+- Estilos do `CommandTrigger` estavam em `nav.module.css`; como CSS Modules gera hash, a classe global `command-trigger` nunca casava e o botão "Buscar no workspace" aparecia sem estilo. Regras movidas para `globals.css`; o módulo usa `:global()` só nos seletores do estado recolhido.
+- Dicas da navegação eram cortadas sem reticências (a trilha do grid crescia até o min-content); rótulos agora têm prioridade e as dicas encolhem com reticências.
+- Painel de tarefas abre automaticamente só com tarefa ativa; ocioso fica recolhido e deixa de cobrir o formulário.
+- Editor visual: `.eyebrow` e `.form-help` não existiam (trocados por `section-eyebrow`/`form-hint`); Sets ao lado da Instituição; filtro de disciplina/áreas/Limpar em uma linha; resumos recolhíveis quebram linha no mobile; enunciado do banco cortado em 2 linhas exatas.
+- Banco auditado ganhou busca (número/enunciado, sem acento), filtro por tipo e por situação (na prova, não selecionadas, fora desta prova), ordenado por tipo.
+- Enter em campo de texto/número não envia mais o formulário inteiro (antes criava a prova ou salvava versão sem querer); textarea continua normal.
+- Trilho "Ajustar imagens" do preview standalone: rótulo em linha própria, slider + Resetar abaixo, sem corte do botão.
+- `/exports`: prova selecionada usava `#f3f4f6` fixo (invisível no claro e ilegível no escuro); agora usa tokens e `aria-current`. Card "Leitura rapida" usa tokens.
+- Validação: 39 arquivos / 217 testes, typecheck e lint passaram.
+

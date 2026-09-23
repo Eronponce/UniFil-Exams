@@ -232,6 +232,45 @@ describe("VisualExamBuilder", () => {
     expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).not.toBeChecked();
   });
 
+  it("filters the audited bank by text, type and status without changing the selection", () => {
+    renderBuilder();
+
+    const poolRows = () => document.querySelectorAll(".visual-exam-pool-row").length;
+    expect(poolRows()).toBe(5);
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar no banco auditado" }), { target: { value: "numerica" } });
+    expect(poolRows()).toBe(1);
+    expect(screen.getByText("Mostrando 1 de 5")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Filtrar por tipo" })).getByRole("button", { name: /Objetivas/ }));
+    expect(poolRows()).toBe(2);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Deixar questão 2 fora desta prova" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Filtrar por situação" }), { target: { value: "excluded" } });
+    expect(poolRows()).toBe(1);
+    expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).toBeDisabled();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Filtrar por situação" }), { target: { value: "selected" } });
+    fireEvent.click(within(screen.getByRole("group", { name: "Filtrar por tipo" })).getByRole("button", { name: /Todas/ }));
+    expect(poolRows()).toBe(4);
+    expect(document.querySelectorAll('input[name="questionIds"]')).toHaveLength(4);
+  });
+
+  it("does not submit the exam when Enter is pressed inside a field", () => {
+    renderBuilder();
+
+    const title = screen.getByRole("textbox", { name: "Título *" });
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    title.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+
+    const instructions = screen.getByRole("textbox", { name: "Instruções da primeira página" });
+    const textareaEvent = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    instructions.dispatchEvent(textareaEvent);
+    expect(textareaEvent.defaultPrevented).toBe(false);
+  });
+
   it("reuses the visual creation surface in edit mode with the saved composition", () => {
     render(
       <VisualExamBuilder

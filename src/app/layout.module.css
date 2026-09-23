@@ -50,6 +50,7 @@
 }
 
 @media (max-width: 860px) {
+  .shell { flex-direction: column; }
   .mainFrame { min-height: calc(100vh - 60px); }
   .main { padding: 1.05rem 1rem 7.25rem; }
   .activityDock { right: .75rem; bottom: .75rem; width: min(390px, calc(100vw - 1.5rem)); }

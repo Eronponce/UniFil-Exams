@@ -334,8 +334,8 @@ export function GabaritoUpload({ examId, answerKeyWidthPt, isNew }: { examId: nu
             <p style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
               A moldura simula a pagina A4. O bloco desce ate o rodape para mostrar como o gabarito fica na ultima pagina.
             </p>
-            <div style={{ padding: "0.65rem 0.75rem", borderRadius: 8, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: "0.78rem", color: "#0f172a", marginBottom: "0.2rem", fontWeight: 600 }}>Leitura rapida</div>
+            <div style={{ padding: "0.65rem 0.75rem", borderRadius: 8, background: "var(--surface-muted)", border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-strong)", marginBottom: "0.2rem", fontWeight: 600 }}>Leitura rapida</div>
               <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
                 Menor tamanho = menos dominancia visual e mais respiro na pagina final.
               </div>

@@ -57,7 +57,7 @@ export function ExamDisciplineFilter({
 
   return (
     <div style={{ opacity: isPending ? 0.6 : 1, transition: "opacity 0.15s" }}>
-      <div className="form-row">
+      <div className="exam-builder-filter-row">
         <div className="form-group">
           <label className="form-label">Disciplina *</label>
           <select
@@ -70,7 +70,7 @@ export function ExamDisciplineFilter({
           </select>
         </div>
 
-        <div className="form-group" style={{ flex: 1 }}>
+        <div className="form-group">
           <ThematicAreaFilter
             areas={areas}
             selectedAreas={normalizeThematicAreas(selectedAreas)}
@@ -79,11 +79,11 @@ export function ExamDisciplineFilter({
             syncKey={`discipline:${searchParams.get("discipline") ?? ""}`}
           />
         </div>
-      </div>
 
-      {hasDiscipline && (
-        <Link href="/exams" className="btn btn-ghost" style={{ fontSize: "0.8rem" }}>Limpar</Link>
-      )}
+        {hasDiscipline && (
+          <Link href="/exams" className="btn btn-ghost">Limpar</Link>
+        )}
+      </div>
     </div>
   );
 }
