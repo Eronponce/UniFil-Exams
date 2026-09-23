@@ -721,3 +721,8 @@ status: active
 - `/exports`: prova selecionada usava `#f3f4f6` fixo (invisível no claro e ilegível no escuro); agora usa tokens e `aria-current`. Card "Leitura rapida" usa tokens.
 - Validação: 39 arquivos / 217 testes, typecheck e lint passaram.
 
+## 2026-09-23 - Remoção do painel de tarefas e do chat de issue
+
+- Removidos do shell `(app)/layout.tsx`, com componentes, rota `/api/github/issues`, `GET /api/queue`, libs/testes de GitHub e CSS `.activity-*`/`.issue-*`; padding inferior do `main` reduzido porque não há mais dock.
+- Validação: 37 arquivos / 207 testes, typecheck, lint e build passaram (foi preciso apagar `.next` por tipos gerados antigos das rotas removidas).
+

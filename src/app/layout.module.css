@@ -15,7 +15,7 @@
   flex: 1;
   width: 100%;
   min-width: 0;
-  padding: clamp(1.15rem, 2vw, 2.25rem) clamp(1rem, 3vw, 3.25rem) 5.5rem;
+  padding: clamp(1.15rem, 2vw, 2.25rem) clamp(1rem, 3vw, 3.25rem) 3rem;
   background:
     radial-gradient(circle at 100% 0%, rgba(42, 106, 231, .08), transparent 32rem),
     var(--bg);
@@ -27,31 +27,8 @@
   margin-inline: auto;
 }
 
-.activityDock {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: .55rem;
-  width: min(430px, calc(100vw - 2rem));
-  pointer-events: none;
-}
-
-.activityDockItem {
-  pointer-events: auto;
-}
-
-.activityDockItemWide {
-  width: 100%;
-  pointer-events: auto;
-}
-
 @media (max-width: 860px) {
   .shell { flex-direction: column; }
   .mainFrame { min-height: calc(100vh - 60px); }
-  .main { padding: 1.05rem 1rem 7.25rem; }
-  .activityDock { right: .75rem; bottom: .75rem; width: min(390px, calc(100vw - 1.5rem)); }
+  .main { padding: 1.05rem 1rem 2.5rem; }
 }

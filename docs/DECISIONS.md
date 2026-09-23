@@ -10,6 +10,12 @@ status: active
 
 Use this file for durable project decisions. Keep entries short and factual.
 
+## 2026-09-23 - Remoção do dock de atividade (tarefas e chat de issue)
+
+- Decisão: remover o `QueuePanel` global e o `IssueChatPanel` (com `/api/github/issues`, `src/lib/github/*`, `GET /api/queue` e as variáveis `GITHUB_ISSUES_*`).
+- Motivo: o painel flutuante cobria conteúdo em todas as páginas sem utilidade prática, e o chat dependia de `GITHUB_ISSUES_REPO`, que não existe em produção.
+- Impacto: telas de IA e auditoria continuam acompanhando suas próprias tarefas por `/api/queue/[taskId]`; não há mais refresh global quando uma tarefa termina em outra página.
+
 ## 2026-08-20 - Redeploy no host remoto (Servidor-Eron)
 
 - Decisão: o redeploy de produção é `git pull && docker compose up --build -d` executado via SSH direto no host remoto; não há CI/CD automatizado.

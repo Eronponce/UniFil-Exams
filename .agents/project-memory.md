@@ -29,7 +29,7 @@ status: active
 - O banco auditado do editor visual separa `Entra` (seleção) de `Fora` (exclusão só nesta prova, estado local não persistido); excluídas não contam como disponíveis e a quantidade por tipo nunca as re-adiciona. O campo de quantidade resolve cada tecla contra a seleção do foco.
 - O banco auditado tem busca/tipo/situação só de visualização (não altera seleção). Enter em `input` do editor visual não submete. Classes globais usadas por componentes compartilhados (ex.: `command-trigger`) devem ficar em `globals.css`, nunca em CSS Module. No mobile (≤860px) `.shell` é coluna.
 
-- `(app)/layout.tsx` owns the normal shell composition: `Nav`, `CommandPalette`, `QueuePanel`, `IssueChatPanel` and main landmark.
+- `(app)/layout.tsx` owns the normal shell composition: `Nav`, `CommandPalette` and main landmark (dock de tarefas/chat de issue removido em 2026-09-23).
 - `src/components/nav.tsx` provides grouped navigation, desktop collapse, mobile drawer, skip link, theme control and the visible keyboard shortcut.
 - `src/lib/state/ui-store.ts` persists theme and sidebar preferences under `unifil-ui-preferences`.
 - `src/components/ui.tsx` exports shared `PageHeader`, `SectionCard`, `StatCard`, `ProgressDisplay`, `EmptyState`, `WorkflowStepper` and `StatusBadge`.

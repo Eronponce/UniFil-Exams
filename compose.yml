@@ -16,8 +16,6 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:latest}
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GITHUB_ISSUES_REPO: ${GITHUB_ISSUES_REPO:-}
-      GITHUB_ISSUES_LABELS: ${GITHUB_ISSUES_LABELS:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

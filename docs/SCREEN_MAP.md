@@ -21,7 +21,7 @@ Mapa da arquitetura de informação do UniFil Exams. O fluxo principal é:
 - Tema persistente `Sistema`, `Claro` ou `Escuro`; preferência da sidebar persistida localmente.
 - Link “Ir para o conteúdo principal”, foco visível, alvos de toque confortáveis e respeito a `prefers-reduced-motion`.
 - `Ctrl/Cmd + K` abre a paleta de comandos com busca, grupos de destino, ações de criação e operação por teclado.
-- Dock de atividade flutuante reúne `QueuePanel` e chat de feedback; tarefas ativas continuam visíveis durante a navegação.
+- Sem dock flutuante: painel de tarefas e chat de issue foram removidos em 2026-09-23; cada tela acompanha a própria tarefa.
 
 ## Organização — `/`
 
@@ -57,7 +57,7 @@ Filtros por disciplina e seções para pendentes, recusadas e auditadas. Cada ca
 
 - `/ai`: uma questão por vez, provedor/modelo, tema, fila em background, trace e formulário de revisão antes de salvar.
 - `/ai/import`: lote de tópicos/texto, fila recuperável por `?task=`, preview selecionável, edição de área temática e salvamento em lote.
-- `QueuePanel` preserva polling, cancelamento e links de recuperação dos resultados.
+- Telas de IA/auditoria fazem polling da própria tarefa em `/api/queue/[taskId]`.
 
 ## Avaliações — `/exams`
 
