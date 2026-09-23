@@ -16,16 +16,16 @@ interface CommandItem {
 }
 
 const COMMANDS: CommandItem[] = [
-  { label: "Visão geral", description: "Voltar ao centro de comando", href: "/", group: "Visão geral", icon: "grid", keywords: "dashboard início" },
-  { label: "Disciplinas", description: "Organizar componentes curriculares", href: "/disciplines", group: "Conteúdo", icon: "book-open", keywords: "matérias" },
-  { label: "Banco de questões", description: "Pesquisar e editar questões", href: "/questions", group: "Conteúdo", icon: "layers", keywords: "perguntas busca" },
-  { label: "Auditoria", description: "Revisar questões pendentes", href: "/audit", group: "Conteúdo", icon: "circle-check", keywords: "revisão validar" },
-  { label: "Nova questão", description: "Criar manualmente", href: "/questions/new", group: "Criar", icon: "file-plus", keywords: "manual" },
-  { label: "Importar arquivo", description: "Trazer questões de JSON ou CSV", href: "/questions/importar", group: "Criar", icon: "upload", keywords: "csv json" },
-  { label: "Gerar com IA", description: "Criar uma questão assistida", href: "/ai", group: "Criar", icon: "sparkles", keywords: "inteligência artificial" },
-  { label: "Importar IA", description: "Gerar um lote a partir de tópicos", href: "/ai/import", group: "Criar", icon: "wand", keywords: "lote batch" },
-  { label: "Montagem de prova", description: "Selecionar e randomizar conjuntos", href: "/exams", group: "Avaliações", icon: "clipboard", keywords: "exame avaliação" },
-  { label: "Exportações", description: "Abrir PDF, CSV e ZIP", href: "/exports", group: "Avaliações", icon: "file-text", keywords: "download gabarito" },
+  { label: "Início", description: "Voltar ao centro de comando", href: "/", group: "Início", icon: "grid", keywords: "dashboard visão geral" },
+  { label: "Banco de questões", description: "Pesquisar e editar questões", href: "/questions", group: "Questões", icon: "layers", keywords: "perguntas busca" },
+  { label: "Nova questão", description: "Criar manualmente", href: "/questions/new", group: "Questões", icon: "file-plus", keywords: "manual" },
+  { label: "Importar arquivo", description: "Trazer questões de JSON ou CSV", href: "/questions/importar", group: "Questões", icon: "upload", keywords: "csv json" },
+  { label: "Gerar com IA", description: "Criar uma questão assistida", href: "/ai", group: "Questões", icon: "sparkles", keywords: "inteligência artificial" },
+  { label: "Importar IA", description: "Gerar um lote a partir de tópicos", href: "/ai/import", group: "Questões", icon: "wand", keywords: "lote batch" },
+  { label: "Disciplinas", description: "Organizar componentes curriculares", href: "/disciplines", group: "Questões", icon: "book-open", keywords: "matérias" },
+  { label: "Auditoria", description: "Revisar questões pendentes", href: "/audit", group: "Auditoria", icon: "circle-check", keywords: "revisão validar" },
+  { label: "Montar prova", description: "Selecionar questões e gerar sets", href: "/exams", group: "Provas", icon: "clipboard", keywords: "montagem exame avaliação" },
+  { label: "Provas criadas", description: "Editar e exportar PDF, CSV e ZIP", href: "/exports", group: "Provas", icon: "file-text", keywords: "exportações download gabarito" },
   { label: "Configurações", description: "Provedores, arquivos e preferências", href: "/settings", group: "Sistema", icon: "settings", keywords: "preferências" },
 ];
 

@@ -12,10 +12,13 @@ export function ExamDisciplineFilter({
   disciplines,
   areas,
   selectedAreas,
+  compact = false,
 }: {
   disciplines: Discipline[];
   areas: string[];
   selectedAreas: string[];
+  /** Inline variant for the builder's sticky bar. */
+  compact?: boolean;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -54,6 +57,32 @@ export function ExamDisciplineFilter({
   }
 
   const hasDiscipline = !!searchParams.get("discipline");
+  const areaFilter = (
+    <ThematicAreaFilter
+      areas={areas}
+      selectedAreas={normalizeThematicAreas(selectedAreas)}
+      onChange={setAreas}
+      presentation="dropdown"
+      syncKey={`discipline:${searchParams.get("discipline") ?? ""}`}
+    />
+  );
+
+  if (compact) {
+    return (
+      <div className="exam-builder-filter-inline" style={{ opacity: isPending ? 0.6 : 1 }}>
+        <select
+          className="form-select"
+          aria-label="Disciplina"
+          value={searchParams.get("discipline") ?? ""}
+          onChange={(e) => navigate("discipline", e.target.value)}
+        >
+          <option value="">Trocar disciplina…</option>
+          {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+        {areaFilter}
+      </div>
+    );
+  }
 
   return (
     <div style={{ opacity: isPending ? 0.6 : 1, transition: "opacity 0.15s" }}>
@@ -71,13 +100,7 @@ export function ExamDisciplineFilter({
         </div>
 
         <div className="form-group">
-          <ThematicAreaFilter
-            areas={areas}
-            selectedAreas={normalizeThematicAreas(selectedAreas)}
-            onChange={setAreas}
-            presentation="dropdown"
-            syncKey={`discipline:${searchParams.get("discipline") ?? ""}`}
-          />
+          {areaFilter}
         </div>
 
         {hasDiscipline && (

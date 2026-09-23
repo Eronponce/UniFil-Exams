@@ -10,6 +10,12 @@ status: active
 
 Use this file for durable project decisions. Keep entries short and factual.
 
+## 2026-09-23 - Barra superior no lugar da sidebar e montagem como workspace
+
+- Decisão: navegação em barra superior (Início, Questões ▾, Auditoria, Provas ▾, busca, tema, ⚙) e `/exams` como workspace com barra da prova fixa e abas Banco / Na prova / Configurar ao lado da folha A4.
+- Motivo: a sidebar de 272px tirava justamente a largura que a montagem precisa para lista + A4; a tela antiga começava por campos raramente alterados, repetia cada questão em duas listas e deixava o botão Gerar no fim da coluna.
+- Impacto: quantidades e Gerar ficam sempre visíveis; ajustes raros (instituição, instruções, gabarito, quebra) ficam em `Configurar` com preview ao vivo. Escolha feita pelo dono entre opções com mockup.
+
 ## 2026-09-23 - Remoção do dock de atividade (tarefas e chat de issue)
 
 - Decisão: remover o `QueuePanel` global e o `IssueChatPanel` (com `/api/github/issues`, `src/lib/github/*`, `GET /api/queue` e as variáveis `GITHUB_ISSUES_*`).

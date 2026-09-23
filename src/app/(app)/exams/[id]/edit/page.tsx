@@ -32,13 +32,13 @@ export default async function ExamEditPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <PageHeader
-        eyebrow="Avaliações · Editar"
+        eyebrow="Provas · Editar"
         title={`Editar ${exam.title}`}
-        description="A mesma montagem visual da criação, agora salvando cada alteração como uma versão rastreável."
+        description="Cada alteração salva uma nova versão; as anteriores ficam no histórico abaixo."
         actions={(
           <div className="actions-row">
             <Link href={`/print/exam/${exam.id}`} className="btn btn-ghost">Abrir preview</Link>
-            <Link href={`/exports?exam=${exam.id}`} className="btn btn-ghost">← Exportações</Link>
+            <Link href={`/exports?exam=${exam.id}`} className="btn btn-ghost">← Provas criadas</Link>
           </div>
         )}
       />
@@ -65,8 +65,8 @@ export default async function ExamEditPage({ params }: { params: Promise<{ id: s
       />
 
       <details className="card exam-editor-history">
-        <summary className="visual-exam-panel-summary">
-          <span className="visual-exam-panel-summary-copy">
+        <summary className="exam-editor-history-summary">
+          <span className="exam-editor-history-summary-copy">
             <span role="heading" aria-level={2}>Histórico de versões</span>
             <small>Versões anteriores permanecem imutáveis e podem ser restauradas.</small>
           </span>

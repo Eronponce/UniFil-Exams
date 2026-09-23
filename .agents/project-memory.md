@@ -22,7 +22,7 @@ status: active
 - `/exams` agora usa `VisualExamBuilder`: selecao exata, ordem canonica por tipo/largura, toggles acessiveis, escalas 25..100% no mesmo menu e preview A4 embedded por Set.
 - `buildDraftPrintPayload` e `draftSeed` mantem os sets do rascunho deterministicos; `ExamPrintClient` aceita escalas controladas e payloads que mudam durante a edicao.
 - Preview standalone tem rail dockada de imagem; no desktop ocupa coluna sticky direita e, em telas responsivas, entra no fluxo normal; fragmentos objetivos incompletos continuam em pagina fisica seguinte com marcador medido.
-- `/exams` agora organiza configuração e banco auditado em `details` recolhíveis, mantém quantidades visíveis iguais à seleção exata por tipo, mostra posição global de cada questão e usa um placeholder SVG sintético de `1068 × 883 px` apenas no payload de preview para exercitar a paginação/paridade do gabarito.
+- `/exams` (desde 2026-09-23) é um workspace: barra da prova sticky (título, filtro compacto de disciplina/áreas via prop `filter`, sets, steppers −/+ por tipo, Gerar/Salvar) e, abaixo, editor com abas `Banco` / `Na prova` / `Configurar` ao lado do preview A4; painéis com altura = viewport − barra (`--exam-bar-h` medido por ResizeObserver) e rolagem própria. Campo obrigatório inválido em aba oculta abre `Configurar`. Mantém quantidades visíveis iguais à seleção exata por tipo, mostra posição global de cada questão e usa um placeholder SVG sintético de `1068 × 883 px` apenas no payload de preview para exercitar a paginação/paridade do gabarito.
 - O canvas A4 embedded tem viewport desktop com scroll chaining contido; a rail standalone de imagens ocupa uma coluna sticky direita no desktop, entra no fluxo normal no responsivo, começa no limite real da composição e permanece escondida em embedded.
 - O editor visual aceita gabarito PNG/JPG de até 9 MB antes da criação, usa `blob:` no preview em tempo real, persiste a largura junto da prova e grava o arquivo somente depois de validar sua assinatura.
 - A edição de prova reutiliza o editor visual completo da criação. Seleção, ordem canônica, quantidade de sets, larguras, escalas e gabarito são salvos como nova versão; o preview standalone também possui `Salvar tamanhos` para persistir ajustes de imagens, inclusive resetes a 100%.
@@ -30,8 +30,8 @@ status: active
 - O banco auditado tem busca/tipo/situação só de visualização (não altera seleção). Enter em `input` do editor visual não submete. Classes globais usadas por componentes compartilhados (ex.: `command-trigger`) devem ficar em `globals.css`, nunca em CSS Module. No mobile (≤860px) `.shell` é coluna.
 
 - `(app)/layout.tsx` owns the normal shell composition: `Nav`, `CommandPalette` and main landmark (dock de tarefas/chat de issue removido em 2026-09-23).
-- `src/components/nav.tsx` provides grouped navigation, desktop collapse, mobile drawer, skip link, theme control and the visible keyboard shortcut.
-- `src/lib/state/ui-store.ts` persists theme and sidebar preferences under `unifil-ui-preferences`.
+- `src/components/nav.tsx` é uma barra superior sticky (`--topbar-h: 56px`): Início, Questões ▾, Auditoria, Provas ▾, busca (Ctrl+K), alternância de tema e ⚙; no mobile (≤860px) ☰ abre gaveta. A sidebar foi removida em 2026-09-23. `.main` usa `overflow-x: clip` (não `auto`) para não quebrar `position: sticky`.
+- `src/lib/state/ui-store.ts` persists only the theme under `unifil-ui-preferences`.
 - `src/components/ui.tsx` exports shared `PageHeader`, `SectionCard`, `StatCard`, `ProgressDisplay`, `EmptyState`, `WorkflowStepper` and `StatusBadge`.
 - `src/components/icon.tsx` is the no-dependency inline SVG icon system using `currentColor`.
 - `src/components/command-palette.tsx` handles `Ctrl/Cmd + K`, search, focus, Escape, arrows and Enter; navigation is client-only.
@@ -56,6 +56,7 @@ status: active
 - Criar: `/questions/new`, `/questions/importar`, `/ai`, `/ai/import`, `/exams`.
 - Entregar: `/exports`, `/print/*`, PDF/CSV/ZIP endpoints.
 - Sistema: `/settings`.
+- Menu (2026-09-23): Início `/` · Questões ▾ (`/questions`, `/questions/new`, `/questions/importar`, `/ai`, `/ai/import`, `/disciplines`) · Auditoria `/audit` · Provas ▾ (Montar prova `/exams`, Provas criadas `/exports`) · ⚙ `/settings`.
 
 ## Verification evidence — 2026-08-04
 

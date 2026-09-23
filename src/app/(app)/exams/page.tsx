@@ -49,27 +49,30 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHeader
-        eyebrow="Avaliações · Criar"
-        title="Montagem de prova"
-        description="Selecione questões auditadas, organize cada largura e confira o formato A4 enquanto edita."
-        actions={<Link href="/audit" className="btn btn-ghost"><Icon name="circle-check" size={15} /> Revisar banco</Link>}
+        eyebrow="Provas"
+        title="Montar prova"
+        description="Escolha as questões, ajuste as quantidades por tipo e confira a folha A4 ao vivo."
+        actions={(
+          <div className="actions-row">
+            <Link href="/audit" className="btn btn-ghost"><Icon name="circle-check" size={15} /> Revisar banco</Link>
+            <Link href="/exports" className="btn btn-ghost"><Icon name="file-text" size={15} /> Provas criadas</Link>
+          </div>
+        )}
       />
 
-      <div className="exam-builder-filter-card card">
-        <ExamDisciplineFilter disciplines={disciplines} areas={allAreasForDiscipline} selectedAreas={selectedAreas} />
-        <div className="exam-builder-history-link">
-          Provas já criadas ficam em <Link href="/exports">Exportações e histórico →</Link>.
-        </div>
-      </div>
-
-      {!selectedDisciplineId ? (
-        <div className="card visual-exam-empty-state">
-          Selecione uma disciplina acima para carregar as questões auditadas no editor visual.
-        </div>
-      ) : auditedQuestions.length === 0 ? (
-        <div className="card visual-exam-empty-state">
-          Nenhuma questão auditada{selectedAreas.length ? " nas áreas selecionadas" : ""}. <Link href="/audit">Audite questões</Link> ou <Link href="/questions/new">crie uma questão</Link>.
-        </div>
+      {!selectedDisciplineId || auditedQuestions.length === 0 ? (
+        <>
+          <div className="exam-builder-filter-card card">
+            <ExamDisciplineFilter disciplines={disciplines} areas={allAreasForDiscipline} selectedAreas={selectedAreas} />
+          </div>
+          <div className="card visual-exam-empty-state">
+            {!selectedDisciplineId ? (
+              <>Selecione uma disciplina para carregar as questões auditadas.</>
+            ) : (
+              <>Nenhuma questão auditada{selectedAreas.length ? " nas áreas selecionadas" : ""}. <Link href="/audit">Audite questões</Link> ou <Link href="/questions/new">crie uma questão</Link>.</>
+            )}
+          </div>
+        </>
       ) : (
         <VisualExamBuilder
           key={JSON.stringify({ discipline: selectedDisciplineId, areas: [...selectedAreas].sort(), ids: auditedQuestions.map((question) => question.id) })}
@@ -84,6 +87,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
           initialAllowQuestionSplit={sp.allowQuestionSplit ?? ""}
           initialAnswerKeyWidthPt={Number(sp.answerKeyWidthPt)}
           initialDraftSeed={draftSeed}
+          filter={<ExamDisciplineFilter key="exam-filter" compact disciplines={disciplines} areas={allAreasForDiscipline} selectedAreas={selectedAreas} />}
           error={sp.error && sp.error !== "campos-obrigatorios" ? decodeURIComponent(sp.error) : undefined}
         />
       )}

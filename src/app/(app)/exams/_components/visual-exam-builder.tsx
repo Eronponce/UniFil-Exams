@@ -1,6 +1,7 @@
 "use client";
 
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/icon";
 import { RichText } from "@/components/rich-text";
 import { ExamPrintClient } from "@/components/print/exam-print-client";
 import { createExamAction, saveVisualExamVersionAction } from "@/lib/actions/exams";
@@ -58,6 +59,9 @@ const GROUP_INDEX = new Map(GROUPS.map((group, index) => [group.key, index]));
 const TYPE_INDEX = new Map(TYPE_CONTROLS.map((control, index) => [control.type, index]));
 
 type PoolStatusFilter = "all" | "selected" | "unselected" | "excluded";
+type EditorTab = "bank" | "order" | "config";
+
+const EDITOR_TABS: EditorTab[] = ["bank", "order", "config"];
 
 const POOL_STATUS_OPTIONS: Array<{ value: PoolStatusFilter; label: string }> = [
   { value: "all", label: "Todas as situações" },
@@ -93,6 +97,8 @@ export interface VisualExamBuilderProps {
   initialImageScaleOverrides?: Readonly<Record<number, number>>;
   initialAnswerKeyWidthPt?: number;
   initialAnswerKeyUrl?: string | null;
+  /** Discipline/area picker rendered inside the sticky bar (create mode). */
+  filter?: ReactNode;
   error?: string;
 }
 
@@ -241,6 +247,7 @@ export function VisualExamBuilder({
   initialImageScaleOverrides,
   initialAnswerKeyWidthPt = ANSWER_KEY_DEFAULT_WIDTH_PT,
   initialAnswerKeyUrl = null,
+  filter,
   error,
 }: VisualExamBuilderProps) {
   const questionById = useMemo(() => new Map(questions.map((question) => [question.id, question])), [questions]);
@@ -272,6 +279,9 @@ export function VisualExamBuilder({
   const [poolType, setPoolType] = useState<QuestionType | "all">("all");
   const [poolStatus, setPoolStatus] = useState<PoolStatusFilter>("all");
   const [poolQuery, setPoolQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<EditorTab>("bank");
+  const builderRef = useRef<HTMLFormElement | null>(null);
+  const barRef = useRef<HTMLElement | null>(null);
   const quantityBaselineRef = useRef<{
     type: QuestionType;
     selectedIds: ReadonlySet<number>;
@@ -453,6 +463,21 @@ export function VisualExamBuilder({
     if (event.key === "Enter" && event.target instanceof HTMLInputElement && event.target.type !== "file") event.preventDefault();
   }
 
+  function openInvalidField(event: FormEvent<HTMLFormElement>): void {
+    // Required fields living in a hidden tab cannot show the browser bubble;
+    // reveal their tab so the empty field is visible.
+    if (event.target instanceof HTMLElement && event.target.closest("#visual-exam-panel-config")) setActiveTab("config");
+  }
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const next = EDITOR_TABS[(EDITOR_TABS.indexOf(activeTab) + direction + EDITOR_TABS.length) % EDITOR_TABS.length];
+    setActiveTab(next);
+    document.getElementById(`visual-exam-tab-${next}`)?.focus();
+  }
+
   function beginQuantityEdit(type: QuestionType): void {
     quantityBaselineRef.current = { type, selectedIds, order: normalizedOrder, imageScaleOverrides };
   }
@@ -516,6 +541,18 @@ export function VisualExamBuilder({
   }
 
   useEffect(() => {
+    const bar = barRef.current;
+    const root = builderRef.current;
+    if (!bar || !root || typeof ResizeObserver === "undefined") return;
+    // Sticky panels sit below the bar; its height changes with wrapping.
+    const update = () => root.style.setProperty("--exam-bar-h", `${Math.ceil(bar.getBoundingClientRect().height)}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const fitRoot = previewFitRef.current;
     const canvas = fitRoot?.parentElement;
     if (!fitRoot || !canvas) return;
@@ -551,8 +588,31 @@ export function VisualExamBuilder({
     };
   }, [activePreviewSetIndex, previewPayload.sets.length]);
 
+  const submitLabel = mode === "edit" ? "Salvar nova versão" : "Gerar prova";
+  const canSubmit = Boolean(disciplineId) && selectedQuestions.length > 0 && title.trim() !== "";
+  const orderGroups = GROUPS
+    .map((group) => ({
+      group,
+      questions: normalizedOrder
+        .map((id) => questionById.get(id))
+        .filter((question): question is Question => question != null && groupForQuestion(question, layoutOverrides) === group.key),
+    }))
+    .filter((entry) => entry.questions.length > 0);
+  const tabLabels: Record<EditorTab, ReactNode> = {
+    bank: <>Banco <span className="visual-exam-tab-count">{questions.length - excludedIds.size}</span></>,
+    order: <>Na prova <span className="visual-exam-tab-count">{selectedQuestions.length}</span></>,
+    config: <><Icon name="settings" size={14} /> Configurar</>,
+  };
+
   return (
-    <form action={mode === "edit" ? saveVisualExamVersionAction : createExamAction} className="visual-exam-builder" data-testid="visual-exam-builder" onKeyDown={preventImplicitSubmit}>
+    <form
+      ref={builderRef}
+      action={mode === "edit" ? saveVisualExamVersionAction : createExamAction}
+      className="visual-exam-builder"
+      data-testid="visual-exam-builder"
+      onKeyDown={preventImplicitSubmit}
+      onInvalidCapture={openInvalidField}
+    >
       <input type="hidden" name="visualBuilder" value="1" />
       {mode === "edit" && <input type="hidden" name="examId" value={examId ?? ""} />}
       {mode === "edit" && <input type="hidden" name="removeAnswerKey" value={removeAnswerKey ? "1" : "0"} />}
@@ -574,143 +634,84 @@ export function VisualExamBuilder({
         <input key={`scale-${question.id}`} type="hidden" name={`imageScale-${question.id}`} value={normalizeQuestionImageScalePercent(imageScaleOverrides[question.id])} />
       ))}
 
-      <details className="visual-exam-setup card" open>
-        <summary className="visual-exam-setup-summary">
-          <span className="visual-exam-setup-summary-copy">
-            <span className="section-eyebrow">Editor visual</span>
-            <strong role="heading" aria-level={2}>{mode === "edit" ? "Editar prova" : "Nova prova"}</strong>
-            <small>Escolha questões auditadas, organize a ordem e confira o A4 antes de {mode === "edit" ? "salvar" : "gerar"}.</small>
-          </span>
-          <span className="visual-exam-setup-summary-status">
-            {selectedQuestions.length} selecionada(s) · {quantitySets || 1} set(s)
-          </span>
-        </summary>
+      <section ref={barRef} className="visual-exam-bar card" aria-labelledby="visual-exam-bar-heading">
+        <div className="visual-exam-bar-row">
+          <strong id="visual-exam-bar-heading" className="visual-exam-bar-heading" role="heading" aria-level={2}>
+            {mode === "edit" ? "Editar prova" : "Nova prova"}
+          </strong>
+          <label className="visual-exam-bar-title">
+            <span className="sr-only">Título *</span>
+            <input name="title" className="form-input" value={title} onChange={(event) => setTitle(event.currentTarget.value)} placeholder="Título da prova *" required />
+          </label>
+          {filter ?? (
+            <span className="visual-exam-bar-context">
+              <strong>{disciplineName ?? `Disciplina ${disciplineId ?? ""}`}</strong>
+              <span>{areas.length > 0 ? areas.join(", ") : "todas as áreas"}</span>
+            </span>
+          )}
+          <label className="visual-exam-bar-sets">
+            <span>Sets</span>
+            <input name="quantitySets" className="form-input" type="number" min={1} max={8} value={quantitySets} onChange={(event) => setQuantitySets(event.currentTarget.value)} />
+          </label>
+        </div>
 
-        <div className="visual-exam-setup-content">
-          {error && <div className="form-error" role="alert">Erro: {error}</div>}
-
-          <div className="visual-exam-setup-context" aria-label="Contexto da seleção">
-            {disciplineId && <span><strong>Disciplina:</strong> {disciplineName ?? disciplineId}</span>}
-            {areas.length > 0 && <span><strong>Áreas:</strong> {areas.join(", ")}</span>}
-            {areas.length === 0 && <span><strong>Áreas:</strong> todas</span>}
-          </div>
-
-          <div className="visual-exam-metadata">
-            <label className="form-group visual-exam-metadata-wide">
-              <span className="form-label">Título *</span>
-              <input name="title" className="form-input" value={title} onChange={(event) => setTitle(event.currentTarget.value)} required />
-            </label>
-            <label className="form-group">
-              <span className="form-label">Instituição</span>
-              <input name="institution" className="form-input" value={institution} onChange={(event) => setInstitution(event.currentTarget.value)} />
-            </label>
-            <label className="form-group visual-exam-sets-input">
-              <span className="form-label">Sets</span>
-              <input name="quantitySets" className="form-input" type="number" min={1} max={8} value={quantitySets} onChange={(event) => setQuantitySets(event.currentTarget.value)} />
-            </label>
-            <label className="form-group visual-exam-metadata-wide">
-              <span className="form-label">Instruções da primeira página</span>
-              <textarea name="instructions" className="form-textarea" value={instructions} onChange={(event) => setInstructions(event.currentTarget.value)} rows={3} required />
-            </label>
-          </div>
-
-          <section className="visual-exam-answer-key" aria-labelledby="visual-exam-answer-key-heading">
-            <div className="visual-exam-answer-key-heading">
-              <div>
-                <strong id="visual-exam-answer-key-heading">Gabarito da última página</strong>
-                <small>Anexe PNG/JPG de até 9 MB e ajuste a largura vendo a paginação mudar no preview.</small>
-              </div>
-              <span className={`badge${answerKeyFilename ? " badge-success" : ""}`}>
-                {answerKeyFilename ? "Anexado ao rascunho" : "Placeholder ativo"}
-              </span>
-            </div>
-
-            <div className="visual-exam-answer-key-controls">
-              <div className="visual-exam-answer-key-file">
-                <label className="btn btn-ghost btn-sm">
-                  {answerKeyFilename ? "Substituir gabarito" : "Anexar gabarito"}
+        <div className="visual-exam-bar-row">
+          <div className="visual-exam-steppers" role="group" aria-label="Quantidade por tipo">
+            {TYPE_CONTROLS.filter(({ type }) => totalByType[type] > 0).map(({ type, name, label }) => (
+              <div className="visual-exam-stepper" key={type}>
+                <span className="visual-exam-stepper-label">{label}</span>
+                <span className="visual-exam-stepper-control">
+                  <button type="button" onClick={() => setTypeQuantity(type, String(quantityByType[type] - 1))} disabled={quantityByType[type] === 0} aria-label={`Diminuir ${label}`}>−</button>
                   <input
-                    ref={answerKeyInputRef}
-                    className="sr-only"
-                    name="answerKeyFile"
-                    type="file"
-                    accept="image/png,image/jpeg,.png,.jpg,.jpeg"
-                    onChange={(event) => selectAnswerKeyFile(event.currentTarget.files?.[0])}
+                    name={name}
+                    type="number"
+                    min={0}
+                    max={availableByType[type]}
+                    value={quantityByType[type]}
+                    onFocus={() => beginQuantityEdit(type)}
+                    onBlur={() => { quantityBaselineRef.current = null; }}
+                    onChange={(event) => setTypeQuantity(type, event.currentTarget.value)}
+                    aria-label={`Quantidade de ${label}`}
                   />
-                </label>
-                {answerKeyFilename && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={removeAnswerKeyFile}>
-                    Remover
-                  </button>
-                )}
-                <span title={answerKeyFilename ?? undefined}>{answerKeyFilename ?? "Nenhum arquivo escolhido"}</span>
-              </div>
-
-              <label className="visual-exam-answer-key-scale">
-                <span>
-                  Largura do gabarito
-                  <output htmlFor="visual-answer-key-width">{answerKeyWidthPt}pt · {getAnswerKeyWidthPercent(answerKeyWidthPt)}%</output>
+                  <button type="button" onClick={() => setTypeQuantity(type, String(quantityByType[type] + 1))} disabled={quantityByType[type] >= availableByType[type]} aria-label={`Aumentar ${label}`}>+</button>
                 </span>
-                <input
-                  id="visual-answer-key-width"
-                  name="answerKeyWidthPt"
-                  type="range"
-                  min={ANSWER_KEY_MIN_WIDTH_PT}
-                  max={ANSWER_KEY_MAX_WIDTH_PT}
-                  step={ANSWER_KEY_WIDTH_STEP_PT}
-                  value={answerKeyWidthPt}
-                  onChange={(event) => setAnswerKeyWidthPt(clampAnswerKeyWidth(Number(event.currentTarget.value)))}
-                  aria-label="Tamanho do gabarito"
-                />
-              </label>
-            </div>
-            {answerKeyError && <span className="form-error" role="alert">{answerKeyError}</span>}
-          </section>
-
-          <div className="visual-exam-quantity-grid" aria-label="Quantidade por tipo">
-            {TYPE_CONTROLS.map(({ type, name, label }) => (
-              <label className="form-group visual-exam-quantity-control" key={type}>
-                <span className="form-label">{label}</span>
-                <input
-                  name={name}
-                  className="form-input"
-                  type="number"
-                  min={0}
-                  max={availableByType[type]}
-                  value={quantityByType[type]}
-                  onFocus={() => beginQuantityEdit(type)}
-                  onBlur={() => { quantityBaselineRef.current = null; }}
-                  onChange={(event) => setTypeQuantity(type, event.currentTarget.value)}
-                  aria-label={`Quantidade de ${label}`}
-                />
                 <small>
-                  {availableByType[type]} disponível(is)
+                  de {availableByType[type]}
                   {excludedByType[type] > 0 && ` · ${excludedByType[type]} fora`}
                 </small>
-              </label>
+              </div>
+            ))}
+          </div>
+          <div className="visual-exam-bar-actions">
+            <span className="visual-exam-bar-summary">{selectedQuestions.length} questão(ões) · {quantitySets || 1} set(s)</span>
+            <button type="submit" className="btn btn-primary" disabled={!canSubmit}>{submitLabel}</button>
+          </div>
+        </div>
+        {error && <div className="form-error" role="alert">Erro: {error}</div>}
+      </section>
+
+      <div className="visual-exam-workspace">
+        <section className="visual-exam-editor card" aria-label="Questões da prova">
+          <div className="visual-exam-tabs" role="tablist" aria-label="Painel da montagem">
+            {EDITOR_TABS.map((tab) => (
+              <button
+                key={tab}
+                id={`visual-exam-tab-${tab}`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                aria-controls={`visual-exam-panel-${tab}`}
+                tabIndex={activeTab === tab ? 0 : -1}
+                className={`visual-exam-tab${activeTab === tab ? " is-active" : ""}`}
+                onClick={() => setActiveTab(tab)}
+                onKeyDown={handleTabKeyDown}
+              >
+                {tabLabels[tab]}
+              </button>
             ))}
           </div>
 
-          <label className="exam-editor-checkbox">
-            <input type="checkbox" checked={allowQuestionSplit} onChange={(event) => setAllowQuestionSplit(event.currentTarget.checked)} />
-            <span><strong>Permitir quebra de objetivas longas</strong><small>A continuação sempre começa na próxima página.</small></span>
-          </label>
-        </div>
-      </details>
-
-      <div className="visual-exam-builder-grid">
-        <section className="visual-exam-editor card">
-          <details className="visual-exam-pool" open>
-            <summary className="visual-exam-panel-summary">
-              <span className="visual-exam-panel-summary-copy">
-                <span role="heading" aria-level={3}>Banco auditado</span>
-                <small>Entra: vai para a prova · Fora: sai do disponível desta prova.</small>
-              </span>
-              <span className="badge">
-                {questions.length - excludedIds.size} disponível(is) · {selectedQuestions.length} selecionada(s)
-                {excludedIds.size > 0 && ` · ${excludedIds.size} fora`}
-              </span>
-            </summary>
+          <div id="visual-exam-panel-bank" role="tabpanel" aria-labelledby="visual-exam-tab-bank" className="visual-exam-panel" hidden={activeTab !== "bank"}>
             <div className="visual-exam-pool-toolbar">
               <input
                 type="search"
@@ -733,12 +734,15 @@ export function VisualExamBuilder({
                   </button>
                 ))}
               </div>
-              {poolFiltersActive && (
-                <p className="visual-exam-pool-filter-status">
-                  Mostrando {visiblePoolQuestions.length} de {questions.length}
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={clearPoolFilters}>Limpar filtros</button>
-                </p>
-              )}
+              <p className="visual-exam-pool-filter-status">
+                <span>
+                  {poolFiltersActive ? `Mostrando ${visiblePoolQuestions.length} de ${questions.length}` : `${questions.length - excludedIds.size} disponível(is) · ${selectedQuestions.length} na prova`}
+                  {!poolFiltersActive && excludedIds.size > 0 && ` · ${excludedIds.size} fora`}
+                </span>
+                {poolFiltersActive
+                  ? <button type="button" className="btn btn-ghost btn-sm" onClick={clearPoolFilters}>Limpar filtros</button>
+                  : <span className="visual-exam-pool-legend">Entra: vai para a prova · Fora: sai do disponível</span>}
+              </p>
             </div>
             <div className="visual-exam-pool-list">
               {visiblePoolQuestions.length === 0 && <p className="visual-exam-pool-empty">Nenhuma questão corresponde aos filtros.</p>}
@@ -779,84 +783,130 @@ export function VisualExamBuilder({
                 );
               })}
             </div>
-          </details>
+          </div>
 
-          <section className="visual-exam-order" aria-labelledby="visual-exam-order-heading">
-            <div className="visual-exam-section-heading">
-              <div>
-                <h3 id="visual-exam-order-heading">Ordem, largura e imagens</h3>
-                <p className="form-hint">Subir e descer atua somente dentro do mesmo tipo e largura.</p>
-              </div>
-              <span className="badge">Ordem canônica</span>
-            </div>
-            <div className="visual-exam-order-list">
-              {GROUPS.map((group) => {
-                const groupQuestions = normalizedOrder
-                  .map((id) => questionById.get(id))
-                  .filter((question): question is Question => question != null && groupForQuestion(question, layoutOverrides) === group.key);
-                return (
+          <div id="visual-exam-panel-order" role="tabpanel" aria-labelledby="visual-exam-tab-order" className="visual-exam-panel" hidden={activeTab !== "order"}>
+            <p className="form-hint visual-exam-panel-hint">↑ ↓ reordenam dentro do mesmo tipo e largura · Meia/Total troca a largura na folha.</p>
+            {orderGroups.length === 0 ? (
+              <p className="visual-exam-pool-empty">Nenhuma questão na prova. Marque questões na aba Banco.</p>
+            ) : (
+              <div className="visual-exam-order-list">
+                {orderGroups.map(({ group, questions: groupQuestions }) => (
                   <section className="visual-exam-order-group" key={group.key} aria-labelledby={`group-heading-${group.key}`}>
                     <h4 id={`group-heading-${group.key}`}>{group.label}</h4>
-                    {groupQuestions.length === 0 ? (
-                      <p className="visual-exam-empty-group">Nenhuma selecionada</p>
-                    ) : (
-                      <ol>
-                        {groupQuestions.map((question) => {
-                          const scale = normalizeQuestionImageScalePercent(imageScaleOverrides[question.id]);
-                          const position = normalizedOrder.indexOf(question.id) + 1;
-                          const atTop = isBoundary(normalizedOrder, question.id, -1, questionById, layoutOverrides);
-                          const atBottom = isBoundary(normalizedOrder, question.id, 1, questionById, layoutOverrides);
-                          return (
-                            <li key={question.id} className="visual-exam-order-row">
-                              <div className="visual-exam-order-copy">
-                                <strong>Questão {question.id}</strong>
-                                <span>{TYPE_LABEL[question.questionType]} · {group.layout === "column" ? "meia página" : "largura total"}</span>
-                                <small>Posição {position} na prova</small>
-                              </div>
-                              <div className="visual-exam-order-actions">
-                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOrder((current) => moveWithinGroup(current, question.id, -1, questionById, layoutOverrides))} disabled={atTop} aria-label={`Mover questão ${question.id} para cima`}>↑</button>
-                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOrder((current) => moveWithinGroup(current, question.id, 1, questionById, layoutOverrides))} disabled={atBottom} aria-label={`Mover questão ${question.id} para baixo`}>↓</button>
-                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => toggleLayout(question.id)} aria-label={`Alternar largura da questão ${question.id}`}>{group.layout === "column" ? "Total" : "Meia"}</button>
-                              </div>
-                              {question.imageUrl && (
-                                <label className="visual-exam-image-scale">
-                                  <span>Imagem <output>{scale}%</output></span>
-                                  <input
-                                    type="range"
-                                    min={MIN_QUESTION_IMAGE_SCALE_PERCENT}
-                                    max={MAX_QUESTION_IMAGE_SCALE_PERCENT}
-                                    step={1}
-                                    value={scale}
-                                    onChange={(event) => updateImageScale(question.id, event.currentTarget.value)}
-                                    aria-label={`Escala da imagem da questão ${question.id}`}
-                                  />
-                                </label>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    )}
+                    <ol>
+                      {groupQuestions.map((question) => {
+                        const scale = normalizeQuestionImageScalePercent(imageScaleOverrides[question.id]);
+                        const position = normalizedOrder.indexOf(question.id) + 1;
+                        const atTop = isBoundary(normalizedOrder, question.id, -1, questionById, layoutOverrides);
+                        const atBottom = isBoundary(normalizedOrder, question.id, 1, questionById, layoutOverrides);
+                        return (
+                          <li key={question.id} className="visual-exam-order-row">
+                            <div className="visual-exam-order-copy">
+                              <strong>{position}. Questão {question.id}</strong>
+                              <span className="visual-exam-order-statement"><RichText html={question.statement} /></span>
+                              <small>Posição {position} na prova</small>
+                            </div>
+                            <div className="visual-exam-order-actions">
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOrder((current) => moveWithinGroup(current, question.id, -1, questionById, layoutOverrides))} disabled={atTop} aria-label={`Mover questão ${question.id} para cima`}>↑</button>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOrder((current) => moveWithinGroup(current, question.id, 1, questionById, layoutOverrides))} disabled={atBottom} aria-label={`Mover questão ${question.id} para baixo`}>↓</button>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => toggleLayout(question.id)} aria-label={`Alternar largura da questão ${question.id}`}>{group.layout === "column" ? "Total" : "Meia"}</button>
+                            </div>
+                            {question.imageUrl && (
+                              <label className="visual-exam-image-scale">
+                                <span>Imagem <output>{scale}%</output></span>
+                                <input
+                                  type="range"
+                                  min={MIN_QUESTION_IMAGE_SCALE_PERCENT}
+                                  max={MAX_QUESTION_IMAGE_SCALE_PERCENT}
+                                  step={1}
+                                  value={scale}
+                                  onChange={(event) => updateImageScale(question.id, event.currentTarget.value)}
+                                  aria-label={`Escala da imagem da questão ${question.id}`}
+                                />
+                              </label>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ol>
                   </section>
-                );
-              })}
-            </div>
-          </section>
+                ))}
+              </div>
+            )}
+          </div>
 
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={!disciplineId || selectedQuestions.length === 0 || !title.trim()}>
-              {mode === "edit" ? "Salvar nova versão" : "Gerar prova"}
-            </button>
-            <span className="form-hint">{selectedQuestions.length} questão(ões) · {quantitySets || 1} set(s)</span>
+          <div id="visual-exam-panel-config" role="tabpanel" aria-labelledby="visual-exam-tab-config" className="visual-exam-panel visual-exam-config" hidden={activeTab !== "config"}>
+            <label className="form-group">
+              <span className="form-label">Instituição</span>
+              <input name="institution" className="form-input" value={institution} onChange={(event) => setInstitution(event.currentTarget.value)} />
+            </label>
+            <label className="form-group">
+              <span className="form-label">Instruções da primeira página</span>
+              <textarea name="instructions" className="form-textarea" value={instructions} onChange={(event) => setInstructions(event.currentTarget.value)} rows={3} required />
+            </label>
+
+            <section className="visual-exam-answer-key" aria-labelledby="visual-exam-answer-key-heading">
+              <div className="visual-exam-answer-key-heading">
+                <div>
+                  <strong id="visual-exam-answer-key-heading">Gabarito da última página</strong>
+                  <small>PNG/JPG de até 9 MB; a largura muda a paginação no preview.</small>
+                </div>
+                <span className={`badge${answerKeyFilename ? " badge-success" : ""}`}>
+                  {answerKeyFilename ? "Anexado ao rascunho" : "Placeholder ativo"}
+                </span>
+              </div>
+
+              <div className="visual-exam-answer-key-file">
+                <label className="btn btn-ghost btn-sm">
+                  {answerKeyFilename ? "Substituir gabarito" : "Anexar gabarito"}
+                  <input
+                    ref={answerKeyInputRef}
+                    className="sr-only"
+                    name="answerKeyFile"
+                    type="file"
+                    accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                    onChange={(event) => selectAnswerKeyFile(event.currentTarget.files?.[0])}
+                  />
+                </label>
+                {answerKeyFilename && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={removeAnswerKeyFile}>
+                    Remover
+                  </button>
+                )}
+                <span title={answerKeyFilename ?? undefined}>{answerKeyFilename ?? "Nenhum arquivo escolhido"}</span>
+              </div>
+
+              <label className="visual-exam-answer-key-scale">
+                <span>
+                  Largura do gabarito
+                  <output htmlFor="visual-answer-key-width">{answerKeyWidthPt}pt · {getAnswerKeyWidthPercent(answerKeyWidthPt)}%</output>
+                </span>
+                <input
+                  id="visual-answer-key-width"
+                  name="answerKeyWidthPt"
+                  type="range"
+                  min={ANSWER_KEY_MIN_WIDTH_PT}
+                  max={ANSWER_KEY_MAX_WIDTH_PT}
+                  step={ANSWER_KEY_WIDTH_STEP_PT}
+                  value={answerKeyWidthPt}
+                  onChange={(event) => setAnswerKeyWidthPt(clampAnswerKeyWidth(Number(event.currentTarget.value)))}
+                  aria-label="Tamanho do gabarito"
+                />
+              </label>
+              {answerKeyError && <span className="form-error" role="alert">{answerKeyError}</span>}
+            </section>
+
+            <label className="exam-editor-checkbox">
+              <input type="checkbox" checked={allowQuestionSplit} onChange={(event) => setAllowQuestionSplit(event.currentTarget.checked)} />
+              <span><strong>Permitir quebra de objetivas longas</strong><small>A continuação sempre começa na próxima página.</small></span>
+            </label>
           </div>
         </section>
 
-        <aside className="visual-exam-preview-panel" aria-label="Pré-visualização A4">
+        <aside className="visual-exam-preview-panel card" aria-label="Pré-visualização A4">
           <div className="visual-exam-preview-heading">
-            <div>
-              <p className="section-eyebrow">Preview permanente</p>
-              <h2>Formato A4</h2>
-            </div>
+            <h2>Folha A4</h2>
             <div className="visual-exam-set-tabs" role="group" aria-label="Sets da pré-visualização">
               {previewPayload.sets.map((set, index) => (
                 <button

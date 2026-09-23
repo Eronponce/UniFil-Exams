@@ -138,7 +138,7 @@ export default async function ExportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader eyebrow="Avaliações · Entregar" title="Exportações" description="Confira cada conjunto e gere o preview A4, PDF direto, CSV de gabarito ou ZIP." actions={<Link href="/exams" className="btn btn-ghost">← Montar prova</Link>} />
+      <PageHeader eyebrow="Provas" title="Provas criadas" description="Abra, edite ou exporte cada prova: preview A4, PDF direto, CSV de gabarito ou ZIP." actions={<Link href="/exams" className="btn btn-ghost">+ Montar prova</Link>} />
 
       {!selectedExam ? (
         <EmptyState title="Nenhuma avaliação criada" description="Monte uma prova para liberar os arquivos de entrega." action={<Link href="/exams" className="btn btn-primary">Montar prova</Link>} icon="file-text" />

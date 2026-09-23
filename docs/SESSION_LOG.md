@@ -726,3 +726,11 @@ status: active
 - Removidos do shell `(app)/layout.tsx`, com componentes, rota `/api/github/issues`, `GET /api/queue`, libs/testes de GitHub e CSS `.activity-*`/`.issue-*`; padding inferior do `main` reduzido porque não há mais dock.
 - Validação: 37 arquivos / 207 testes, typecheck, lint e build passaram (foi preciso apagar `.next` por tipos gerados antigos das rotas removidas).
 
+## 2026-09-23 - Barra superior e workspace da montagem
+
+- Sidebar substituída por barra superior sticky com menus agrupados (fecham com Esc/clique fora), busca, tema em botão cíclico e gaveta no mobile; paleta de comandos reagrupada pelo novo menu.
+- `/exams`: barra da prova sticky com título, disciplina/áreas compactas, sets, steppers −/+ ("de N · k fora") e Gerar; editor com abas Banco / Na prova / Configurar (setas do teclado entre abas); "Na prova" mostra só grupos com questões e trecho do enunciado; preview "Folha A4" ao lado; painéis ocupam a viewport restante e rolam sozinhos.
+- `.main` passou de `overflow-y: auto` para `overflow-x: clip`, porque o scroll container impedia qualquer `position: sticky` (o preview "sticky" antigo nunca grudava).
+- `/exports` renomeada para "Provas criadas" e edição com eyebrow "Provas · Editar".
+- Validação local com banco sintético (criação, edição, abas, −/+, campo obrigatório em aba oculta); 37 arquivos / 209 testes, typecheck, lint.
+

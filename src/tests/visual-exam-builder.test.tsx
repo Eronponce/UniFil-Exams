@@ -85,18 +85,21 @@ describe("VisualExamBuilder", () => {
     expect(fit.scale).toBeLessThan(1);
   });
 
-  it("renders every canonical subgroup and disables moves at subgroup boundaries", () => {
+  it("renders only the populated canonical subgroups and disables moves at subgroup boundaries", () => {
     renderBuilder();
+    fireEvent.click(screen.getByRole("tab", { name: /Na prova/ }));
 
-    for (const heading of ["objetiva meia", "objetiva total", "V/F meia", "V/F total", "numérica meia", "numérica total", "dissertativa meia", "dissertativa total"]) {
+    for (const heading of ["objetiva meia", "V/F meia", "numérica meia", "dissertativa total"]) {
       expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     }
+    expect(screen.queryByRole("heading", { name: "objetiva total" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mover questão 1 para cima" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Mover questão 2 para baixo" })).toBeDisabled();
   });
 
   it("keeps ordering inside a subgroup, regroups layout toggles, and submits the exact order", () => {
     renderBuilder();
+    fireEvent.click(screen.getByRole("tab", { name: /Na prova/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Mover questão 2 para cima" }));
     const orderInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="manualQuestionOrder"]'));
@@ -110,8 +113,10 @@ describe("VisualExamBuilder", () => {
   it("keeps slider state in parent form and the selected order in preview", () => {
     renderBuilder();
 
+    fireEvent.click(screen.getByRole("tab", { name: /Na prova/ }));
     fireEvent.change(screen.getByRole("slider", { name: "Escala da imagem da questão 1" }), { target: { value: "60" } });
     expect(document.querySelector<HTMLInputElement>('input[name="imageScale-1"]')).toHaveValue("60");
+    fireEvent.click(screen.getByRole("tab", { name: /Banco/ }));
     const objectiveTwo = screen.getByRole("checkbox", { name: "Selecionar questão 2" });
     fireEvent.click(objectiveTwo);
     expect(document.querySelector<HTMLInputElement>('input[name="questionIds"][value="2"]')).not.toBeInTheDocument();
@@ -129,6 +134,7 @@ describe("VisualExamBuilder", () => {
     Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectUrl });
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectUrl });
     renderBuilder();
+    fireEvent.click(screen.getByRole("tab", { name: /Configurar/ }));
 
     const fileInput = screen.getByLabelText("Anexar gabarito");
     const file = new File([new Uint8Array([137, 80, 78, 71])], "gabarito.png", { type: "image/png" });
@@ -188,8 +194,8 @@ describe("VisualExamBuilder", () => {
     expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).toBeDisabled();
     expect(objectiveQuantity).toHaveValue(3);
     expect(objectiveQuantity).toHaveAttribute("max", "3");
-    expect(screen.getByText("3 disponível(is) · 1 fora")).toBeInTheDocument();
-    expect(screen.getByText("6 disponível(is) · 6 selecionada(s) · 1 fora")).toBeInTheDocument();
+    expect(screen.getByText("de 3 · 1 fora")).toBeInTheDocument();
+    expect(screen.getByText("6 disponível(is) · 6 na prova · 1 fora")).toBeInTheDocument();
 
     fireEvent.change(objectiveQuantity, { target: { value: "0" } });
     fireEvent.change(objectiveQuantity, { target: { value: "4" } });
@@ -265,6 +271,7 @@ describe("VisualExamBuilder", () => {
     title.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
 
+    fireEvent.click(screen.getByRole("tab", { name: /Configurar/ }));
     const instructions = screen.getByRole("textbox", { name: "Instruções da primeira página" });
     const textareaEvent = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
     instructions.dispatchEvent(textareaEvent);
@@ -299,26 +306,35 @@ describe("VisualExamBuilder", () => {
     expect(screen.getByRole("checkbox", { name: "Selecionar questão 2" })).not.toBeChecked();
   });
 
-  it("collapses setup and audited-bank panels while retaining useful summaries and positions", () => {
+  it("keeps the submit bar visible and switches between bank, order and settings tabs", () => {
     renderBuilder();
 
-    const setup = document.querySelector<HTMLDetailsElement>(".visual-exam-setup");
-    const pool = document.querySelector<HTMLDetailsElement>(".visual-exam-pool");
-    expect(setup?.open).toBe(true);
-    expect(pool?.open).toBe(true);
-    expect(screen.getByText("5 selecionada(s) · 2 set(s)")).toBeInTheDocument();
-    expect(screen.getByText("5 disponível(is) · 5 selecionada(s)")).toBeInTheDocument();
+    expect(screen.getByText("5 questão(ões) · 2 set(s)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gerar prova" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: /Banco/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: /Banco/ })).toBeVisible();
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: /Banco/ }), { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: /Na prova/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Posição 1 na prova")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Nova prova"));
-    fireEvent.click(screen.getByText("Banco auditado"));
-    expect(setup?.open).toBe(false);
-    expect(pool?.open).toBe(false);
-    expect(screen.getByText("5 selecionada(s) · 2 set(s)")).toBeInTheDocument();
-    expect(screen.getByText("5 disponível(is) · 5 selecionada(s)")).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: "Mover questão 2 para cima" }));
     expect(screen.getByText("Posição 1 na prova").closest("li")).toHaveTextContent("Questão 2");
+
+    fireEvent.click(screen.getByRole("tab", { name: /Configurar/ }));
+    expect(screen.getByRole("textbox", { name: "Instituição" })).toHaveValue("UniFil");
+    expect(screen.queryByRole("checkbox", { name: "Selecionar questão 1" })).not.toBeInTheDocument();
+    expect(document.querySelectorAll('input[name="questionIds"]')).toHaveLength(5);
+  });
+
+  it("steps type quantities with the minus and plus buttons", () => {
+    renderBuilder();
+
+    const objectiveQuantity = screen.getByRole("spinbutton", { name: "Quantidade de Objetivas" });
+    expect(screen.getByRole("button", { name: "Aumentar Objetivas" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Diminuir Objetivas" }));
+    expect(objectiveQuantity).toHaveValue(1);
+    fireEvent.click(screen.getByRole("button", { name: "Aumentar Objetivas" }));
+    expect(objectiveQuantity).toHaveValue(2);
   });
 
   it("keeps the standalone image rail in a layout column instead of a toolbar offset", () => {
